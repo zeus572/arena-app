@@ -1,0 +1,6 @@
+@Arena.API_HostAddress = http://localhost:5239
+
+GET {{Arena.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

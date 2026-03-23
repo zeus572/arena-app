@@ -1,0 +1,160 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Arena.API.Data;
+using Arena.API.Models;
+using Arena.API.Models.DTOs;
+using Arena.API.Services;
+
+namespace Arena.API.Controllers.Api;
+
+[ApiController]
+[Route("api/[controller]")]
+public class DebatesController : ControllerBase
+{
+    private readonly ArenaDbContext _db;
+    private readonly ICurrentUserService _userService;
+
+    public DebatesController(ArenaDbContext db, ICurrentUserService userService)
+    {
+        _db = db;
+        _userService = userService;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var debates = await _db.Debates
+            .Include(d => d.Proponent)
+            .Include(d => d.Opponent)
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(debates);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var debate = await _db.Debates
+            .Include(d => d.Proponent)
+            .Include(d => d.Opponent)
+            .Include(d => d.Turns.OrderBy(t => t.TurnNumber))
+                .ThenInclude(t => t.Agent)
+            .Include(d => d.Turns)
+                .ThenInclude(t => t.Reactions)
+            .Include(d => d.Reactions)
+            .Include(d => d.Votes)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (debate is null) return NotFound();
+
+        var proponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.ProponentId);
+        var opponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.OpponentId);
+
+        return Ok(new
+        {
+            debate.Id,
+            debate.Topic,
+            debate.Description,
+            Status = debate.Status.ToString(),
+            Proponent = new { debate.Proponent.Id, debate.Proponent.Name, debate.Proponent.AvatarUrl, debate.Proponent.Persona },
+            Opponent = new { debate.Opponent.Id, debate.Opponent.Name, debate.Opponent.AvatarUrl, debate.Opponent.Persona },
+            debate.CreatedAt,
+            ProponentVotes = proponentVotes,
+            OpponentVotes = opponentVotes,
+            Reactions = debate.Reactions
+                .GroupBy(r => r.Type)
+                .ToDictionary(g => g.Key, g => g.Count()),
+            Turns = debate.Turns.OrderBy(t => t.TurnNumber).Select(t => new
+            {
+                t.Id,
+                t.DebateId,
+                t.AgentId,
+                Agent = new { t.Agent.Id, t.Agent.Name, t.Agent.AvatarUrl },
+                t.TurnNumber,
+                t.Content,
+                t.CreatedAt,
+                Reactions = t.Reactions
+                    .GroupBy(r => r.Type)
+                    .ToDictionary(g => g.Key, g => g.Count()),
+            }),
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateDebateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Topic))
+            return BadRequest(new { error = "Topic is required." });
+
+        var user = await _userService.GetOrCreateUserAsync();
+
+        Guid proponentId, opponentId;
+
+        if (request.ProponentId.HasValue && request.OpponentId.HasValue)
+        {
+            proponentId = request.ProponentId.Value;
+            opponentId = request.OpponentId.Value;
+        }
+        else
+        {
+            var agents = await _db.Agents.ToListAsync();
+            if (agents.Count < 2)
+                return BadRequest(new { error = "Not enough agents to create a debate." });
+
+            var shuffled = agents.OrderBy(_ => Guid.NewGuid()).Take(2).ToList();
+            proponentId = request.ProponentId ?? shuffled[0].Id;
+            opponentId = request.OpponentId ?? shuffled[1].Id;
+        }
+
+        if (proponentId == opponentId)
+            return BadRequest(new { error = "Proponent and opponent must be different agents." });
+
+        var debate = new Debate
+        {
+            Id = Guid.NewGuid(),
+            Topic = request.Topic.Trim(),
+            Description = request.Description?.Trim(),
+            Status = DebateStatus.Pending,
+            ProponentId = proponentId,
+            OpponentId = opponentId,
+            StartedByUserId = user.Id,
+        };
+
+        _db.Debates.Add(debate);
+        await _db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = debate.Id }, new { debate.Id, debate.Topic, debate.Status });
+    }
+
+    [HttpPost("{id:guid}/votes")]
+    public async Task<IActionResult> CastVote(Guid id, [FromBody] CastVoteRequest request)
+    {
+        var debate = await _db.Debates.FindAsync(id);
+        if (debate is null) return NotFound();
+
+        if (request.VotedForAgentId != debate.ProponentId && request.VotedForAgentId != debate.OpponentId)
+            return BadRequest(new { error = "Must vote for the proponent or opponent." });
+
+        var user = await _userService.GetOrCreateUserAsync();
+
+        var alreadyVoted = await _db.Votes.AnyAsync(v => v.DebateId == id && v.UserId == user.Id);
+        if (alreadyVoted)
+            return Conflict(new { error = "You have already voted on this debate." });
+
+        var vote = new Vote
+        {
+            Id = Guid.NewGuid(),
+            DebateId = id,
+            UserId = user.Id,
+            VotedForAgentId = request.VotedForAgentId,
+        };
+
+        _db.Votes.Add(vote);
+        await _db.SaveChangesAsync();
+
+        return Created("", new { vote.Id, vote.DebateId, vote.VotedForAgentId });
+    }
+}
