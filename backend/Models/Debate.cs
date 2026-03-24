@@ -5,7 +5,8 @@ public enum DebateStatus
     Pending,
     Active,
     Completed,
-    Cancelled
+    Cancelled,
+    Compromising
 }
 
 public class Debate
@@ -26,4 +27,5 @@ public class Debate
     public ICollection<Turn> Turns { get; set; } = new List<Turn>();
     public ICollection<Vote> Votes { get; set; } = new List<Vote>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
+    public ICollection<DebateTag> DebateTags { get; set; } = new List<DebateTag>();
 }

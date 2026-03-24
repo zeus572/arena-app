@@ -1,14 +1,181 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { fetchDebate, castVote } from "../api/client";
-import type { DebateDetail } from "../api/types";
-import ReactionBar from "../components/ReactionBar";
+import { useParams, Link } from "react-router-dom";
+import Markdown from "react-markdown";
+import { fetchDebate, castVote, addReaction } from "@/api/client";
+import type { DebateDetail, TurnDetail, TurnCitation } from "@/api/types";
+import { cn } from "@/lib/utils";
+import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/agent-colors";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { IdeologyBadge } from "@/components/ideology-badge";
+import { Button } from "@/components/ui/button";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale } from "lucide-react";
 
-export default function DebateView() {
+function ReactionRow({
+  turnId,
+  debateId,
+  targetType,
+  counts,
+}: {
+  turnId?: string;
+  debateId?: string;
+  targetType: "debate" | "turn";
+  counts: Record<string, number>;
+}) {
+  const [state, setState] = useState(counts);
+  const [voted, setVoted] = useState<string | null>(null);
+
+  const targetId = targetType === "turn" ? turnId! : debateId!;
+
+  const vote = async (key: string) => {
+    if (voted === key) return;
+    setState((p) => ({ ...p, [key]: (p[key] ?? 0) + 1 }));
+    setVoted(key);
+    try {
+      await addReaction(targetType, targetId, key);
+    } catch {
+      setState((p) => ({ ...p, [key]: (p[key] ?? 1) - 1 }));
+      setVoted(null);
+    }
+  };
+
+  const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+  const buttons = [
+    { key: "agree", label: "like", icon: ThumbsUp, activeClass: "bg-primary text-primary-foreground" },
+    { key: "disagree", label: "disagree", icon: ThumbsDown, activeClass: "bg-destructive text-white" },
+    { key: "insightful", label: "insightful", icon: Lightbulb, activeClass: "bg-accent-foreground text-accent" },
+  ];
+
+  return (
+    <div className="flex items-center gap-1 mt-2">
+      {buttons.map(({ key, label, icon: Icon, activeClass }) => (
+        <button
+          key={key}
+          onClick={() => vote(label)}
+          className={cn(
+            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+            voted === label
+              ? activeClass
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon size={11} />
+          {fmt(state[label] ?? 0)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ArbiterCard({ turn }: { turn: TurnDetail }) {
+  const isClosing = turn.content.toLowerCase().includes("closed");
+  return (
+    <div className="flex justify-center py-4">
+      <div className="rounded-xl border-2 border-amber-500/30 bg-amber-500/5 px-6 py-4 text-center max-w-md">
+        <Scale size={20} className="mx-auto mb-2 text-amber-500" />
+        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+          {isClosing ? "Debate Closed" : "The Arbiter Has Intervened"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {isClosing
+            ? "Both sides have presented their compromise proposals. Cast your vote for the most compelling argument."
+            : "Both agents must now find common ground and propose a compromise budget."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TurnBubble({
+  turn,
+  isLeft,
+  debateId,
+  agentColor,
+}: {
+  turn: TurnDetail;
+  isLeft: boolean;
+  debateId: string;
+  agentColor: AgentColor;
+}) {
+  const isCompromise = turn.type === "Compromise";
+
+  return (
+    <div className={cn("flex gap-3", isLeft ? "flex-row" : "flex-row-reverse")}>
+      <div className="shrink-0 mt-1">
+        <AgentAvatar
+          agent={{ name: turn.agent.name, color: agentColor }}
+          size="md"
+        />
+      </div>
+      <div className={cn("max-w-[92%] flex flex-col", isLeft ? "items-start" : "items-end")}>
+        {isCompromise && (
+          <span className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide mb-1 px-1">
+            Compromise Proposal
+          </span>
+        )}
+        <div
+          className={cn(
+            "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-none",
+            "prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5",
+            "prose-strong:text-inherit prose-em:text-inherit",
+            isCompromise
+              ? "rounded-tl-sm border border-purple-500/20 bg-purple-500/5 text-foreground"
+              : isLeft
+                ? cn("rounded-tl-sm text-foreground", BUBBLE_BG[agentColor])
+                : cn("rounded-tr-sm text-foreground", BUBBLE_BG[agentColor])
+          )}
+        >
+          <Markdown>{turn.content}</Markdown>
+          {turn.citationsJson && (() => {
+            try {
+              const raw = JSON.parse(turn.citationsJson) as Record<string, string>[];
+              const citations: TurnCitation[] = raw.map((c) => ({
+                source: c.source || c.Source || "",
+                title: c.title || c.Title || "",
+                url: c.url || c.Url || "",
+              }));
+              if (citations.length === 0) return null;
+              return (
+                <div className="mt-3 pt-2 border-t border-border/30">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Sources</p>
+                  <div className="flex flex-col gap-1">
+                    {citations.map((c, i) => (
+                      <a
+                        key={i}
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-primary hover:underline truncate block"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        [{c.source}] {c.title}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()}
+        </div>
+        <div className={cn("mt-1 px-1", isLeft ? "" : "flex flex-row-reverse")}>
+          <ReactionRow
+            targetType="turn"
+            turnId={turn.id}
+            debateId={debateId}
+            counts={turn.reactions}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function DebateViewPage() {
   const { id } = useParams<{ id: string }>();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
-  const [voted, setVoted] = useState(false);
-  const [voting, setVoting] = useState(false);
+  const [userVote, setUserVote] = useState<string | null>(null);
 
   const loadDebate = useCallback(async () => {
     if (!id) return;
@@ -20,99 +187,206 @@ export default function DebateView() {
     loadDebate();
   }, [loadDebate]);
 
-  // Check if user already voted (localStorage)
   useEffect(() => {
     if (id && localStorage.getItem(`vote-${id}`)) {
-      setVoted(true);
+      setUserVote(localStorage.getItem(`vote-${id}`));
     }
   }, [id]);
 
-  // Live polling for active debates
   useEffect(() => {
-    if (!debate || debate.status !== "Active") return;
+    if (!debate || (debate.status !== "Active" && debate.status !== "Compromising")) return;
     const interval = setInterval(loadDebate, 10_000);
     return () => clearInterval(interval);
   }, [debate?.status, loadDebate]);
 
-  async function handleVote(agentId: string) {
-    if (!id || voted || voting) return;
-    setVoting(true);
+  if (!debate) {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <div className="rounded-xl border border-border bg-card p-6 h-64 animate-pulse" />
+      </main>
+    );
+  }
+
+  const proponentColor = getAgentColor(debate.proponent.persona ?? "");
+  const opponentColor = getAgentColor(debate.opponent.persona ?? "");
+  const proponentLabel = getAgentLabel(debate.proponent.persona ?? "");
+  const opponentLabel = getAgentLabel(debate.opponent.persona ?? "");
+
+  const totalVotes = debate.proponentVotes + debate.opponentVotes;
+  const pctA = totalVotes > 0 ? (debate.proponentVotes / totalVotes) * 100 : 50;
+  const winner =
+    debate.status === "Completed"
+      ? debate.proponentVotes > debate.opponentVotes
+        ? debate.proponent
+        : debate.opponent
+      : null;
+
+  const handleVote = async (agentId: string) => {
+    if (!id || userVote) return;
     try {
       await castVote(id, agentId);
       localStorage.setItem(`vote-${id}`, agentId);
-      setVoted(true);
+      setUserVote(agentId);
       await loadDebate();
     } catch {
-      // ignore duplicate vote errors
+      // ignore
     }
-    setVoting(false);
-  }
+  };
 
-  if (!debate) return <p>Loading debate...</p>;
-
-  const votedFor = id ? localStorage.getItem(`vote-${id}`) : null;
+  const isLive = debate.status === "Active" || debate.status === "Compromising";
 
   return (
-    <div className="debate-view">
-      <div className="debate-header">
-        <h1>{debate.topic}</h1>
-        {debate.description && <p className="debate-desc">{debate.description}</p>}
-        <div className="debate-meta">
-          <span className={`status-badge status-${debate.status.toLowerCase()}`}>
-            {debate.status}
+    <main className="mx-auto max-w-3xl px-4 py-8">
+      <Link to="/">
+        <Button variant="ghost" size="sm" className="mb-5 gap-1.5 text-xs text-muted-foreground -ml-2">
+          <ChevronLeft size={14} />
+          Back to Feed
+        </Button>
+      </Link>
+
+      <div className="rounded-xl border border-border bg-card p-6 mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <span
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
+              debate.status === "Active"
+                ? "bg-red-500/10 text-red-500"
+                : debate.status === "Compromising"
+                  ? "bg-amber-500/10 text-amber-600"
+                  : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {debate.status === "Active" ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                LIVE
+              </>
+            ) : debate.status === "Compromising" ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <Scale size={12} />
+                FINDING COMPROMISE
+              </>
+            ) : (
+              debate.status
+            )}
           </span>
-          <span className="agents-vs">
-            <strong>{debate.proponent.name}</strong> vs{" "}
-            <strong>{debate.opponent.name}</strong>
-          </span>
+        </div>
+
+        <h1 className="text-lg font-bold text-card-foreground leading-snug mb-6 text-balance">
+          {debate.topic}
+        </h1>
+        {debate.description && (
+          <p className="text-sm text-muted-foreground mb-4">{debate.description}</p>
+        )}
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col items-center gap-2 text-center flex-1">
+            <AgentAvatar agent={{ name: debate.proponent.name, color: proponentColor }} size="xl" />
+            <div>
+              <p className="font-semibold text-sm text-card-foreground">{debate.proponent.name}</p>
+              <IdeologyBadge label={proponentLabel} color={proponentColor} />
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <span className="text-xl font-black text-muted-foreground/30">VS</span>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center flex-1">
+            <AgentAvatar agent={{ name: debate.opponent.name, color: opponentColor }} size="xl" />
+            <div>
+              <p className="font-semibold text-sm text-card-foreground">{debate.opponent.name}</p>
+              <IdeologyBadge label={opponentLabel} color={opponentColor} />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Voting */}
-      <div className="vote-section">
-        <button
-          className={`vote-btn proponent ${votedFor === debate.proponent.id ? "voted" : ""}`}
-          onClick={() => handleVote(debate.proponent.id)}
-          disabled={voted || voting}
-        >
-          {debate.proponent.name} ({debate.proponentVotes})
-        </button>
-        <span className="vote-vs">VS</span>
-        <button
-          className={`vote-btn opponent ${votedFor === debate.opponent.id ? "voted" : ""}`}
-          onClick={() => handleVote(debate.opponent.id)}
-          disabled={voted || voting}
-        >
-          {debate.opponent.name} ({debate.opponentVotes})
-        </button>
-      </div>
-      {voted && <p className="vote-status">You voted!</p>}
+      <section className="flex flex-col gap-6 mb-8" aria-label="Debate turns">
+        {debate.turns.map((turn) => {
+          if (turn.type === "Arbiter") {
+            return <ArbiterCard key={turn.id} turn={turn} />;
+          }
 
-      {/* Debate-level reactions */}
-      <ReactionBar targetType="debate" targetId={debate.id} counts={debate.reactions} />
+          const isA = turn.agentId === debate.proponent.id;
+          return (
+            <TurnBubble
+              key={turn.id}
+              turn={turn}
+              isLeft={isA}
+              debateId={debate.id}
+              agentColor={isA ? proponentColor : opponentColor}
+            />
+          );
+        })}
+        {isLive && (
+          <p className="text-center text-xs text-muted-foreground italic py-4">
+            {debate.status === "Compromising"
+              ? "Agents are negotiating a compromise..."
+              : debate.turns.length === 0
+                ? "Waiting for the first argument..."
+                : "Waiting for next turn..."}
+          </p>
+        )}
+      </section>
 
-      {/* Turns */}
-      <div className="turns">
-        {debate.turns.map((turn) => (
-          <div
-            key={turn.id}
-            className={`turn ${turn.agentId === debate.proponent.id ? "proponent" : "opponent"}`}
-          >
-            <div className="turn-header">
-              <strong>{turn.agent.name}</strong>
-              <span className="turn-num">Turn {turn.turnNumber}</span>
-            </div>
-            <p>{turn.content}</p>
-            <ReactionBar targetType="turn" targetId={turn.id} counts={turn.reactions} />
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-sm font-semibold text-card-foreground mb-4 flex items-center gap-2">
+          {winner ? (
+            <>
+              <Trophy size={15} className="text-amber-500" />
+              Winner: {winner.name}
+            </>
+          ) : (
+            "Vote for the winner"
+          )}
+        </h2>
+
+        <div className="mb-4">
+          <div className="h-3 w-full rounded-full bg-secondary overflow-hidden flex">
+            <div className={cn("h-full transition-all duration-500", `bg-${proponentColor}`)} style={{ width: `${pctA}%` }} />
+            <div className={cn("h-full transition-all duration-500", `bg-${opponentColor}`)} style={{ width: `${100 - pctA}%` }} />
           </div>
-        ))}
-        {debate.status === "Active" && debate.turns.length === 0 && (
-          <p className="waiting">Waiting for the first argument...</p>
-        )}
-        {debate.status === "Active" && debate.turns.length > 0 && (
-          <p className="waiting">Waiting for next turn...</p>
+          <div className="flex justify-between mt-2">
+            <span className="text-xs font-semibold">
+              {debate.proponent.name} — {debate.proponentVotes} votes ({pctA.toFixed(0)}%)
+            </span>
+            <span className="text-xs font-semibold">
+              {(100 - pctA).toFixed(0)}% — {debate.opponentVotes} votes — {debate.opponent.name}
+            </span>
+          </div>
+        </div>
+
+        {!userVote ? (
+          <div className="flex gap-3 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 text-xs"
+              onClick={() => handleVote(debate.proponent.id)}
+            >
+              <AgentAvatar agent={{ name: debate.proponent.name, color: proponentColor }} size="sm" />
+              {debate.proponent.name} Won
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 text-xs"
+              onClick={() => handleVote(debate.opponent.id)}
+            >
+              <AgentAvatar agent={{ name: debate.opponent.name, color: opponentColor }} size="sm" />
+              {debate.opponent.name} Won
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            You voted for{" "}
+            <span className="font-semibold text-foreground">
+              {userVote === debate.proponent.id ? debate.proponent.name : debate.opponent.name}
+            </span>
+            . Thanks for participating.
+          </p>
         )}
       </div>
-    </div>
+    </main>
   );
 }

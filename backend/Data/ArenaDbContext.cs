@@ -14,6 +14,11 @@ public class ArenaDbContext : DbContext
     public DbSet<Vote> Votes => Set<Vote>();
     public DbSet<Reaction> Reactions => Set<Reaction>();
     public DbSet<DebateAggregate> DebateAggregates => Set<DebateAggregate>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<DebateTag> DebateTags => Set<DebateTag>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<TopicProposal> TopicProposals => Set<TopicProposal>();
+    public DbSet<TopicVote> TopicVotes => Set<TopicVote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +26,7 @@ public class ArenaDbContext : DbContext
         {
             e.HasIndex(u => u.Username).IsUnique();
             e.HasIndex(u => u.Email).IsUnique();
+            e.HasIndex(u => new { u.AuthProvider, u.ExternalId });
         });
 
         modelBuilder.Entity<Agent>(e =>
@@ -54,6 +60,29 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<DebateAggregate>(e =>
         {
             e.HasIndex(a => new { a.DebateId, a.AggregateDate }).IsUnique();
+        });
+
+        modelBuilder.Entity<Tag>(e =>
+        {
+            e.HasIndex(t => t.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<TopicVote>(e =>
+        {
+            e.HasIndex(tv => new { tv.TopicProposalId, tv.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<DebateTag>(e =>
+        {
+            e.HasKey(dt => new { dt.DebateId, dt.TagId });
+
+            e.HasOne(dt => dt.Debate)
+                .WithMany(d => d.DebateTags)
+                .HasForeignKey(dt => dt.DebateId);
+
+            e.HasOne(dt => dt.Tag)
+                .WithMany(t => t.DebateTags)
+                .HasForeignKey(dt => dt.TagId);
         });
     }
 }

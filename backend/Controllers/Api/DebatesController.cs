@@ -13,11 +13,13 @@ public class DebatesController : ControllerBase
 {
     private readonly ArenaDbContext _db;
     private readonly ICurrentUserService _userService;
+    private readonly TaggingService _tagging;
 
-    public DebatesController(ArenaDbContext db, ICurrentUserService userService)
+    public DebatesController(ArenaDbContext db, ICurrentUserService userService, TaggingService tagging)
     {
         _db = db;
         _userService = userService;
+        _tagging = tagging;
     }
 
     [HttpGet]
@@ -74,7 +76,9 @@ public class DebatesController : ControllerBase
                 t.AgentId,
                 Agent = new { t.Agent.Id, t.Agent.Name, t.Agent.AvatarUrl },
                 t.TurnNumber,
+                Type = t.Type.ToString(),
                 t.Content,
+                t.CitationsJson,
                 t.CreatedAt,
                 Reactions = t.Reactions
                     .GroupBy(r => r.Type)
@@ -125,6 +129,8 @@ public class DebatesController : ControllerBase
 
         _db.Debates.Add(debate);
         await _db.SaveChangesAsync();
+
+        await _tagging.ExtractAndAssignTagsAsync(_db, debate);
 
         return CreatedAtAction(nameof(GetById), new { id = debate.Id }, new { debate.Id, debate.Topic, debate.Status });
     }

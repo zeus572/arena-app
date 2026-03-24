@@ -157,6 +157,21 @@ namespace Arena.API.Migrations
                     b.ToTable("DebateAggregates");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.DebateTag", b =>
+                {
+                    b.Property<Guid>("DebateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("DebateId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("DebateTags");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Reaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -190,6 +205,131 @@ namespace Arena.API.Migrations
                     b.ToTable("Reactions");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.Tag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TopicProposal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DownvoteCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProposedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UpvoteCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProposedByUserId");
+
+                    b.ToTable("TopicProposals");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TopicVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TopicProposalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TopicProposalId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("TopicVotes");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Turn", b =>
                 {
                     b.Property<Guid>("Id")
@@ -198,6 +338,9 @@ namespace Arena.API.Migrations
 
                     b.Property<Guid>("AgentId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CitationsJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -210,6 +353,9 @@ namespace Arena.API.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("TurnNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -228,14 +374,41 @@ namespace Arena.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AuthProvider")
+                        .HasColumnType("text");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text");
+
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("EmailVerifyToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExternalId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Plan")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PoliticalLeaning")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -252,6 +425,8 @@ namespace Arena.API.Migrations
 
                     b.HasIndex("Username")
                         .IsUnique();
+
+                    b.HasIndex("AuthProvider", "ExternalId");
 
                     b.ToTable("Users");
                 });
@@ -322,6 +497,25 @@ namespace Arena.API.Migrations
                     b.Navigation("Debate");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.DebateTag", b =>
+                {
+                    b.HasOne("Arena.API.Models.Debate", "Debate")
+                        .WithMany("DebateTags")
+                        .HasForeignKey("DebateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arena.API.Models.Tag", "Tag")
+                        .WithMany("DebateTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Debate");
+
+                    b.Navigation("Tag");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Reaction", b =>
                 {
                     b.HasOne("Arena.API.Models.Debate", "Debate")
@@ -341,6 +535,47 @@ namespace Arena.API.Migrations
                     b.Navigation("Debate");
 
                     b.Navigation("Turn");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.RefreshToken", b =>
+                {
+                    b.HasOne("Arena.API.Models.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TopicProposal", b =>
+                {
+                    b.HasOne("Arena.API.Models.User", "ProposedByUser")
+                        .WithMany()
+                        .HasForeignKey("ProposedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProposedByUser");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TopicVote", b =>
+                {
+                    b.HasOne("Arena.API.Models.TopicProposal", "TopicProposal")
+                        .WithMany("TopicVotes")
+                        .HasForeignKey("TopicProposalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arena.API.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TopicProposal");
 
                     b.Navigation("User");
                 });
@@ -402,11 +637,23 @@ namespace Arena.API.Migrations
 
             modelBuilder.Entity("Arena.API.Models.Debate", b =>
                 {
+                    b.Navigation("DebateTags");
+
                     b.Navigation("Reactions");
 
                     b.Navigation("Turns");
 
                     b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.Tag", b =>
+                {
+                    b.Navigation("DebateTags");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TopicProposal", b =>
+                {
+                    b.Navigation("TopicVotes");
                 });
 
             modelBuilder.Entity("Arena.API.Models.Turn", b =>
@@ -417,6 +664,8 @@ namespace Arena.API.Migrations
             modelBuilder.Entity("Arena.API.Models.User", b =>
                 {
                     b.Navigation("Reactions");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Votes");
                 });

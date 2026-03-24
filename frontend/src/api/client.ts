@@ -16,12 +16,32 @@ function getUserId(): string {
 }
 
 api.interceptors.request.use((config) => {
-  config.headers["X-User-Id"] = getUserId();
+  const token = localStorage.getItem("arena-access-token");
+  if (token) {
+    config.headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    // Fallback: legacy anonymous ID for unauthenticated users
+    config.headers["X-User-Id"] = getUserId();
+  }
   return config;
 });
 
-export async function fetchFeed(page = 1, pageSize = 20) {
-  const res = await api.get<DebateSummary[]>("/feed", { params: { page, pageSize } });
+export interface FeedParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  tag?: string;
+  sort?: "hot" | "new" | "top";
+  status?: string;
+}
+
+export interface FeedResponse {
+  items: DebateSummary[];
+  totalCount: number;
+}
+
+export async function fetchFeed(params: FeedParams = {}) {
+  const res = await api.get<FeedResponse>("/feed", { params: { page: 1, pageSize: 20, ...params } });
   return res.data;
 }
 
@@ -45,6 +65,11 @@ export async function castVote(debateId: string, votedForAgentId: string) {
   return res.data;
 }
 
+export async function fetchTrendingTopics() {
+  const res = await api.get<{ topic: string; score: number }[]>("/feed/trending");
+  return res.data;
+}
+
 export async function addReaction(
   targetType: "debate" | "turn",
   targetId: string,
@@ -55,6 +80,73 @@ export async function addReaction(
       ? `/debates/${targetId}/reactions`
       : `/turns/${targetId}/reactions`;
   const res = await api.post(url, { type });
+  return res.data;
+}
+
+// Sources
+export interface SourceInfo {
+  id: string;
+  name: string;
+  url: string;
+  category: string;
+  description: string;
+  icon: string;
+}
+
+export async function fetchSources() {
+  const res = await api.get<SourceInfo[]>("/sources");
+  return res.data;
+}
+
+// Topics
+export interface TopicParams {
+  page?: number;
+  pageSize?: number;
+  sort?: "hot" | "new" | "top";
+  status?: string;
+}
+
+export interface TopicProposal {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  upvoteCount: number;
+  downvoteCount: number;
+  netVotes: number;
+  proposedBy: { id: string; displayName: string | null };
+  createdAt: string;
+  userVote?: number | null;
+}
+
+export interface TopicResponse {
+  items: TopicProposal[];
+  totalCount: number;
+}
+
+export async function fetchTopics(params: TopicParams = {}) {
+  const res = await api.get<TopicResponse>("/topics", { params: { page: 1, pageSize: 20, ...params } });
+  return res.data;
+}
+
+export async function createTopic(title: string, description?: string) {
+  const res = await api.post<{ id: string; title: string }>("/topics", { title, description });
+  return res.data;
+}
+
+export async function voteOnTopic(topicId: string, value: 1 | -1) {
+  const res = await api.post<{ upvoteCount: number; downvoteCount: number; netVotes: number }>(`/topics/${topicId}/vote`, { value });
+  return res.data;
+}
+
+export async function removeTopicVote(topicId: string) {
+  const res = await api.delete<{ upvoteCount: number; downvoteCount: number; netVotes: number }>(`/topics/${topicId}/vote`);
+  return res.data;
+}
+
+export async function forceTick() {
+  const baseUrl = (import.meta.env.VITE_API_URL ?? "http://localhost:5000/api").replace(/\/api$/, "");
+  const res = await axios.post(`${baseUrl}/dev/tick`);
   return res.data;
 }
 

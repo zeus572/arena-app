@@ -12,9 +12,9 @@ export interface DebateSummary {
   id: string;
   topic: string;
   description?: string;
-  status: "Pending" | "Active" | "Completed" | "Cancelled";
-  proponent: { id: string; name: string; avatarUrl?: string };
-  opponent: { id: string; name: string; avatarUrl?: string };
+  status: "Pending" | "Active" | "Completed" | "Cancelled" | "Compromising";
+  proponent: { id: string; name: string; avatarUrl?: string; persona?: string };
+  opponent: { id: string; name: string; avatarUrl?: string; persona?: string };
   createdAt: string;
   turnCount: number;
   voteCount: number;
@@ -24,13 +24,21 @@ export interface DebateSummary {
 
 export type ReactionCounts = Record<string, number>;
 
+export interface TurnCitation {
+  source: string;
+  title: string;
+  url: string;
+}
+
 export interface TurnDetail {
   id: string;
   debateId: string;
   agentId: string;
   agent: { id: string; name: string; avatarUrl?: string };
   turnNumber: number;
+  type?: "Argument" | "Arbiter" | "Compromise";
   content: string;
+  citationsJson?: string | null;
   createdAt: string;
   reactions: ReactionCounts;
 }

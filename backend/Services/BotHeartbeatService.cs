@@ -15,6 +15,7 @@ public class BotHeartbeatService : BackgroundService
     private readonly int _maxActiveDebates;
     private readonly int _turnsPerDebate;
     private readonly int _turnDelaySeconds;
+    private readonly int _compromiseTurns;
 
     public BotHeartbeatService(
         IServiceScopeFactory scopeFactory,
@@ -33,12 +34,13 @@ public class BotHeartbeatService : BackgroundService
         _maxActiveDebates = config.GetValue("BotHeartbeat:MaxActiveDebates", 5);
         _turnsPerDebate = config.GetValue("BotHeartbeat:TurnsPerDebate", 6);
         _turnDelaySeconds = config.GetValue("BotHeartbeat:TurnDelaySeconds", 30);
+        _compromiseTurns = config.GetValue("BotHeartbeat:CompromiseTurns", 2);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("BotHeartbeat started. Interval={Interval}s, MaxActive={Max}, TurnsPerDebate={Turns}",
-            _intervalSeconds, _maxActiveDebates, _turnsPerDebate);
+        _logger.LogInformation("BotHeartbeat started. Interval={Interval}s, MaxActive={Max}, TurnsPerDebate={Turns}, CompromiseTurns={Compromise}",
+            _intervalSeconds, _maxActiveDebates, _turnsPerDebate, _compromiseTurns);
 
         // Initial delay to let the app fully start
         await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
@@ -58,7 +60,7 @@ public class BotHeartbeatService : BackgroundService
         }
     }
 
-    private async Task RunHeartbeatAsync(CancellationToken ct)
+    public async Task RunHeartbeatAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ArenaDbContext>();
@@ -101,37 +103,83 @@ public class BotHeartbeatService : BackgroundService
 
                 db.Debates.Add(newDebate);
                 await db.SaveChangesAsync(ct);
+
+                var tagging = scope.ServiceProvider.GetRequiredService<TaggingService>();
+                await tagging.ExtractAndAssignTagsAsync(db, newDebate);
+
                 _logger.LogInformation("Created new debate: '{Topic}'", topic);
             }
         }
 
-        // 3. Generate turns for active debates
-        var activeDebates = await db.Debates
-            .Where(d => d.Status == DebateStatus.Active)
+        // 3. Generate turns for active and compromising debates
+        var debates = await db.Debates
+            .Where(d => d.Status == DebateStatus.Active || d.Status == DebateStatus.Compromising)
             .Include(d => d.Proponent)
             .Include(d => d.Opponent)
             .Include(d => d.Turns.OrderBy(t => t.TurnNumber))
             .ToListAsync(ct);
 
-        foreach (var debate in activeDebates)
+        foreach (var debate in debates)
         {
-            if (debate.Turns.Count >= _turnsPerDebate)
+            var argumentTurns = debate.Turns.Where(t => t.Type == TurnType.Argument).ToList();
+            var compromiseTurns = debate.Turns.Where(t => t.Type == TurnType.Compromise).ToList();
+
+            // Check if active debate should transition to compromise phase
+            if (debate.Status == DebateStatus.Active && argumentTurns.Count >= _turnsPerDebate)
             {
-                // Complete the debate
+                debate.Status = DebateStatus.Compromising;
+                debate.UpdatedAt = DateTime.UtcNow;
+
+                // Insert arbiter announcement turn
+                var arbiterTurn = new Turn
+                {
+                    Id = Guid.NewGuid(),
+                    DebateId = debate.Id,
+                    AgentId = debate.ProponentId,
+                    TurnNumber = debate.Turns.Count + 1,
+                    Type = TurnType.Arbiter,
+                    Content = "**The Arbiter has intervened.** Both debaters are now directed to find common ground and propose a compromise, including a concrete budget proposal that both sides can accept.",
+                };
+
+                db.Turns.Add(arbiterTurn);
+                await db.SaveChangesAsync(ct);
+                _logger.LogInformation("Debate '{Topic}' entering compromise phase", debate.Topic);
+                continue;
+            }
+
+            // Check if compromising debate is done — both agents must have at least one compromise turn
+            var bothAgentsCompromised = compromiseTurns.Any(t => t.AgentId == debate.ProponentId)
+                                    && compromiseTurns.Any(t => t.AgentId == debate.OpponentId);
+            if (debate.Status == DebateStatus.Compromising && compromiseTurns.Count >= _compromiseTurns && bothAgentsCompromised)
+            {
+                // Insert arbiter closing turn
+                var closingTurn = new Turn
+                {
+                    Id = Guid.NewGuid(),
+                    DebateId = debate.Id,
+                    AgentId = debate.ProponentId,
+                    TurnNumber = debate.Turns.Count + 1,
+                    Type = TurnType.Arbiter,
+                    Content = "**The Arbiter has closed this debate.** Both sides have presented their compromise proposals. The debate is now complete — cast your vote for the most compelling argument.",
+                };
+                db.Turns.Add(closingTurn);
+
                 debate.Status = DebateStatus.Completed;
                 debate.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Completed debate '{Topic}' ({Id})", debate.Topic, debate.Id);
 
-                // Update agent reputation based on votes
                 await UpdateReputationAsync(db, debate, ct);
                 continue;
             }
 
-            // Determine whose turn it is (alternating, proponent starts)
+            // Generate next turn
             var nextTurnNumber = debate.Turns.Count + 1;
             var isProponentTurn = nextTurnNumber % 2 == 1;
             var agent = isProponentTurn ? debate.Proponent : debate.Opponent;
+            var turnType = debate.Status == DebateStatus.Compromising
+                ? TurnType.Compromise
+                : TurnType.Argument;
 
             if (!_budget.CanGenerateTurn(agent.Id))
             {
@@ -141,7 +189,7 @@ public class BotHeartbeatService : BackgroundService
 
             try
             {
-                var content = await _llm.GenerateTurnAsync(agent, debate, debate.Turns.ToList());
+                var result = await _llm.GenerateTurnAsync(agent, debate, debate.Turns.ToList(), turnType);
 
                 var turn = new Turn
                 {
@@ -149,15 +197,19 @@ public class BotHeartbeatService : BackgroundService
                     DebateId = debate.Id,
                     AgentId = agent.Id,
                     TurnNumber = nextTurnNumber,
-                    Content = content,
+                    Type = turnType,
+                    Content = result.Content,
+                    CitationsJson = result.Citations.Count > 0
+                        ? System.Text.Json.JsonSerializer.Serialize(result.Citations)
+                        : null,
                 };
 
                 db.Turns.Add(turn);
                 await db.SaveChangesAsync(ct);
                 _budget.RecordTurn(agent.Id);
 
-                _logger.LogInformation("Generated turn {Num} by {Agent} for '{Topic}'",
-                    nextTurnNumber, agent.Name, debate.Topic);
+                _logger.LogInformation("Generated {TurnType} turn {Num} by {Agent} for '{Topic}'",
+                    turnType, nextTurnNumber, agent.Name, debate.Topic);
 
                 // Pace turns with a delay
                 if (_turnDelaySeconds > 0)
@@ -169,7 +221,7 @@ public class BotHeartbeatService : BackgroundService
             }
         }
 
-        _logger.LogInformation("BotHeartbeat tick complete. Active debates: {Count}", activeDebates.Count);
+        _logger.LogInformation("BotHeartbeat tick complete. Active/Compromising debates: {Count}", debates.Count);
     }
 
     private static async Task UpdateReputationAsync(ArenaDbContext db, Debate debate, CancellationToken ct)
