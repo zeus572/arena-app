@@ -29,9 +29,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var requiredCode = _config["Auth:InviteCode"];
-        if (!string.IsNullOrEmpty(requiredCode) &&
-            !string.Equals(request.InviteCode?.Trim(), requiredCode, StringComparison.OrdinalIgnoreCase))
+        if (!ValidateInviteCode(request.InviteCode))
             return BadRequest(new { error = "Invalid invite code." });
         if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
             return BadRequest(new { error = "Valid email is required." });
@@ -195,6 +193,39 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { transferred = new { votes = votes.Count, reactions = reactions.Count } });
+    }
+
+    // OAuth endpoints — when implementing Google/Microsoft callbacks:
+    // 1. Extract email and external ID from OAuth claims
+    // 2. Check if user exists by (AuthProvider, ExternalId)
+    // 3. If existing user → allow login (no invite code needed)
+    // 4. If new user → validate invite_code from query param → reject if invalid
+    // The invite_code is passed via query param: /api/auth/google?invite_code=ARENA7X
+
+    [HttpGet("google")]
+    public IActionResult GoogleLogin([FromQuery] string? invite_code)
+    {
+        // TODO: Implement Google OAuth challenge
+        // For now, return not implemented
+        return BadRequest(new { error = "Google OAuth is not yet configured. Please register with email and password." });
+    }
+
+    [HttpGet("microsoft")]
+    public IActionResult MicrosoftLogin([FromQuery] string? invite_code)
+    {
+        // TODO: Implement Microsoft OAuth challenge
+        return BadRequest(new { error = "Microsoft OAuth is not yet configured. Please register with email and password." });
+    }
+
+    /// <summary>
+    /// Validates the invite code. Returns true if valid or if no invite code is configured.
+    /// Used by both register and OAuth callback endpoints.
+    /// </summary>
+    private bool ValidateInviteCode(string? inviteCode)
+    {
+        var requiredCode = _config["Auth:InviteCode"];
+        if (string.IsNullOrEmpty(requiredCode)) return true;
+        return string.Equals(inviteCode?.Trim(), requiredCode, StringComparison.OrdinalIgnoreCase);
     }
 
     private static object ProjectUser(User user) => new

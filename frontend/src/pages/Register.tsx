@@ -101,12 +101,27 @@ export default function Register() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={loginWithGoogle}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs gap-2"
+            disabled={!inviteCode.trim()}
+            onClick={() => loginWithGoogle(inviteCode.trim())}
+          >
             Google
           </Button>
-          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={loginWithMicrosoft}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs gap-2"
+            disabled={!inviteCode.trim()}
+            onClick={() => loginWithMicrosoft(inviteCode.trim())}
+          >
             Microsoft
           </Button>
+          {!inviteCode.trim() && (
+            <p className="text-[10px] text-muted-foreground text-center">Enter invite code above to enable OAuth sign-up</p>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-5">

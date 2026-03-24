@@ -93,8 +93,13 @@ export interface SourceInfo {
   icon: string;
 }
 
+export interface SourcesResponse {
+  citations: SourceInfo[];
+  news: SourceInfo[];
+}
+
 export async function fetchSources() {
-  const res = await api.get<SourceInfo[]>("/sources");
+  const res = await api.get<SourcesResponse>("/sources");
   return res.data;
 }
 
@@ -141,6 +146,12 @@ export async function voteOnTopic(topicId: string, value: 1 | -1) {
 
 export async function removeTopicVote(topicId: string) {
   const res = await api.delete<{ upvoteCount: number; downvoteCount: number; netVotes: number }>(`/topics/${topicId}/vote`);
+  return res.data;
+}
+
+export async function forceNewsSync() {
+  const baseUrl = (import.meta.env.VITE_API_URL ?? "http://localhost:5000/api").replace(/\/api$/, "");
+  const res = await axios.post(`${baseUrl}/dev/generate-news-topics`);
   return res.data;
 }
 

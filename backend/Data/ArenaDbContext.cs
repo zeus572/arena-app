@@ -19,6 +19,7 @@ public class ArenaDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<TopicProposal> TopicProposals => Set<TopicProposal>();
     public DbSet<TopicVote> TopicVotes => Set<TopicVote>();
+    public DbSet<GeneratedTopic> GeneratedTopics => Set<GeneratedTopic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

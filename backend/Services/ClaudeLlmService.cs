@@ -75,8 +75,21 @@ public class ClaudeLlmService : ILlmService
             - Acknowledge specific points from your opponent that have merit.
             - Propose concrete concessions you are willing to make.
             - Use search_budget to propose a specific compromise budget with real dollar amounts.
-            - Format your proposal clearly: current spending → proposed changes → net fiscal impact.
             - Be genuine — find actual middle ground, don't just restate your original position.
+
+            BUDGET TABLE (REQUIRED):
+            - You MUST include a markdown table summarizing your compromise budget proposal.
+            - The table should have columns: Category/Program | Current Spending | Proposed Change | New Amount
+            - Include at least 4-6 line items showing specific programs or agencies.
+            - Add a **Total** row at the bottom.
+            - Use dollar amounts with B/M suffixes (e.g., $886.4B, $72.3M).
+            - After the table, add a brief summary of net fiscal impact.
+            - Example format:
+              | Program | Current | Change | Proposed |
+              |---------|---------|--------|----------|
+              | Defense | $886B | -$50B | $836B |
+              | Education | $80B | +$20B | $100B |
+              | **Total** | **$966B** | **-$30B** | **$936B** |
             """ : "");
 
         // Build message history

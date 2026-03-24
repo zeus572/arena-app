@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
 using Arena.API.Models;
 using Arena.API.Models.DTOs;
+using Arena.API.Services;
 
 namespace Arena.API.Controllers.Api;
 
@@ -12,8 +13,76 @@ namespace Arena.API.Controllers.Api;
 public class TopicsController : ControllerBase
 {
     private readonly ArenaDbContext _db;
+    private readonly TopicModerationService _moderation;
 
-    public TopicsController(ArenaDbContext db) => _db = db;
+    public TopicsController(ArenaDbContext db, TopicModerationService moderation)
+    {
+        _db = db;
+        _moderation = moderation;
+    }
+
+    /// <summary>
+    /// Ensures there are enough topic proposals for voting by pulling from the GeneratedTopics pool.
+    /// </summary>
+    private async Task EnsureSuggestedTopicsAsync(int minCount = 15)
+    {
+        var currentCount = await _db.TopicProposals
+            .CountAsync(t => t.Status == TopicStatus.Proposed);
+
+        if (currentCount >= minCount) return;
+
+        var needed = minCount - currentCount;
+        var existingTitles = await _db.TopicProposals
+            .Select(t => t.Title.ToLower())
+            .ToListAsync();
+        var existingSet = new HashSet<string>(existingTitles, StringComparer.OrdinalIgnoreCase);
+
+        // Pull unused topics, prefer news over static
+        var candidates = await _db.GeneratedTopics
+            .Where(t => !t.Used)
+            .OrderByDescending(t => t.Source == "news" ? 1 : 0)
+            .ThenBy(_ => EF.Functions.Random())
+            .Take(needed + 10) // grab extra in case of dupes
+            .ToListAsync();
+
+        // Need a system user for auto-proposed topics
+        var systemUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == "system");
+        if (systemUser is null)
+        {
+            systemUser = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "system",
+                Email = "system@arena.local",
+                DisplayName = "Debate Arena",
+                IsAnonymous = false,
+            };
+            _db.Users.Add(systemUser);
+            await _db.SaveChangesAsync();
+        }
+
+        var added = 0;
+        foreach (var candidate in candidates)
+        {
+            if (added >= needed) break;
+            if (existingSet.Contains(candidate.Title)) continue;
+
+            _db.TopicProposals.Add(new TopicProposal
+            {
+                Id = Guid.NewGuid(),
+                Title = candidate.Title,
+                Description = candidate.Source == "news" ? "Generated from recent news" : null,
+                ProposedByUserId = systemUser.Id,
+                Status = TopicStatus.Proposed,
+            });
+
+            candidate.Used = true;
+            existingSet.Add(candidate.Title);
+            added++;
+        }
+
+        if (added > 0) await _db.SaveChangesAsync();
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -22,6 +91,9 @@ public class TopicsController : ControllerBase
         [FromQuery] string sort = "hot",
         [FromQuery] string? status = null)
     {
+        // Auto-populate proposals from the generated topics pool
+        await EnsureSuggestedTopicsAsync();
+
         var query = _db.TopicProposals.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<TopicStatus>(status, true, out var statusEnum))
@@ -78,6 +150,10 @@ public class TopicsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length < 10)
             return BadRequest(new { error = "Title must be at least 10 characters." });
+
+        var rejection = await _moderation.CheckTopicAsync(request.Title.Trim());
+        if (rejection is not null)
+            return BadRequest(new { error = rejection });
 
         var userId = Guid.Parse(User.FindFirst("sub")!.Value);
 

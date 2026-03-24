@@ -49,6 +49,37 @@ public class SourcesController : ControllerBase
     [HttpGet]
     public IActionResult GetSources()
     {
-        return Ok(Sources);
+        return Ok(new { citations = Sources, news = NewsSources });
     }
+
+    private static readonly List<object> NewsSources = new()
+    {
+        new
+        {
+            Id = "npr",
+            Name = "NPR News",
+            Url = "https://npr.org",
+            Category = "News",
+            Description = "National Public Radio — non-profit, publicly funded news organization providing balanced reporting on politics, policy, and current events.",
+            Icon = "radio",
+        },
+        new
+        {
+            Id = "ap",
+            Name = "Associated Press",
+            Url = "https://apnews.com",
+            Category = "News",
+            Description = "Non-profit news agency known for factual, unbiased reporting. One of the most trusted wire services worldwide, used by newsrooms globally.",
+            Icon = "newspaper",
+        },
+        new
+        {
+            Id = "bbc",
+            Name = "BBC News",
+            Url = "https://bbc.com/news",
+            Category = "News",
+            Description = "British Broadcasting Corporation — publicly funded international news service providing global coverage of politics, economics, and world events.",
+            Icon = "globe",
+        },
+    };
 }

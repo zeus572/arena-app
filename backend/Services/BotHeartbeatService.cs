@@ -89,7 +89,7 @@ public class BotHeartbeatService : BackgroundService
             var agents = await db.Agents.ToListAsync(ct);
             if (agents.Count >= 2)
             {
-                var topic = _topics.PickRandomTopic();
+                var topic = await _topics.PickRandomTopicAsync();
                 var (proponentId, opponentId) = _topics.PickAgentPair(agents);
 
                 var newDebate = new Debate

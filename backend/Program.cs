@@ -63,6 +63,9 @@ builder.Services.AddAuthorization(options =>
 // LLM + Bot services
 builder.Services.AddHttpClient<ILlmService, ClaudeLlmService>();
 builder.Services.AddSingleton<TopicGeneratorService>();
+builder.Services.AddScoped<NewsTopicService>();
+builder.Services.AddScoped<TopicModerationService>();
+builder.Services.AddHostedService<DailyTopicRefreshService>();
 builder.Services.AddSingleton<BudgetService>();
 builder.Services.AddHostedService<BotHeartbeatService>();
 
@@ -126,6 +129,12 @@ if (app.Environment.IsDevelopment())
         var count = await db.Tags.CountAsync();
         return Results.Ok(new { status = "backfill complete", tagCount = count });
     }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    app.MapPost("/dev/generate-news-topics", async (NewsTopicService news) =>
+    {
+        await news.GenerateTopicsFromNewsAsync();
+        return Results.Ok(new { status = "news topic generation complete", timestamp = DateTime.UtcNow });
+    }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 }
 
 app.MapGet("/health", async (ArenaDbContext db) =>
@@ -142,5 +151,12 @@ app.MapGet("/health", async (ArenaDbContext db) =>
         totalTurns,
     });
 });
+
+// Seed static topics on startup
+using (var scope = app.Services.CreateScope())
+{
+    var topicService = scope.ServiceProvider.GetRequiredService<TopicGeneratorService>();
+    await topicService.SeedStaticTopicsAsync();
+}
 
 app.Run();

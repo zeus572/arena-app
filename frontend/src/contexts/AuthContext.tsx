@@ -19,8 +19,8 @@ interface AuthState {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string, inviteCode: string) => Promise<void>;
-  loginWithGoogle: () => void;
-  loginWithMicrosoft: () => void;
+  loginWithGoogle: (inviteCode?: string) => void;
+  loginWithMicrosoft: (inviteCode?: string) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -91,12 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data.user);
   };
 
-  const loginWithGoogle = () => {
-    window.location.href = `${BASE_URL}/api/auth/google`;
+  const loginWithGoogle = (inviteCode?: string) => {
+    const params = inviteCode ? `?invite_code=${encodeURIComponent(inviteCode)}` : "";
+    window.location.href = `${BASE_URL}/api/auth/google${params}`;
   };
 
-  const loginWithMicrosoft = () => {
-    window.location.href = `${BASE_URL}/api/auth/microsoft`;
+  const loginWithMicrosoft = (inviteCode?: string) => {
+    const params = inviteCode ? `?invite_code=${encodeURIComponent(inviteCode)}` : "";
+    window.location.href = `${BASE_URL}/api/auth/microsoft${params}`;
   };
 
   const logout = async () => {

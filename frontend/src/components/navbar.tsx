@@ -2,9 +2,9 @@ import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LayoutList, PlusCircle, Menu, X, Landmark, Users, Zap, MessageSquarePlus, LogIn, User, LogOut, Crown, AlertCircle, ShieldCheck } from "lucide-react";
+import { LayoutList, PlusCircle, Menu, X, Landmark, Users, Zap, MessageSquarePlus, LogIn, User, LogOut, Crown, AlertCircle, ShieldCheck, Newspaper } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { forceTick } from "@/api/client";
+import { forceTick, forceNewsSync } from "@/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_LINKS = [
@@ -69,6 +69,24 @@ export function Navbar() {
             >
               <Zap size={12} />
               Tick
+            </Button>
+          )}
+          {import.meta.env.DEV && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-[10px] text-emerald-500 hover:text-emerald-400"
+              onClick={async () => {
+                try {
+                  await forceNewsSync();
+                  alert("News topics synced!");
+                } catch (e) {
+                  console.error("News sync failed", e);
+                }
+              }}
+            >
+              <Newspaper size={12} />
+              News
             </Button>
           )}
 

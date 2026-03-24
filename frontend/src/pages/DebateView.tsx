@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { fetchDebate, castVote, addReaction } from "@/api/client";
 import type { DebateDetail, TurnDetail, TurnCitation } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,9 @@ function TurnBubble({
             "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-none",
             "prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5",
             "prose-strong:text-inherit prose-em:text-inherit",
+            "prose-table:my-3 prose-table:text-xs prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:font-semibold prose-th:border-b prose-th:border-border",
+            "prose-td:px-3 prose-td:py-1.5 prose-td:border-b prose-td:border-border/50",
+            "prose-thead:bg-secondary/50 prose-tr:border-0",
             isCompromise
               ? "rounded-tl-sm border border-purple-500/20 bg-purple-500/5 text-foreground"
               : isLeft
@@ -125,7 +129,7 @@ function TurnBubble({
                 : cn("rounded-tr-sm text-foreground", BUBBLE_BG[agentColor])
           )}
         >
-          <Markdown>{turn.content}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>
           {turn.citationsJson && (() => {
             try {
               const raw = JSON.parse(turn.citationsJson) as Record<string, string>[];
