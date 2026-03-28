@@ -27,7 +27,7 @@ export default function Feed() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"hot" | "new" | "top">("hot");
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const loadFeed = useCallback(async (params: FeedParams = {}) => {
     const data = await fetchFeed({ sort: sortBy, ...params });

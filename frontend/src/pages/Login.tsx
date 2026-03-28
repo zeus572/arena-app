@@ -75,10 +75,10 @@ export default function Login() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={loginWithGoogle}>
+          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={() => loginWithGoogle()}>
             Google
           </Button>
-          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={loginWithMicrosoft}>
+          <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={() => loginWithMicrosoft()}>
             Microsoft
           </Button>
         </div>
