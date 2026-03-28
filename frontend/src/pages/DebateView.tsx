@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { fetchDebate, castVote, addReaction, fetchPredictions, makePrediction } from "@/api/client";
-import type { DebateDetail, TurnDetail, TurnCitation, PredictionData } from "@/api/types";
+import { fetchDebate, castVote, addReaction, fetchPredictions, makePrediction, fetchInterventions, submitIntervention, upvoteIntervention } from "@/api/client";
+import type { DebateDetail, TurnDetail, TurnCitation, PredictionData, InterventionData } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/agent-colors";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -542,6 +542,128 @@ function PredictionWidget({
   );
 }
 
+function InterventionPanel({ debateId, isLive }: { debateId: string; isLive: boolean }) {
+  const [interventions, setInterventions] = useState<InterventionData[]>([]);
+  const [question, setQuestion] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [voted, setVoted] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchInterventions(debateId).then(setInterventions).catch(() => {});
+  }, [debateId]);
+
+  const handleSubmit = async () => {
+    if (!question.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await submitIntervention(debateId, question.trim());
+      setQuestion("");
+      const updated = await fetchInterventions(debateId);
+      setInterventions(updated);
+    } catch {
+      // ignore
+    }
+    setSubmitting(false);
+  };
+
+  const handleUpvote = async (id: string) => {
+    if (voted.has(id)) return;
+    setVoted((prev) => new Set(prev).add(id));
+    setInterventions((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, upvotes: i.upvotes + 1 } : i))
+    );
+    try {
+      await upvoteIntervention(debateId, id);
+    } catch {
+      setVoted((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      setInterventions((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, upvotes: i.upvotes - 1 } : i))
+      );
+    }
+  };
+
+  const pending = interventions.filter((i) => !i.used);
+  const used = interventions.filter((i) => i.used);
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <MessageCircleQuestion size={14} className="text-indigo-500" />
+        <h3 className="text-sm font-semibold text-card-foreground">Crowd Questions</h3>
+        <span className="text-[10px] text-muted-foreground ml-auto">
+          Top-voted questions get injected into the next turn
+        </span>
+      </div>
+
+      {/* Submit form — only for live debates */}
+      {isLive && (
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask the agents a question..."
+            maxLength={280}
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || question.trim().length < 10}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50 flex items-center gap-1"
+          >
+            <Send size={11} /> Ask
+          </button>
+        </div>
+      )}
+
+      {/* Pending questions */}
+      {pending.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          {pending.map((i) => (
+            <div key={i.id} className="flex items-start gap-2 rounded-lg bg-secondary/50 px-3 py-2">
+              <button
+                onClick={() => handleUpvote(i.id)}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 shrink-0 mt-0.5 transition-colors",
+                  voted.has(i.id) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <ArrowUp size={12} />
+                <span className="text-[10px] font-semibold">{i.upvotes}</span>
+              </button>
+              <div className="min-w-0">
+                <p className="text-xs text-foreground">{i.content}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{i.authorName}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Used questions */}
+      {used.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Answered</p>
+          {used.map((i) => (
+            <div key={i.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <Check size={10} className="text-emerald-500 shrink-0" />
+              <span className="truncate">{i.content}</span>
+              {i.usedInTurnNumber && (
+                <span className="text-[9px] shrink-0">(Turn {i.usedInTurnNumber})</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {interventions.length === 0 && !isLive && (
+        <p className="text-xs text-muted-foreground text-center py-2">No crowd questions for this debate.</p>
+      )}
+    </div>
+  );
+}
+
 export default function DebateViewPage() {
   const { id } = useParams<{ id: string }>();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
@@ -714,6 +836,8 @@ export default function DebateViewPage() {
           </p>
         )}
       </section>
+
+      <InterventionPanel debateId={debate.id} isLive={isLive} />
 
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold text-card-foreground mb-4 flex items-center gap-2">

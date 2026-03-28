@@ -28,7 +28,7 @@ public class ClaudeLlmService : ILlmService
         _http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
     }
 
-    public async Task<LlmTurnResult> GenerateTurnAsync(Agent agent, Debate debate, List<Turn> previousTurns, TurnType turnType = TurnType.Argument)
+    public async Task<LlmTurnResult> GenerateTurnAsync(Agent agent, Debate debate, List<Turn> previousTurns, TurnType turnType = TurnType.Argument, string? crowdQuestion = null)
     {
         var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514";
         var tools = FactCheckService.GetToolDefinitions();
@@ -102,12 +102,19 @@ public class ClaudeLlmService : ILlmService
 
         if (messages.Count == 0 || GetRole(messages.Last()) == "assistant")
         {
+            var prompt = turnType == TurnType.Compromise
+                ? "Propose your compromise. Acknowledge your opponent's valid points and suggest concrete budget concessions. Use search_budget to ground your proposal in real numbers."
+                : "Present your argument. Use the fact-checking tools to find real evidence and data to support your position.";
+
+            if (!string.IsNullOrEmpty(crowdQuestion))
+            {
+                prompt += $"\n\nIMPORTANT — A member of the audience has asked a question you must address in your response: \"{crowdQuestion}\"";
+            }
+
             messages.Add(new Dictionary<string, object>
             {
                 ["role"] = "user",
-                ["content"] = turnType == TurnType.Compromise
-                    ? "Propose your compromise. Acknowledge your opponent's valid points and suggest concrete budget concessions. Use search_budget to ground your proposal in real numbers."
-                    : "Present your argument. Use the fact-checking tools to find real evidence and data to support your position."
+                ["content"] = prompt
             });
         }
 

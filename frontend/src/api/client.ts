@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, CreateDebateRequest, LeaderboardResponse, PredictionData } from "./types";
+import type { DebateDetail, DebateSummary, Agent, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -67,6 +67,21 @@ export async function fetchPredictions(debateId: string) {
 
 export async function makePrediction(debateId: string, predictedAgentId: string) {
   const res = await api.post<{ id: string; predictedAgentId: string }>(`/debates/${debateId}/predictions`, { predictedAgentId });
+  return res.data;
+}
+
+export async function fetchInterventions(debateId: string) {
+  const res = await api.get<InterventionData[]>(`/debates/${debateId}/interventions`);
+  return res.data;
+}
+
+export async function submitIntervention(debateId: string, content: string) {
+  const res = await api.post<{ id: string; content: string }>(`/debates/${debateId}/interventions`, { content });
+  return res.data;
+}
+
+export async function upvoteIntervention(debateId: string, interventionId: string) {
+  const res = await api.post<{ upvotes: number }>(`/debates/${debateId}/interventions/${interventionId}/upvote`);
   return res.data;
 }
 

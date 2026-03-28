@@ -198,7 +198,22 @@ public class BotHeartbeatService : BackgroundService
 
             try
             {
-                var result = await _llm.GenerateTurnAsync(agent, debate, debate.Turns.ToList(), turnType);
+                // Check for crowd interventions (top-voted unused question)
+                var topIntervention = await db.Interventions
+                    .Where(i => i.DebateId == debate.Id && !i.Used)
+                    .OrderByDescending(i => i.Upvotes)
+                    .ThenBy(i => i.CreatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                string? crowdQuestion = null;
+                if (topIntervention != null && topIntervention.Upvotes >= 1)
+                {
+                    crowdQuestion = topIntervention.Content;
+                    topIntervention.Used = true;
+                    topIntervention.UsedInTurnNumber = nextTurnNumber;
+                }
+
+                var result = await _llm.GenerateTurnAsync(agent, debate, debate.Turns.ToList(), turnType, crowdQuestion);
 
                 var turn = new Turn
                 {

@@ -21,6 +21,7 @@ public class ArenaDbContext : DbContext
     public DbSet<TopicVote> TopicVotes => Set<TopicVote>();
     public DbSet<GeneratedTopic> GeneratedTopics => Set<GeneratedTopic>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
+    public DbSet<Intervention> Interventions => Set<Intervention>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

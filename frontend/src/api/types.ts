@@ -128,6 +128,16 @@ export interface PredictionData {
   userIsCorrect?: boolean | null;
 }
 
+export interface InterventionData {
+  id: string;
+  content: string;
+  upvotes: number;
+  used: boolean;
+  usedInTurnNumber?: number | null;
+  createdAt: string;
+  authorName: string;
+}
+
 export interface CreateDebateRequest {
   topic: string;
   description?: string;
