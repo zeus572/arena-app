@@ -9,7 +9,7 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -174,6 +174,107 @@ function TurnBubble({
             {new Date(turn.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function computeMomentum(
+  turns: TurnDetail[],
+  proponentId: string,
+  proponentVotes: number,
+  opponentVotes: number,
+) {
+  // Start at 50 (neutral). Each turn shifts momentum based on reactions.
+  // positive reactions (like, insightful, fire) boost, disagree hurts
+  let momentum = 50;
+  const history: { turnNumber: number; momentum: number; agentId: string }[] = [];
+
+  for (const turn of turns) {
+    if (turn.type === "Arbiter") continue;
+    const r = turn.reactions;
+    const positive = (r["like"] ?? 0) + (r["insightful"] ?? 0) + (r["fire"] ?? 0);
+    const negative = r["disagree"] ?? 0;
+    const net = positive - negative;
+    const shift = Math.min(15, Math.max(-15, net * 3));
+    const isProponent = turn.agentId === proponentId;
+    momentum += isProponent ? shift : -shift;
+    momentum = Math.max(5, Math.min(95, momentum));
+    history.push({ turnNumber: turn.turnNumber, momentum, agentId: turn.agentId });
+  }
+
+  // Factor in votes slightly
+  const totalVotes = proponentVotes + opponentVotes;
+  if (totalVotes > 0) {
+    const voteShift = ((proponentVotes / totalVotes) - 0.5) * 10;
+    momentum = Math.max(5, Math.min(95, momentum + voteShift));
+  }
+
+  return { current: Math.round(momentum), history };
+}
+
+function MomentumMeter({
+  debate,
+  proponentColor,
+  opponentColor,
+}: {
+  debate: DebateDetail;
+  proponentColor: AgentColor;
+  opponentColor: AgentColor;
+}) {
+  const argumentTurns = debate.turns.filter((t) => t.type !== "Arbiter");
+  if (argumentTurns.length < 2) return null;
+
+  const { current } = computeMomentum(
+    debate.turns,
+    debate.proponent.id,
+    debate.proponentVotes,
+    debate.opponentVotes,
+  );
+
+  const proLeading = current > 55;
+  const oppLeading = current < 45;
+  const label = proLeading
+    ? `${debate.proponent.name} has momentum`
+    : oppLeading
+      ? `${debate.opponent.name} has momentum`
+      : "Evenly matched";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity size={14} className="text-blue-500" />
+        <h3 className="text-sm font-semibold text-card-foreground">Momentum</h3>
+        <span className="text-[10px] text-muted-foreground ml-auto">{label}</span>
+      </div>
+
+      <div className="relative">
+        {/* Track */}
+        <div className="h-3 w-full rounded-full bg-secondary overflow-hidden flex">
+          <div
+            className={cn("h-full transition-all duration-700 ease-out", `bg-${proponentColor}`)}
+            style={{ width: `${current}%` }}
+          />
+          <div
+            className={cn("h-full transition-all duration-700 ease-out", `bg-${opponentColor}`)}
+            style={{ width: `${100 - current}%` }}
+          />
+        </div>
+
+        {/* Center marker */}
+        <div className="absolute top-0 left-1/2 -translate-x-px h-3 w-0.5 bg-foreground/30" />
+
+        {/* Indicator */}
+        <div
+          className="absolute -top-0.5 h-4 w-4 rounded-full border-2 border-background bg-foreground shadow transition-all duration-700 ease-out"
+          style={{ left: `${current}%`, transform: "translateX(-50%)" }}
+        />
+      </div>
+
+      <div className="flex justify-between mt-2">
+        <span className="text-[10px] text-muted-foreground">{debate.proponent.name}</span>
+        <span className="text-[10px] font-mono text-muted-foreground">{current}–{100 - current}</span>
+        <span className="text-[10px] text-muted-foreground">{debate.opponent.name}</span>
       </div>
     </div>
   );
@@ -455,6 +556,12 @@ export default function DebateViewPage() {
           </div>
         </div>
       </div>
+
+      <MomentumMeter
+        debate={debate}
+        proponentColor={proponentColor}
+        opponentColor={opponentColor}
+      />
 
       <PredictionWidget
         debateId={debate.id}
