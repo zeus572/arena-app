@@ -20,6 +20,10 @@ export interface DebateSummary {
   voteCount: number;
   reactionCount: number;
   totalScore?: number;
+  proponentVotes: number;
+  opponentVotes: number;
+  reactions: ReactionCounts;
+  label?: "Controversial" | "Insightful" | "Heated" | null;
 }
 
 export type ReactionCounts = Record<string, number>;

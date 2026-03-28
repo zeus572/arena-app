@@ -73,7 +73,7 @@ public class FeedController : ControllerBase
                 .ThenByDescending(x => x.Debate.UpdatedAt),
         };
 
-        var items = await joined
+        var rawItems = await joined
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new
@@ -89,10 +89,59 @@ public class FeedController : ControllerBase
                 VoteCount = x.Debate.Votes.Count,
                 ReactionCount = x.Debate.Reactions.Count,
                 TotalScore = x.Agg != null ? x.Agg.TotalScore : 0,
+                ProponentVotes = x.Debate.Votes.Count(v => v.VotedForAgentId == x.Debate.ProponentId),
+                OpponentVotes = x.Debate.Votes.Count(v => v.VotedForAgentId == x.Debate.OpponentId),
+                Reactions = x.Debate.Reactions
+                    .GroupBy(r => r.Type)
+                    .Select(g => new { Type = g.Key, Count = g.Count() })
+                    .ToList(),
             })
             .ToListAsync();
 
+        var items = rawItems.Select(x =>
+        {
+            var total = x.Reactions.Sum(r => r.Count);
+            var reactions = x.Reactions.ToDictionary(r => r.Type, r => r.Count);
+            return new
+            {
+                x.Id, x.Topic, x.Description, x.Status,
+                x.Proponent, x.Opponent, x.CreatedAt,
+                x.TurnCount, x.VoteCount, x.ReactionCount, x.TotalScore,
+                x.ProponentVotes, x.OpponentVotes,
+                Reactions = reactions,
+                Label = ComputeLabel(reactions, total, x.ProponentVotes, x.OpponentVotes),
+            };
+        });
+
         return Ok(new { items, totalCount });
+    }
+
+    private static string? ComputeLabel(Dictionary<string, int> reactions, int totalReactions, int proVotes, int oppVotes)
+    {
+        var totalVotes = proVotes + oppVotes;
+
+        // Controversial: close vote split (40-60% range) with enough votes
+        if (totalVotes >= 4)
+        {
+            var ratio = (double)Math.Min(proVotes, oppVotes) / totalVotes;
+            if (ratio >= 0.35) return "Controversial";
+        }
+
+        // Insightful: high insightful reaction ratio
+        if (totalReactions >= 3)
+        {
+            var insightful = reactions.GetValueOrDefault("insightful", 0);
+            if ((double)insightful / totalReactions >= 0.4) return "Insightful";
+        }
+
+        // Heated: high disagree ratio
+        if (totalReactions >= 3)
+        {
+            var disagree = reactions.GetValueOrDefault("disagree", 0);
+            if ((double)disagree / totalReactions >= 0.4) return "Heated";
+        }
+
+        return null;
     }
 
     [HttpGet("trending")]

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { getAgentColor } from "@/lib/agent-colors";
-import { TrendingUp, Flame, PlusCircle, Swords, Search, X, Clock, Trophy, MessageSquarePlus } from "lucide-react";
+import { TrendingUp, Flame, PlusCircle, Swords, Search, X, Clock, Trophy, MessageSquarePlus, Lightbulb, ThumbsUp, ThumbsDown } from "lucide-react";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -214,10 +214,60 @@ export default function Feed() {
                     )}
                   </div>
 
+                  {/* Reaction distribution bar */}
+                  {d.reactionCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-secondary">
+                        {(d.reactions?.like ?? 0) > 0 && (
+                          <div
+                            className="bg-primary h-full"
+                            style={{ width: `${((d.reactions.like ?? 0) / d.reactionCount) * 100}%` }}
+                          />
+                        )}
+                        {(d.reactions?.insightful ?? 0) > 0 && (
+                          <div
+                            className="bg-amber-500 h-full"
+                            style={{ width: `${((d.reactions.insightful ?? 0) / d.reactionCount) * 100}%` }}
+                          />
+                        )}
+                        {(d.reactions?.disagree ?? 0) > 0 && (
+                          <div
+                            className="bg-destructive h-full"
+                            style={{ width: `${((d.reactions.disagree ?? 0) / d.reactionCount) * 100}%` }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground shrink-0">
+                        {(d.reactions?.like ?? 0) > 0 && (
+                          <span className="flex items-center gap-0.5"><ThumbsUp size={9} />{d.reactions.like}</span>
+                        )}
+                        {(d.reactions?.insightful ?? 0) > 0 && (
+                          <span className="flex items-center gap-0.5 text-amber-500"><Lightbulb size={9} />{d.reactions.insightful}</span>
+                        )}
+                        {(d.reactions?.disagree ?? 0) > 0 && (
+                          <span className="flex items-center gap-0.5 text-destructive"><ThumbsDown size={9} />{d.reactions.disagree}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t border-border">
                     <span>{d.turnCount} turns</span>
                     <span>{d.voteCount} votes</span>
                     <span>{timeAgo(d.createdAt)}</span>
+                    {d.label && (
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        d.label === "Controversial" && "bg-orange-500/10 text-orange-600",
+                        d.label === "Insightful" && "bg-amber-500/10 text-amber-600",
+                        d.label === "Heated" && "bg-red-500/10 text-red-500",
+                      )}>
+                        {d.label === "Controversial" && <>{"\u26A1"} </>}
+                        {d.label === "Insightful" && <>{"\uD83E\uDDE0"} </>}
+                        {d.label === "Heated" && <>{"\uD83D\uDD25"} </>}
+                        {d.label}
+                      </span>
+                    )}
                     {d.totalScore !== undefined && d.totalScore > 0 && (
                       <span className="ml-auto rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-semibold">
                         {d.totalScore.toFixed(1)} pts
