@@ -1,4 +1,5 @@
 using System.Text;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -67,6 +68,11 @@ builder.Services.AddScoped<NewsTopicService>();
 builder.Services.AddScoped<TopicModerationService>();
 builder.Services.AddHostedService<DailyTopicRefreshService>();
 builder.Services.AddSingleton<BudgetService>();
+builder.Services.AddSingleton(new HeartbeatSettings
+{
+    Enabled = builder.Configuration.GetValue("BotHeartbeat:Enabled", true),
+    IntervalSeconds = builder.Configuration.GetValue("BotHeartbeat:IntervalSeconds", 900),
+});
 builder.Services.AddHostedService<BotHeartbeatService>();
 
 // Ranking services
@@ -83,16 +89,37 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<ArenaDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+
+if (builder.Environment.IsProduction())
+{
+    var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+    var credential = new DefaultAzureCredential();
+    dataSourceBuilder.UsePeriodicPasswordProvider(async (_, ct) =>
+    {
+        var token = await credential.GetTokenAsync(
+            new Azure.Core.TokenRequestContext(new[] { "https://ossrdbms-aad.database.windows.net/.default" }), ct);
+        return token.Token;
+    }, TimeSpan.FromMinutes(55), TimeSpan.FromSeconds(5));
+    var dataSource = dataSourceBuilder.Build();
+
+    builder.Services.AddDbContext<ArenaDbContext>(options =>
+        options.UseNpgsql(dataSource));
+}
+else
+{
+    builder.Services.AddDbContext<ArenaDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+    ?? new[] { "http://localhost:5173", "http://localhost:5174" };
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                  "http://localhost:5173", "http://localhost:5174",
-                  "https://debatearena.fun", "https://www.debatearena.fun")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -152,9 +179,12 @@ app.MapGet("/health", async (ArenaDbContext db) =>
     });
 });
 
-// Seed static topics on startup
+// Apply pending migrations and seed data on startup
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<ArenaDbContext>();
+    await db.Database.MigrateAsync();
+
     var topicService = scope.ServiceProvider.GetRequiredService<TopicGeneratorService>();
     await topicService.SeedStaticTopicsAsync();
 }

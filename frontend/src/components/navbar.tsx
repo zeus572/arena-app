@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LayoutList, PlusCircle, Menu, X, Landmark, Users, Zap, MessageSquarePlus, LogIn, User, LogOut, Crown, AlertCircle, ShieldCheck, Newspaper } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { forceTick, forceNewsSync } from "@/api/client";
+import { forceTick, forceNewsSync, fetchHeartbeatStatus } from "@/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_LINKS = [
@@ -20,6 +20,13 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, isAuthenticated, isPremium, logout } = useAuth();
+  const [heartbeatEnabled, setHeartbeatEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetchHeartbeatStatus()
+      .then((s) => setHeartbeatEnabled(s.enabled))
+      .catch(() => setHeartbeatEnabled(null));
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -33,6 +40,22 @@ export function Navbar() {
           </span>
           <span className="text-sm font-semibold">Debate Arena</span>
         </Link>
+
+        {heartbeatEnabled !== null && (
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-border px-2 py-1">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                heartbeatEnabled
+                  ? "bg-emerald-500 animate-pulse"
+                  : "bg-muted-foreground/40"
+              )}
+            />
+            <span className="text-[10px] text-muted-foreground">
+              {heartbeatEnabled ? "AI Active" : "AI Paused"}
+            </span>
+          </div>
+        )}
 
         <nav className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {

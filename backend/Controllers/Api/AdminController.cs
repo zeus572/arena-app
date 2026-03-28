@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Arena.API.Data;
 using Arena.API.Models;
+using Arena.API.Services;
 
 namespace Arena.API.Controllers.Api;
 
@@ -11,8 +12,15 @@ namespace Arena.API.Controllers.Api;
 public class AdminController : ControllerBase
 {
     private readonly ArenaDbContext _db;
+    private readonly HeartbeatSettings _heartbeat;
+    private readonly IConfiguration _config;
 
-    public AdminController(ArenaDbContext db) => _db = db;
+    public AdminController(ArenaDbContext db, HeartbeatSettings heartbeat, IConfiguration config)
+    {
+        _db = db;
+        _heartbeat = heartbeat;
+        _config = config;
+    }
 
     [HttpPut("users/{id:guid}/plan")]
     public async Task<IActionResult> SetPlan(Guid id, [FromBody] SetPlanRequest request)
@@ -45,7 +53,39 @@ public class AdminController : ControllerBase
 
         return Ok(new { topic.Id, topic.Title, Status = topic.Status.ToString() });
     }
+    [AllowAnonymous]
+    [HttpGet("heartbeat")]
+    public IActionResult GetHeartbeat()
+    {
+        return Ok(new
+        {
+            enabled = _heartbeat.Enabled,
+            intervalSeconds = _heartbeat.IntervalSeconds,
+            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514",
+        });
+    }
+
+    [HttpPut("heartbeat")]
+    public IActionResult UpdateHeartbeat([FromBody] UpdateHeartbeatRequest request)
+    {
+        if (request.Enabled.HasValue)
+            _heartbeat.Enabled = request.Enabled.Value;
+        if (request.IntervalSeconds.HasValue)
+        {
+            if (request.IntervalSeconds.Value < 60)
+                return BadRequest(new { error = "Interval must be at least 60 seconds." });
+            _heartbeat.IntervalSeconds = request.IntervalSeconds.Value;
+        }
+
+        return Ok(new
+        {
+            enabled = _heartbeat.Enabled,
+            intervalSeconds = _heartbeat.IntervalSeconds,
+            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514",
+        });
+    }
 }
 
 public record SetPlanRequest(string Plan);
 public record SetTopicStatusRequest(string Status);
+public record UpdateHeartbeatRequest(bool? Enabled, int? IntervalSeconds);

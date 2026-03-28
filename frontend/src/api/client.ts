@@ -161,4 +161,16 @@ export async function forceTick() {
   return res.data;
 }
 
+// Heartbeat status
+export interface HeartbeatStatus {
+  enabled: boolean;
+  intervalSeconds: number;
+  model: string;
+}
+
+export async function fetchHeartbeatStatus() {
+  const res = await api.get<HeartbeatStatus>("/admin/heartbeat");
+  return res.data;
+}
+
 export default api;

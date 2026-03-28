@@ -163,13 +163,16 @@ function TurnBubble({
             }
           })()}
         </div>
-        <div className={cn("mt-1 px-1", isLeft ? "" : "flex flex-row-reverse")}>
+        <div className={cn("mt-1 px-1 flex items-center gap-2", isLeft ? "" : "flex-row-reverse")}>
           <ReactionRow
             targetType="turn"
             turnId={turn.id}
             debateId={debateId}
             counts={turn.reactions}
           />
+          <span className="text-[10px] text-muted-foreground/60">
+            {new Date(turn.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </span>
         </div>
       </div>
     </div>
@@ -274,6 +277,9 @@ export default function DebateViewPage() {
             ) : (
               debate.status
             )}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {new Date(debate.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
           </span>
         </div>
 

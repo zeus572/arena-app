@@ -10,8 +10,8 @@ public class BotHeartbeatService : BackgroundService
     private readonly ILlmService _llm;
     private readonly TopicGeneratorService _topics;
     private readonly BudgetService _budget;
+    private readonly HeartbeatSettings _settings;
     private readonly ILogger<BotHeartbeatService> _logger;
-    private readonly int _intervalSeconds;
     private readonly int _maxActiveDebates;
     private readonly int _turnsPerDebate;
     private readonly int _turnDelaySeconds;
@@ -22,6 +22,7 @@ public class BotHeartbeatService : BackgroundService
         ILlmService llm,
         TopicGeneratorService topics,
         BudgetService budget,
+        HeartbeatSettings settings,
         IConfiguration config,
         ILogger<BotHeartbeatService> logger)
     {
@@ -29,8 +30,8 @@ public class BotHeartbeatService : BackgroundService
         _llm = llm;
         _topics = topics;
         _budget = budget;
+        _settings = settings;
         _logger = logger;
-        _intervalSeconds = config.GetValue("BotHeartbeat:IntervalSeconds", 300);
         _maxActiveDebates = config.GetValue("BotHeartbeat:MaxActiveDebates", 5);
         _turnsPerDebate = config.GetValue("BotHeartbeat:TurnsPerDebate", 6);
         _turnDelaySeconds = config.GetValue("BotHeartbeat:TurnDelaySeconds", 30);
@@ -39,24 +40,31 @@ public class BotHeartbeatService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("BotHeartbeat started. Interval={Interval}s, MaxActive={Max}, TurnsPerDebate={Turns}, CompromiseTurns={Compromise}",
-            _intervalSeconds, _maxActiveDebates, _turnsPerDebate, _compromiseTurns);
+        _logger.LogInformation("BotHeartbeat started. Enabled={Enabled}, Interval={Interval}s, MaxActive={Max}, TurnsPerDebate={Turns}, CompromiseTurns={Compromise}",
+            _settings.Enabled, _settings.IntervalSeconds, _maxActiveDebates, _turnsPerDebate, _compromiseTurns);
 
         // Initial delay to let the app fully start
         await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try
+            if (_settings.Enabled)
             {
-                await RunHeartbeatAsync(stoppingToken);
+                try
+                {
+                    await RunHeartbeatAsync(stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "BotHeartbeat tick failed");
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            else
             {
-                _logger.LogError(ex, "BotHeartbeat tick failed");
+                _logger.LogDebug("BotHeartbeat is disabled, skipping tick");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(_intervalSeconds), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(_settings.IntervalSeconds), stoppingToken);
         }
     }
 
