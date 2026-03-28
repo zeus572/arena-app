@@ -12,6 +12,7 @@ import Register from "@/pages/Register";
 import AuthCallback from "@/pages/AuthCallback";
 import Profile from "@/pages/Profile";
 import Sources from "@/pages/Sources";
+import Leaderboard from "@/pages/Leaderboard";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/start" element={<ProtectedRoute requiredPlan="Premium"><StartArgument /></ProtectedRoute>} />
           <Route path="/debates/:id" element={<DebateView />} />
           <Route path="/agents" element={<Agents />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/topics" element={<Topics />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

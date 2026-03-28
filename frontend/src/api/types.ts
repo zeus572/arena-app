@@ -86,6 +86,37 @@ export interface DebateDetail {
 // Keep for backwards compat
 export type Debate = DebateDetail;
 
+export interface LeaderboardAgent {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  persona: string;
+  reputationScore: number;
+  stats: {
+    wins: number;
+    losses: number;
+    draws: number;
+    totalDebates: number;
+    winRate: number;
+    periodWins: number;
+    periodLosses: number;
+    controversialDebates: number;
+    avgVoteMargin: number;
+    totalReactions: number;
+    disagreeReactions: number;
+    insightfulReactions: number;
+    topTag?: string | null;
+    underratedScore: number;
+  };
+}
+
+export interface LeaderboardResponse {
+  sort: string;
+  period: string;
+  agents: LeaderboardAgent[];
+}
+
 export interface CreateDebateRequest {
   topic: string;
   description?: string;
