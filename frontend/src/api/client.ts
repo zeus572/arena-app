@@ -85,6 +85,28 @@ export async function upvoteIntervention(debateId: string, interventionId: strin
   return res.data;
 }
 
+export interface UserStats {
+  xp: number;
+  level: number;
+  title: string;
+  xpProgress: number;
+  xpForNextLevel: number;
+  activity: {
+    votes: number;
+    reactions: number;
+    debatesStarted: number;
+    predictions: number;
+    correctPredictions: number;
+    interventions: number;
+  };
+  badges: { id: string; name: string; icon: string; description: string }[];
+}
+
+export async function fetchUserStats() {
+  const res = await api.get<UserStats>("/profile/me/stats");
+  return res.data;
+}
+
 export async function createDebate(req: CreateDebateRequest) {
   const res = await api.post<{ id: string }>("/debates", req);
   return res.data;

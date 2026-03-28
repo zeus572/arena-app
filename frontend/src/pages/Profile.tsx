@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import api from "@/api/client";
-import { User, Shield, Crown, Mail, CheckCircle, AlertCircle } from "lucide-react";
+import api, { fetchUserStats, type UserStats } from "@/api/client";
+import { User, Shield, Crown, Mail, CheckCircle, AlertCircle, Star, Award, Zap, Target, MessageCircleQuestion, ThumbsUp, Sparkles } from "lucide-react";
 
 const INTEREST_OPTIONS = [
   "Economy & Fiscal Policy",
@@ -33,6 +33,12 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+
+  const [stats, setStats] = useState<UserStats | null>(null);
+
+  useEffect(() => {
+    fetchUserStats().then(setStats).catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -205,6 +211,82 @@ export default function Profile() {
           </Button>
         </form>
       </div>
+
+      {/* XP & Gamification */}
+      {stats && (
+        <>
+          <div className="rounded-xl border border-border bg-card p-6 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={16} className="text-amber-500" />
+              <h2 className="text-sm font-bold text-card-foreground">Level & XP</h2>
+            </div>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white font-bold text-xl shadow-lg">
+                {stats.level}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-card-foreground">{stats.title}</p>
+                <p className="text-xs text-muted-foreground">{stats.xp.toLocaleString()} XP</p>
+                <div className="mt-1.5 h-2 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                    style={{ width: `${stats.xpProgress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {stats.xpForNextLevel - stats.xp} XP to next level
+                </p>
+              </div>
+            </div>
+
+            {/* Activity breakdown */}
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {[
+                { label: "Votes", value: stats.activity.votes, icon: ThumbsUp },
+                { label: "Reactions", value: stats.activity.reactions, icon: Sparkles },
+                { label: "Debates", value: stats.activity.debatesStarted, icon: Star },
+                { label: "Predictions", value: stats.activity.predictions, icon: Target },
+                { label: "Correct", value: stats.activity.correctPredictions, icon: CheckCircle },
+                { label: "Questions", value: stats.activity.interventions, icon: MessageCircleQuestion },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="rounded-lg bg-secondary/50 p-2.5 text-center">
+                  <Icon size={14} className="mx-auto text-muted-foreground mb-1" />
+                  <p className="text-lg font-bold text-foreground tabular-nums">{value}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Badges */}
+          {stats.badges.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-6 mb-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Award size={16} className="text-purple-500" />
+                <h2 className="text-sm font-bold text-card-foreground">Badges</h2>
+                <span className="text-[10px] text-muted-foreground ml-auto">{stats.badges.length} earned</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {stats.badges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    className="rounded-lg border border-border bg-secondary/30 p-3 flex items-start gap-2"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
+                      <Award size={14} className="text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-card-foreground">{badge.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{badge.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </main>
   );
 }

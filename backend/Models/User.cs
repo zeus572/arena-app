@@ -15,6 +15,7 @@ public class User
     public bool EmailVerified { get; set; }
     public string? EmailVerifyToken { get; set; }
     public bool IsAnonymous { get; set; }
+    public int Xp { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
