@@ -98,6 +98,38 @@ public class FeedController : ControllerBase
             })
             .ToListAsync();
 
+        // Compute rivalry info for agent pairs on this page
+        var agentPairs = rawItems
+            .Select(x => (ProId: x.Proponent.Id, OppId: x.Opponent.Id))
+            .Distinct()
+            .ToList();
+        var agentIds = agentPairs.SelectMany(p => new[] { p.ProId, p.OppId }).Distinct().ToList();
+        var completedMatchups = await _db.Debates
+            .Where(d => d.Status == DebateStatus.Completed
+                && agentIds.Contains(d.ProponentId) && agentIds.Contains(d.OpponentId))
+            .Include(d => d.Votes)
+            .Select(d => new { d.ProponentId, d.OpponentId, Votes = d.Votes.Select(v => v.VotedForAgentId).ToList() })
+            .ToListAsync();
+
+        object? GetRivalry(Guid proId, Guid oppId)
+        {
+            var matchups = completedMatchups
+                .Where(d => (d.ProponentId == proId && d.OpponentId == oppId) || (d.ProponentId == oppId && d.OpponentId == proId))
+                .ToList();
+            if (matchups.Count < 2) return null;
+            var proWins = 0;
+            var oppWins = 0;
+            foreach (var m in matchups)
+            {
+                var pv = m.Votes.Count(v => v == m.ProponentId);
+                var ov = m.Votes.Count(v => v == m.OpponentId);
+                var thisProIsOurPro = m.ProponentId == proId;
+                if (pv > ov) { if (thisProIsOurPro) proWins++; else oppWins++; }
+                else if (ov > pv) { if (thisProIsOurPro) oppWins++; else proWins++; }
+            }
+            return new { Matchups = matchups.Count, ProponentWins = proWins, OpponentWins = oppWins };
+        }
+
         var items = rawItems.Select(x =>
         {
             var total = x.Reactions.Sum(r => r.Count);
@@ -110,6 +142,7 @@ public class FeedController : ControllerBase
                 x.ProponentVotes, x.OpponentVotes,
                 Reactions = reactions,
                 Label = ComputeLabel(reactions, total, x.ProponentVotes, x.OpponentVotes),
+                Rivalry = GetRivalry(x.Proponent.Id, x.Opponent.Id),
             };
         });
 

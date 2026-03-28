@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
+using Arena.API.Models;
 
 namespace Arena.API.Controllers.Api;
 
@@ -19,7 +20,86 @@ public class AgentsController : ControllerBase
             .OrderByDescending(a => a.ReputationScore)
             .ToListAsync();
 
-        return Ok(agents);
+        // Compute stats for all agents
+        var completedDebates = await _db.Debates
+            .Where(d => d.Status == DebateStatus.Completed)
+            .Include(d => d.Votes)
+            .Include(d => d.DebateTags).ThenInclude(dt => dt.Tag)
+            .ToListAsync();
+
+        var agentStats = agents.Select(agent =>
+        {
+            var debates = completedDebates
+                .Where(d => d.ProponentId == agent.Id || d.OpponentId == agent.Id)
+                .ToList();
+
+            var wins = 0;
+            var losses = 0;
+            var draws = 0;
+            var currentStreak = 0;
+            var streakType = "";
+
+            foreach (var debate in debates.OrderBy(d => d.CreatedAt))
+            {
+                var proVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.ProponentId);
+                var oppVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.OpponentId);
+                var isProponent = debate.ProponentId == agent.Id;
+                var agentVotes = isProponent ? proVotes : oppVotes;
+                var opponentVotes = isProponent ? oppVotes : proVotes;
+
+                if (agentVotes > opponentVotes)
+                {
+                    wins++;
+                    if (streakType == "W") currentStreak++;
+                    else { currentStreak = 1; streakType = "W"; }
+                }
+                else if (agentVotes < opponentVotes)
+                {
+                    losses++;
+                    if (streakType == "L") currentStreak++;
+                    else { currentStreak = 1; streakType = "L"; }
+                }
+                else
+                {
+                    draws++;
+                    currentStreak = 0;
+                    streakType = "";
+                }
+            }
+
+            // Top tag from debates
+            var topTag = debates
+                .SelectMany(d => d.DebateTags)
+                .GroupBy(dt => dt.Tag.DisplayName)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefault();
+
+            // Title
+            string? title = null;
+            if (currentStreak >= 5 && streakType == "W")
+                title = $"Undisputed Champion of {topTag ?? "the Arena"}";
+            else if (currentStreak >= 3 && streakType == "W")
+                title = $"{currentStreak}-Debate Win Streak";
+            else if (wins > 0 && losses == 0 && debates.Count >= 3)
+                title = "Undefeated";
+
+            return new
+            {
+                agent.Id, agent.Name, agent.Description, agent.AvatarUrl,
+                agent.Persona, agent.ReputationScore, agent.CreatedAt,
+                Stats = new
+                {
+                    Wins = wins, Losses = losses, Draws = draws,
+                    TotalDebates = debates.Count,
+                    WinStreak = streakType == "W" ? currentStreak : 0,
+                    TopTag = topTag,
+                    Title = title,
+                },
+            };
+        });
+
+        return Ok(agentStats);
     }
 
     [HttpGet("{id:guid}")]
@@ -28,5 +108,52 @@ public class AgentsController : ControllerBase
         var agent = await _db.Agents.FindAsync(id);
         if (agent is null) return NotFound();
         return Ok(agent);
+    }
+
+    [HttpGet("{id:guid}/rivals")]
+    public async Task<IActionResult> GetRivals(Guid id)
+    {
+        var agent = await _db.Agents.FindAsync(id);
+        if (agent is null) return NotFound();
+
+        var debates = await _db.Debates
+            .Where(d => d.Status == DebateStatus.Completed && (d.ProponentId == id || d.OpponentId == id))
+            .Include(d => d.Votes)
+            .Include(d => d.Proponent)
+            .Include(d => d.Opponent)
+            .ToListAsync();
+
+        var rivals = debates
+            .GroupBy(d => d.ProponentId == id ? d.OpponentId : d.ProponentId)
+            .Select(g =>
+            {
+                var rivalId = g.Key;
+                var rivalAgent = g.First().ProponentId == rivalId ? g.First().Proponent : g.First().Opponent;
+                var wins = 0;
+                var losses = 0;
+
+                foreach (var d in g)
+                {
+                    var proVotes = d.Votes.Count(v => v.VotedForAgentId == d.ProponentId);
+                    var oppVotes = d.Votes.Count(v => v.VotedForAgentId == d.OpponentId);
+                    var isProponent = d.ProponentId == id;
+                    if ((isProponent ? proVotes : oppVotes) > (isProponent ? oppVotes : proVotes)) wins++;
+                    else if ((isProponent ? proVotes : oppVotes) < (isProponent ? oppVotes : proVotes)) losses++;
+                }
+
+                return new
+                {
+                    RivalId = rivalId,
+                    RivalName = rivalAgent.Name,
+                    Matchups = g.Count(),
+                    Wins = wins,
+                    Losses = losses,
+                    Draws = g.Count() - wins - losses,
+                };
+            })
+            .OrderByDescending(r => r.Matchups)
+            .ToList();
+
+        return Ok(rivals);
     }
 }

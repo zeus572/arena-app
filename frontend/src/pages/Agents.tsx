@@ -4,7 +4,7 @@ import type { Agent } from "@/api/types";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { getAgentColor, getAgentLabel } from "@/lib/agent-colors";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Trophy, Flame, Swords } from "lucide-react";
 
 const META_FILTERS = [
   "don't break character", "do not break character",
@@ -56,9 +56,32 @@ export default function Agents() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Reputation: {agent.reputationScore.toFixed(1)}
                   </p>
+                  {agent.stats?.title && (
+                    <p className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-1">
+                      <Trophy size={10} /> {agent.stats.title}
+                    </p>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">{agent.description}</p>
+
+              {agent.stats && agent.stats.totalDebates > 0 && (
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Swords size={11} /> {agent.stats.wins}W-{agent.stats.losses}L-{agent.stats.draws}D
+                  </span>
+                  {agent.stats.winStreak >= 2 && (
+                    <span className="flex items-center gap-1 text-orange-500 font-medium">
+                      <Flame size={11} /> {agent.stats.winStreak} streak
+                    </span>
+                  )}
+                  {agent.stats.topTag && (
+                    <span className="text-[10px] rounded-full bg-secondary px-2 py-0.5">
+                      {agent.stats.topTag}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {leanings.length > 0 && (
                 <>

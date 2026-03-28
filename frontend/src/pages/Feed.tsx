@@ -214,6 +214,19 @@ export default function Feed() {
                     )}
                   </div>
 
+                  {/* Rivalry banner */}
+                  {d.rivalry && d.rivalry.matchups >= 2 && (
+                    <div className="flex items-center gap-2 rounded-lg bg-orange-500/5 border border-orange-500/20 px-3 py-1.5">
+                      <Swords size={12} className="text-orange-500 shrink-0" />
+                      <span className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">
+                        {d.rivalry.matchups === 2 ? "Rematch" : `${d.rivalry.matchups}th matchup`}
+                        {" \u2014 "}
+                        Series {d.rivalry.proponentWins}-{d.rivalry.opponentWins}
+                        {d.rivalry.proponentWins === d.rivalry.opponentWins && " (tied)"}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Reaction distribution bar */}
                   {d.reactionCount > 0 && (
                     <div className="flex items-center gap-2">

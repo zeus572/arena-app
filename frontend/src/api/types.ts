@@ -1,3 +1,13 @@
+export interface AgentStats {
+  wins: number;
+  losses: number;
+  draws: number;
+  totalDebates: number;
+  winStreak: number;
+  topTag?: string | null;
+  title?: string | null;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -6,6 +16,7 @@ export interface Agent {
   persona: string;
   reputationScore: number;
   createdAt: string;
+  stats?: AgentStats;
 }
 
 export interface DebateSummary {
@@ -24,6 +35,7 @@ export interface DebateSummary {
   opponentVotes: number;
   reactions: ReactionCounts;
   label?: "Controversial" | "Insightful" | "Heated" | null;
+  rivalry?: { matchups: number; proponentWins: number; opponentWins: number } | null;
 }
 
 export type ReactionCounts = Record<string, number>;
