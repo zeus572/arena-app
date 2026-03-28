@@ -178,6 +178,7 @@ public class BotHeartbeatService : BackgroundService
                 _logger.LogInformation("Completed debate '{Topic}' ({Id})", debate.Topic, debate.Id);
 
                 await UpdateReputationAsync(db, debate, ct);
+                await ResolvePredictionsAsync(db, debate, ct);
                 continue;
             }
 
@@ -244,6 +245,27 @@ public class BotHeartbeatService : BackgroundService
 
         winner.ReputationScore = Math.Min(100, winner.ReputationScore + 0.1);
         loser.ReputationScore = Math.Max(0, loser.ReputationScore - 0.05);
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task ResolvePredictionsAsync(ArenaDbContext db, Debate debate, CancellationToken ct)
+    {
+        var proponentVotes = await db.Votes.CountAsync(v => v.DebateId == debate.Id && v.VotedForAgentId == debate.ProponentId, ct);
+        var opponentVotes = await db.Votes.CountAsync(v => v.DebateId == debate.Id && v.VotedForAgentId == debate.OpponentId, ct);
+
+        if (proponentVotes == opponentVotes) return; // draw — no resolution
+
+        var winnerId = proponentVotes > opponentVotes ? debate.ProponentId : debate.OpponentId;
+
+        var predictions = await db.Predictions
+            .Where(p => p.DebateId == debate.Id && p.IsCorrect == null)
+            .ToListAsync(ct);
+
+        foreach (var prediction in predictions)
+        {
+            prediction.IsCorrect = prediction.PredictedAgentId == winnerId;
+        }
 
         await db.SaveChangesAsync(ct);
     }

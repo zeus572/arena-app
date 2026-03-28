@@ -117,6 +117,16 @@ export interface LeaderboardResponse {
   agents: LeaderboardAgent[];
 }
 
+export interface PredictionData {
+  totalPredictions: number;
+  proponentPredictions: number;
+  opponentPredictions: number;
+  proponentOdds: number;
+  opponentOdds: number;
+  userPredictedAgentId?: string | null;
+  userIsCorrect?: boolean | null;
+}
+
 export interface CreateDebateRequest {
   topic: string;
   description?: string;

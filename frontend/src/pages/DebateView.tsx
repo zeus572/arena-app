@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { fetchDebate, castVote, addReaction } from "@/api/client";
-import type { DebateDetail, TurnDetail, TurnCitation } from "@/api/types";
+import { fetchDebate, castVote, addReaction, fetchPredictions, makePrediction } from "@/api/client";
+import type { DebateDetail, TurnDetail, TurnCitation, PredictionData } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/agent-colors";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -179,6 +179,151 @@ function TurnBubble({
   );
 }
 
+function PredictionWidget({
+  debateId,
+  debate,
+  proponentColor,
+  opponentColor,
+}: {
+  debateId: string;
+  debate: DebateDetail;
+  proponentColor: AgentColor;
+  opponentColor: AgentColor;
+}) {
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchPredictions(debateId).then(setPrediction).catch(() => {});
+  }, [debateId]);
+
+  const handlePredict = async (agentId: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await makePrediction(debateId, agentId);
+      const updated = await fetchPredictions(debateId);
+      setPrediction(updated);
+    } catch {
+      // ignore
+    }
+    setSubmitting(false);
+  };
+
+  if (!prediction) return null;
+
+  const isCompleted = debate.status === "Completed";
+  const hasPredicted = !!prediction.userPredictedAgentId;
+  const total = prediction.totalPredictions;
+  const proOdds = prediction.proponentOdds;
+  const oppOdds = prediction.opponentOdds;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Target size={14} className="text-purple-500" />
+        <h3 className="text-sm font-semibold text-card-foreground">
+          {isCompleted ? "Prediction Results" : "Who Will Win?"}
+        </h3>
+        {total > 0 && (
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {total} prediction{total !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Odds Bar */}
+      {total > 0 && (
+        <div className="mb-3">
+          <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden flex">
+            <div
+              className={cn("h-full transition-all duration-500", `bg-${proponentColor}`)}
+              style={{ width: `${proOdds}%` }}
+            />
+            <div
+              className={cn("h-full transition-all duration-500", `bg-${opponentColor}`)}
+              style={{ width: `${oppOdds}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[11px] text-muted-foreground">
+              {debate.proponent.name} {proOdds.toFixed(0)}%
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {oppOdds.toFixed(0)}% {debate.opponent.name}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Post-debate reveal */}
+      {isCompleted && hasPredicted && (
+        <div
+          className={cn(
+            "rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-2",
+            prediction.userIsCorrect
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-red-500/10 text-red-500"
+          )}
+        >
+          {prediction.userIsCorrect ? (
+            <>
+              <Check size={14} />
+              You predicted correctly!
+            </>
+          ) : (
+            <>
+              <X size={14} />
+              Your prediction was wrong.
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Pre/during debate prediction buttons */}
+      {!isCompleted && !hasPredicted && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => handlePredict(debate.proponent.id)}
+            disabled={submitting}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium transition-colors",
+              "hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+            )}
+          >
+            <AgentAvatar agent={{ name: debate.proponent.name, color: proponentColor }} size="sm" />
+            {debate.proponent.name}
+          </button>
+          <button
+            onClick={() => handlePredict(debate.opponent.id)}
+            disabled={submitting}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium transition-colors",
+              "hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+            )}
+          >
+            <AgentAvatar agent={{ name: debate.opponent.name, color: opponentColor }} size="sm" />
+            {debate.opponent.name}
+          </button>
+        </div>
+      )}
+
+      {/* Already predicted, not completed */}
+      {!isCompleted && hasPredicted && (
+        <p className="text-xs text-muted-foreground">
+          You predicted{" "}
+          <span className="font-semibold text-foreground">
+            {prediction.userPredictedAgentId === debate.proponent.id
+              ? debate.proponent.name
+              : debate.opponent.name}
+          </span>{" "}
+          will win.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function DebateViewPage() {
   const { id } = useParams<{ id: string }>();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
@@ -310,6 +455,13 @@ export default function DebateViewPage() {
           </div>
         </div>
       </div>
+
+      <PredictionWidget
+        debateId={debate.id}
+        debate={debate}
+        proponentColor={proponentColor}
+        opponentColor={opponentColor}
+      />
 
       <section className="flex flex-col gap-6 mb-8" aria-label="Debate turns">
         {debate.turns.map((turn) => {

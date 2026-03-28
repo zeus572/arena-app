@@ -20,6 +20,7 @@ public class ArenaDbContext : DbContext
     public DbSet<TopicProposal> TopicProposals => Set<TopicProposal>();
     public DbSet<TopicVote> TopicVotes => Set<TopicVote>();
     public DbSet<GeneratedTopic> GeneratedTopics => Set<GeneratedTopic>();
+    public DbSet<Prediction> Predictions => Set<Prediction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,11 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<TopicVote>(e =>
         {
             e.HasIndex(tv => new { tv.TopicProposalId, tv.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Prediction>(e =>
+        {
+            e.HasIndex(p => new { p.DebateId, p.UserId }).IsUnique();
         });
 
         modelBuilder.Entity<DebateTag>(e =>

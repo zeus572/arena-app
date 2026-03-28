@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, CreateDebateRequest, LeaderboardResponse } from "./types";
+import type { DebateDetail, DebateSummary, Agent, CreateDebateRequest, LeaderboardResponse, PredictionData } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -57,6 +57,16 @@ export async function fetchAgents() {
 
 export async function fetchLeaderboard(sort = "top", period = "week") {
   const res = await api.get<LeaderboardResponse>("/agents/leaderboard", { params: { sort, period } });
+  return res.data;
+}
+
+export async function fetchPredictions(debateId: string) {
+  const res = await api.get<PredictionData>(`/debates/${debateId}/predictions`);
+  return res.data;
+}
+
+export async function makePrediction(debateId: string, predictedAgentId: string) {
+  const res = await api.post<{ id: string; predictedAgentId: string }>(`/debates/${debateId}/predictions`, { predictedAgentId });
   return res.data;
 }
 
