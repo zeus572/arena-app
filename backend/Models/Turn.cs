@@ -19,6 +19,8 @@ public class Turn
     public string Content { get; set; } = string.Empty;
     /// <summary>JSON array of citations: [{ "source", "title", "url" }]</summary>
     public string? CitationsJson { get; set; }
+    /// <summary>JSON object with argument breakdown: { claims, evidence, assumptions, weaknesses }</summary>
+    public string? AnalysisJson { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();

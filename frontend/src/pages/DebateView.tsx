@@ -9,7 +9,7 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -83,6 +83,122 @@ function ArbiterCard({ turn }: { turn: TurnDetail }) {
             : "Both agents must now find common ground and propose a compromise budget."}
         </p>
       </div>
+    </div>
+  );
+}
+
+interface ArgumentAnalysis {
+  claims: string[];
+  evidence: string[];
+  assumptions: string[];
+  weaknesses: string[];
+}
+
+function analyzeArgument(content: string, analysisJson?: string | null): ArgumentAnalysis {
+  // Use pre-computed analysis if available
+  if (analysisJson) {
+    try {
+      return JSON.parse(analysisJson) as ArgumentAnalysis;
+    } catch { /* fall through to heuristic */ }
+  }
+
+  // Heuristic extraction from markdown
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  // Claims: bold text
+  const claims: string[] = [];
+  const boldRegex = /\*\*([^*]+)\*\*/g;
+  for (const line of lines) {
+    let match;
+    while ((match = boldRegex.exec(line)) !== null) {
+      const claim = match[1].trim();
+      if (claim.length > 15 && !claim.toLowerCase().startsWith("total")) {
+        claims.push(claim);
+      }
+    }
+  }
+
+  // Evidence: lines with citation markers [1], [2], etc.
+  const evidence = lines
+    .filter((l) => /\[\d+\]/.test(l))
+    .map((l) => l.replace(/^[-*•]\s*/, "").trim())
+    .filter((l) => l.length > 20)
+    .slice(0, 5);
+
+  // Assumptions: conditional or presuppositional phrases
+  const assumptionKeywords = [
+    "assuming", "if we", "given that", "presumes", "relies on",
+    "would mean", "should lead", "likely", "presumably",
+  ];
+  const assumptions = lines
+    .filter((l) => {
+      const lower = l.toLowerCase();
+      return assumptionKeywords.some((kw) => lower.includes(kw));
+    })
+    .map((l) => l.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").trim())
+    .slice(0, 3);
+
+  // Weaknesses: look for hedging language
+  const hedgeKeywords = [
+    "however", "although", "despite", "admittedly", "granted",
+    "to be fair", "challenge", "limitation", "risk",
+  ];
+  const weaknesses = lines
+    .filter((l) => {
+      const lower = l.toLowerCase();
+      return hedgeKeywords.some((kw) => lower.includes(kw));
+    })
+    .map((l) => l.replace(/^[-*•]\s*/, "").replace(/\*\*/g, "").trim())
+    .slice(0, 3);
+
+  return { claims: claims.slice(0, 5), evidence, assumptions, weaknesses };
+}
+
+function ArgumentBreakdown({ turn }: { turn: TurnDetail }) {
+  const [open, setOpen] = useState(false);
+  const analysis = analyzeArgument(turn.content, turn.analysisJson);
+  const hasContent =
+    analysis.claims.length > 0 ||
+    analysis.evidence.length > 0 ||
+    analysis.assumptions.length > 0 ||
+    analysis.weaknesses.length > 0;
+
+  if (!hasContent) return null;
+
+  const sections = [
+    { key: "claims", label: "Key Claims", icon: Crosshair, items: analysis.claims, color: "text-blue-500" },
+    { key: "evidence", label: "Evidence", icon: BookOpen, items: analysis.evidence, color: "text-emerald-500" },
+    { key: "assumptions", label: "Assumptions", icon: HelpCircle, items: analysis.assumptions, color: "text-amber-500" },
+    { key: "weaknesses", label: "Potential Weaknesses", icon: AlertTriangle, items: analysis.weaknesses, color: "text-red-400" },
+  ].filter((s) => s.items.length > 0);
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[10px] font-medium text-primary/70 hover:text-primary transition-colors"
+      >
+        {open ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+        Argument Breakdown
+      </button>
+      {open && (
+        <div className="mt-2 rounded-lg border border-border/50 bg-background/50 p-3 space-y-3">
+          {sections.map(({ key, label, icon: Icon, items, color }) => (
+            <div key={key}>
+              <p className={cn("text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 mb-1", color)}>
+                <Icon size={10} /> {label}
+              </p>
+              <ul className="space-y-1">
+                {items.map((item, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground leading-relaxed pl-3 border-l-2 border-border/50">
+                    {item.length > 120 ? item.slice(0, 120) + "..." : item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -174,6 +290,7 @@ function TurnBubble({
             {new Date(turn.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </span>
         </div>
+        {turn.type !== "Arbiter" && <ArgumentBreakdown turn={turn} />}
       </div>
     </div>
   );

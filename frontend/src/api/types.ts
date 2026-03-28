@@ -55,6 +55,7 @@ export interface TurnDetail {
   type?: "Argument" | "Arbiter" | "Compromise";
   content: string;
   citationsJson?: string | null;
+  analysisJson?: string | null;
   createdAt: string;
   reactions: ReactionCounts;
 }
