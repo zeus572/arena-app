@@ -131,7 +131,7 @@ function ClipButton({ turn, debateTopic }: { turn: TurnDetail; debateTopic: stri
             {/* Shareable Card Preview */}
             <div className="rounded-2xl bg-gradient-to-br from-card to-secondary border border-border p-6 shadow-xl">
               <div className="flex items-center gap-2 mb-3">
-                <AgentAvatar agent={{ name: turn.agent.name, color: "progressive" as AgentColor }} size="sm" />
+                <AgentAvatar agent={{ name: turn.agent.name, color: "citizen" as AgentColor }} size="sm" />
                 <span className="text-xs font-semibold text-card-foreground">{turn.agent.name}</span>
                 <span className="text-[10px] text-muted-foreground ml-auto">Turn {turn.turnNumber}</span>
               </div>
@@ -317,7 +317,7 @@ function TurnBubble({
     )}>
       <div className="shrink-0 mt-1">
         <AgentAvatar
-          agent={{ name: turn.agent.name, color: isWildcard ? "progressive" as AgentColor : agentColor }}
+          agent={{ name: turn.agent.name, color: isWildcard ? "wildcard" as AgentColor : agentColor }}
           size="md"
         />
       </div>
