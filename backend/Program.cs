@@ -162,6 +162,16 @@ if (app.Environment.IsDevelopment())
         await news.GenerateTopicsFromNewsAsync();
         return Results.Ok(new { status = "news topic generation complete", timestamp = DateTime.UtcNow });
     }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    app.MapPost("/dev/set-premium/{userId:guid}", async (Guid userId, ArenaDbContext db) =>
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return Results.NotFound();
+        user.Plan = Arena.API.Models.UserPlan.Premium;
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { user.Id, Plan = user.Plan.ToString() });
+    }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 }
 
 app.MapGet("/health", async (ArenaDbContext db) =>

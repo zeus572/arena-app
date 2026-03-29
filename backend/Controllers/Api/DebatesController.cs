@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
@@ -90,6 +91,7 @@ public class DebatesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "Premium")]
     public async Task<IActionResult> Create([FromBody] CreateDebateRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Topic))

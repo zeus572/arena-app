@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
@@ -42,6 +43,7 @@ public class InterventionsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "Premium")]
     public async Task<IActionResult> SubmitIntervention(Guid debateId, [FromBody] SubmitInterventionRequest request)
     {
         var debate = await _db.Debates.FindAsync(debateId);
@@ -78,6 +80,7 @@ public class InterventionsController : ControllerBase
     }
 
     [HttpPost("{interventionId:guid}/upvote")]
+    [Authorize]
     public async Task<IActionResult> UpvoteIntervention(Guid debateId, Guid interventionId)
     {
         var intervention = await _db.Interventions.FirstOrDefaultAsync(

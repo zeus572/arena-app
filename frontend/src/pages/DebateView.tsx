@@ -9,7 +9,8 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 function ReactionRow({
   turnId,
@@ -648,6 +649,7 @@ function PredictionWidget({
 }
 
 function InterventionPanel({ debateId, isLive }: { debateId: string; isLive: boolean }) {
+  const { isAuthenticated, isPremium } = useAuth();
   const [interventions, setInterventions] = useState<InterventionData[]>([]);
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -700,8 +702,8 @@ function InterventionPanel({ debateId, isLive }: { debateId: string; isLive: boo
         </span>
       </div>
 
-      {/* Submit form — only for live debates */}
-      {isLive && (
+      {/* Submit form — only for live debates, premium users only */}
+      {isLive && isPremium && (
         <div className="flex gap-2 mb-3">
           <input
             type="text"
@@ -721,6 +723,14 @@ function InterventionPanel({ debateId, isLive }: { debateId: string; isLive: boo
           </button>
         </div>
       )}
+      {isLive && !isPremium && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2 mb-3">
+          <Crown size={12} className="text-amber-500 shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Premium</span> required to submit crowd questions.
+          </p>
+        </div>
+      )}
 
       {/* Pending questions */}
       {pending.length > 0 && (
@@ -729,8 +739,11 @@ function InterventionPanel({ debateId, isLive }: { debateId: string; isLive: boo
             <div key={i.id} className="flex items-start gap-2 rounded-lg bg-secondary/50 px-3 py-2">
               <button
                 onClick={() => handleUpvote(i.id)}
+                disabled={!isAuthenticated}
+                title={!isAuthenticated ? "Log in to upvote" : undefined}
                 className={cn(
                   "flex flex-col items-center gap-0.5 shrink-0 mt-0.5 transition-colors",
+                  !isAuthenticated ? "text-muted-foreground/40 cursor-not-allowed" :
                   voted.has(i.id) ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
