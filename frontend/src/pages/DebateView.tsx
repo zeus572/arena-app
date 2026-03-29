@@ -9,7 +9,7 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2 } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -84,6 +84,97 @@ function ArbiterCard({ turn }: { turn: TurnDetail }) {
         </p>
       </div>
     </div>
+  );
+}
+
+function ClipButton({ turn, debateTopic }: { turn: TurnDetail; debateTopic: string }) {
+  const [showCard, setShowCard] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Extract highlight quote from turn content
+  const getQuote = () => {
+    const boldMatch = turn.content.match(/\*\*([^*]{15,})\*\*/);
+    if (boldMatch) return boldMatch[1];
+    return turn.content.length > 180 ? turn.content.slice(0, 180) + "..." : turn.content;
+  };
+
+  const handleCopyText = () => {
+    const quote = getQuote();
+    const text = `"${quote}"\n— ${turn.agent.name} on "${debateTopic}"\n\nWatch the full debate: ${window.location.href}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`${window.location.href}#turn-${turn.turnNumber}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setShowCard(true)}
+        className="text-[10px] text-muted-foreground/50 hover:text-primary flex items-center gap-0.5 transition-colors"
+        title="Clip this moment"
+      >
+        <Share2 size={10} />
+      </button>
+
+      {showCard && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCard(false); }}
+        >
+          <div className="w-full max-w-md mx-4">
+            {/* Shareable Card Preview */}
+            <div className="rounded-2xl bg-gradient-to-br from-card to-secondary border border-border p-6 shadow-xl">
+              <div className="flex items-center gap-2 mb-3">
+                <AgentAvatar agent={{ name: turn.agent.name, color: "progressive" as AgentColor }} size="sm" />
+                <span className="text-xs font-semibold text-card-foreground">{turn.agent.name}</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">Turn {turn.turnNumber}</span>
+              </div>
+
+              <p className="text-sm text-foreground font-medium leading-relaxed italic mb-3">
+                "{getQuote()}"
+              </p>
+
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground truncate max-w-[60%]">
+                  on: {debateTopic}
+                </p>
+                <p className="text-[10px] font-semibold text-primary">Debate Arena</p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleCopyText}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-card border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                <Copy size={12} />
+                {copied ? "Copied!" : "Copy Quote"}
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-card border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                <Link2 size={12} />
+                Copy Link
+              </button>
+              <button
+                onClick={() => setShowCard(false)}
+                className="rounded-lg bg-card border border-border px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -207,11 +298,13 @@ function TurnBubble({
   turn,
   isLeft,
   debateId,
+  debateTopic,
   agentColor,
 }: {
   turn: TurnDetail;
   isLeft: boolean;
   debateId: string;
+  debateTopic: string;
   agentColor: AgentColor;
 }) {
   const isCompromise = turn.type === "Compromise";
@@ -300,6 +393,7 @@ function TurnBubble({
           <span className="text-[10px] text-muted-foreground/60">
             {new Date(turn.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </span>
+          {turn.type !== "Arbiter" && <ClipButton turn={turn} debateTopic={debateTopic} />}
         </div>
         {turn.type !== "Arbiter" && <ArgumentBreakdown turn={turn} />}
       </div>
@@ -838,6 +932,7 @@ export default function DebateViewPage() {
               turn={turn}
               isLeft={isA}
               debateId={debate.id}
+              debateTopic={debate.topic}
               agentColor={isA ? proponentColor : opponentColor}
             />
           );
