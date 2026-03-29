@@ -4,7 +4,8 @@ public enum TurnType
 {
     Argument,
     Arbiter,
-    Compromise
+    Compromise,
+    Wildcard
 }
 
 public class Turn

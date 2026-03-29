@@ -68,7 +68,16 @@ public class ClaudeLlmService : ILlmService
             - Propose concrete budget allocations, e.g.: "I propose allocating $X billion to [program]"
             - Compare current spending vs. your proposed spending to make your case tangible.
             - Reference actual agency budgets and program costs.
-            """ + (turnType == TurnType.Compromise ? """
+            """ + (turnType == TurnType.Wildcard ? """
+
+            WILDCARD MODE (ACTIVE):
+            - You have been INJECTED into this debate as a surprise wildcard guest.
+            - Open with a dramatic entrance line acknowledging you've crashed the debate.
+            - Stay completely in your persona character.
+            - Address both debaters directly by referencing their previous arguments.
+            - Keep your response concise (2-3 short paragraphs).
+            - Do NOT pick a side — your role is to challenge, entertain, or provoke deeper thought.
+            """ : "") + (turnType == TurnType.Compromise ? """
 
             COMPROMISE MODE (ACTIVE):
             - The arbiter has called for compromise. You MUST now seek common ground with your opponent.

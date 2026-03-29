@@ -255,6 +255,39 @@ public class BotHeartbeatService : BackgroundService
                 _logger.LogInformation("Generated {TurnType} turn {Num} by {Agent} for '{Topic}'",
                     turnType, nextTurnNumber, agent.Name, debate.Topic);
 
+                // Wildcard injection: 20% chance on turn 4+ of active (non-compromising) debates
+                if (debate.Status == DebateStatus.Active && nextTurnNumber >= 4 && Random.Shared.NextDouble() < 0.20)
+                {
+                    var wildcardAgent = await db.Agents
+                        .Where(a => a.IsWildcard)
+                        .OrderBy(_ => Guid.NewGuid())
+                        .FirstOrDefaultAsync(ct);
+
+                    if (wildcardAgent != null)
+                    {
+                        var wildcardResult = await _llm.GenerateTurnAsync(
+                            wildcardAgent, debate, debate.Turns.ToList(), TurnType.Wildcard);
+
+                        var wildcardTurn = new Turn
+                        {
+                            Id = Guid.NewGuid(),
+                            DebateId = debate.Id,
+                            AgentId = wildcardAgent.Id,
+                            TurnNumber = nextTurnNumber + 1,
+                            Type = TurnType.Wildcard,
+                            Content = wildcardResult.Content,
+                            CitationsJson = wildcardResult.Citations.Count > 0
+                                ? System.Text.Json.JsonSerializer.Serialize(wildcardResult.Citations)
+                                : null,
+                        };
+
+                        db.Turns.Add(wildcardTurn);
+                        await db.SaveChangesAsync(ct);
+                        _logger.LogInformation("Wildcard '{Agent}' injected into '{Topic}'",
+                            wildcardAgent.Name, debate.Topic);
+                    }
+                }
+
                 // Pace turns with a delay
                 if (_turnDelaySeconds > 0)
                     await Task.Delay(TimeSpan.FromSeconds(_turnDelaySeconds), ct);

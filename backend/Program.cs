@@ -227,6 +227,34 @@ using (var scope = app.Services.CreateScope())
         );
         await db.SaveChangesAsync();
     }
+
+    // Seed wildcard agents if none exist
+    if (!await db.Agents.AnyAsync(a => a.IsWildcard))
+    {
+        db.Agents.AddRange(
+            new Arena.API.Models.Agent
+            {
+                Id = Guid.Parse("a1a00000-0000-0000-0000-000000000010"),
+                Name = "The Comedian",
+                Description = "Chaos agent who derails debates with humor and satire",
+                Persona = "You are a political comedian and satirist who has crashed this debate uninvited. You mock BOTH sides equally with biting humor, absurd analogies, and exaggerated scenarios. Use sarcasm, comedic timing, and pop culture references. Point out the ridiculous aspects of both arguments. Never take a side — your job is to make the audience laugh while exposing the absurdity of extreme positions. Keep it clever, not mean-spirited.",
+                ReputationScore = 50,
+                IsWildcard = true,
+                Aggressiveness = 3, Eloquence = 8, FactReliance = 2, Empathy = 4, Wit = 10,
+            },
+            new Arena.API.Models.Agent
+            {
+                Id = Guid.Parse("a1a00000-0000-0000-0000-000000000011"),
+                Name = "The Philosopher",
+                Description = "Chaos agent who questions the fundamental premises of the debate",
+                Persona = "You are an ancient philosopher who has wandered into this modern debate. Question the fundamental assumptions both debaters are making. Use Socratic questioning to expose hidden premises. Reference classical philosophy (Plato, Aristotle, Kant, Mill) but apply it to modern policy. Ask questions like 'But what IS justice?' and 'Have we considered what Diogenes would say?' Remain genuinely curious rather than dismissive. Challenge both sides to think deeper.",
+                ReputationScore = 50,
+                IsWildcard = true,
+                Aggressiveness = 1, Eloquence = 9, FactReliance = 3, Empathy = 7, Wit = 8,
+            }
+        );
+        await db.SaveChangesAsync();
+    }
 }
 
 app.Run();

@@ -9,7 +9,7 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles } from "lucide-react";
 
 function ReactionRow({
   turnId,
@@ -215,19 +215,28 @@ function TurnBubble({
   agentColor: AgentColor;
 }) {
   const isCompromise = turn.type === "Compromise";
+  const isWildcard = turn.type === "Wildcard";
 
   return (
-    <div className={cn("flex gap-3", isLeft ? "flex-row" : "flex-row-reverse")}>
+    <div className={cn(
+      "flex gap-3",
+      isWildcard ? "flex-row justify-center" : isLeft ? "flex-row" : "flex-row-reverse",
+    )}>
       <div className="shrink-0 mt-1">
         <AgentAvatar
-          agent={{ name: turn.agent.name, color: agentColor }}
+          agent={{ name: turn.agent.name, color: isWildcard ? "progressive" as AgentColor : agentColor }}
           size="md"
         />
       </div>
-      <div className={cn("max-w-[92%] flex flex-col", isLeft ? "items-start" : "items-end")}>
+      <div className={cn("max-w-[92%] flex flex-col", isWildcard ? "items-center" : isLeft ? "items-start" : "items-end")}>
         {isCompromise && (
           <span className="text-[10px] font-semibold text-purple-500 uppercase tracking-wide mb-1 px-1">
             Compromise Proposal
+          </span>
+        )}
+        {isWildcard && (
+          <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 uppercase tracking-wide mb-1 px-1">
+            <Sparkles size={10} /> Wildcard: {turn.agent.name}
           </span>
         )}
         <div
@@ -238,11 +247,13 @@ function TurnBubble({
             "prose-table:my-3 prose-table:text-xs prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:font-semibold prose-th:border-b prose-th:border-border",
             "prose-td:px-3 prose-td:py-1.5 prose-td:border-b prose-td:border-border/50",
             "prose-thead:bg-secondary/50 prose-tr:border-0",
-            isCompromise
-              ? "rounded-tl-sm border border-purple-500/20 bg-purple-500/5 text-foreground"
-              : isLeft
-                ? cn("rounded-tl-sm text-foreground", BUBBLE_BG[agentColor])
-                : cn("rounded-tr-sm text-foreground", BUBBLE_BG[agentColor])
+            isWildcard
+              ? "rounded-sm border border-amber-500/30 bg-amber-500/5 text-foreground"
+              : isCompromise
+                ? "rounded-tl-sm border border-purple-500/20 bg-purple-500/5 text-foreground"
+                : isLeft
+                  ? cn("rounded-tl-sm text-foreground", BUBBLE_BG[agentColor])
+                  : cn("rounded-tr-sm text-foreground", BUBBLE_BG[agentColor])
           )}
         >
           <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>

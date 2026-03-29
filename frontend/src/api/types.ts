@@ -53,7 +53,7 @@ export interface TurnDetail {
   agentId: string;
   agent: { id: string; name: string; avatarUrl?: string };
   turnNumber: number;
-  type?: "Argument" | "Arbiter" | "Compromise";
+  type?: "Argument" | "Arbiter" | "Compromise" | "Wildcard";
   content: string;
   citationsJson?: string | null;
   analysisJson?: string | null;
