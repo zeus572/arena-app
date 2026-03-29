@@ -19,6 +19,8 @@ public class Debate
     public Agent Proponent { get; set; } = null!;
     public Guid OpponentId { get; set; }
     public Agent Opponent { get; set; } = null!;
+    /// <summary>"user", "bot", or "breaking" — source of debate creation</summary>
+    public string Source { get; set; } = "bot";
     public Guid? StartedByUserId { get; set; }
     public User? StartedByUser { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

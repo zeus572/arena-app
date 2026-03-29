@@ -97,7 +97,26 @@ public class BotHeartbeatService : BackgroundService
             var agents = await db.Agents.ToListAsync(ct);
             if (agents.Count >= 2)
             {
-                var topic = await _topics.PickRandomTopicAsync();
+                // Prefer unused news topics (breaking) over static topics
+                var newsGeneratedTopic = await db.GeneratedTopics
+                    .Where(t => !t.Used && t.Source == "news")
+                    .OrderBy(t => t.CreatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                string topic;
+                var source = "bot";
+
+                if (newsGeneratedTopic != null)
+                {
+                    topic = newsGeneratedTopic.Title;
+                    newsGeneratedTopic.Used = true;
+                    source = "breaking";
+                }
+                else
+                {
+                    topic = await _topics.PickRandomTopicAsync();
+                }
+
                 var (proponentId, opponentId) = _topics.PickAgentPair(agents);
 
                 var newDebate = new Debate
@@ -107,6 +126,7 @@ public class BotHeartbeatService : BackgroundService
                     Status = DebateStatus.Active,
                     ProponentId = proponentId,
                     OpponentId = opponentId,
+                    Source = source,
                 };
 
                 db.Debates.Add(newDebate);
@@ -115,7 +135,7 @@ public class BotHeartbeatService : BackgroundService
                 var tagging = scope.ServiceProvider.GetRequiredService<TaggingService>();
                 await tagging.ExtractAndAssignTagsAsync(db, newDebate);
 
-                _logger.LogInformation("Created new debate: '{Topic}'", topic);
+                _logger.LogInformation("Created new {Source} debate: '{Topic}'", source, topic);
             }
         }
 

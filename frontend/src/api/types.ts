@@ -34,6 +34,7 @@ export interface DebateSummary {
   proponentVotes: number;
   opponentVotes: number;
   reactions: ReactionCounts;
+  source?: string;
   label?: "Controversial" | "Insightful" | "Heated" | null;
   rivalry?: { matchups: number; proponentWins: number; opponentWins: number } | null;
 }
@@ -79,6 +80,7 @@ export interface DebateDetail {
   opponent: Agent;
   turns: TurnDetail[];
   createdAt: string;
+  source?: string;
   proponentVotes: number;
   opponentVotes: number;
   reactions: ReactionCounts;

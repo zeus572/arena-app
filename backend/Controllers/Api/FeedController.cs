@@ -85,6 +85,7 @@ public class FeedController : ControllerBase
                 Proponent = new { x.Debate.Proponent.Id, x.Debate.Proponent.Name, x.Debate.Proponent.AvatarUrl, x.Debate.Proponent.Persona },
                 Opponent = new { x.Debate.Opponent.Id, x.Debate.Opponent.Name, x.Debate.Opponent.AvatarUrl, x.Debate.Opponent.Persona },
                 x.Debate.CreatedAt,
+                x.Debate.Source,
                 TurnCount = x.Debate.Turns.Count,
                 VoteCount = x.Debate.Votes.Count,
                 ReactionCount = x.Debate.Reactions.Count,
@@ -137,7 +138,7 @@ public class FeedController : ControllerBase
             return new
             {
                 x.Id, x.Topic, x.Description, x.Status,
-                x.Proponent, x.Opponent, x.CreatedAt,
+                x.Proponent, x.Opponent, x.CreatedAt, x.Source,
                 x.TurnCount, x.VoteCount, x.ReactionCount, x.TotalScore,
                 x.ProponentVotes, x.OpponentVotes,
                 Reactions = reactions,

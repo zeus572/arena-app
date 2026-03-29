@@ -64,6 +64,7 @@ public class DebatesController : ControllerBase
             Proponent = new { debate.Proponent.Id, debate.Proponent.Name, debate.Proponent.AvatarUrl, debate.Proponent.Persona },
             Opponent = new { debate.Opponent.Id, debate.Opponent.Name, debate.Opponent.AvatarUrl, debate.Opponent.Persona },
             debate.CreatedAt,
+            debate.Source,
             ProponentVotes = proponentVotes,
             OpponentVotes = opponentVotes,
             Reactions = debate.Reactions
@@ -79,6 +80,7 @@ public class DebatesController : ControllerBase
                 Type = t.Type.ToString(),
                 t.Content,
                 t.CitationsJson,
+                t.AnalysisJson,
                 t.CreatedAt,
                 Reactions = t.Reactions
                     .GroupBy(r => r.Type)

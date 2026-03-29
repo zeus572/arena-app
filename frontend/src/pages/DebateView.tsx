@@ -763,6 +763,11 @@ export default function DebateViewPage() {
               debate.status
             )}
           </span>
+          {debate.source === "breaking" && (
+            <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold bg-red-600/10 text-red-600">
+              BREAKING NEWS
+            </span>
+          )}
           <span className="text-[11px] text-muted-foreground">
             {new Date(debate.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
           </span>

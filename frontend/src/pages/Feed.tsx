@@ -268,6 +268,11 @@ export default function Feed() {
                     <span>{d.turnCount} turns</span>
                     <span>{d.voteCount} votes</span>
                     <span>{timeAgo(d.createdAt)}</span>
+                    {d.source === "breaking" && (
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-600/10 text-red-600 animate-pulse">
+                        BREAKING
+                      </span>
+                    )}
                     {d.label && (
                       <span className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-semibold",
