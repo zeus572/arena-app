@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData } from "./types";
+import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -52,6 +52,11 @@ export async function fetchDebate(id: string) {
 
 export async function fetchAgents() {
   const res = await api.get<Agent[]>("/agents");
+  return res.data;
+}
+
+export async function fetchAgentDetail(id: string) {
+  const res = await api.get<AgentDetail>(`/agents/${id}`);
   return res.data;
 }
 

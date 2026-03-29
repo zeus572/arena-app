@@ -264,7 +264,85 @@ public class AgentsController : ControllerBase
     {
         var agent = await _db.Agents.FindAsync(id);
         if (agent is null) return NotFound();
-        return Ok(agent);
+
+        var debates = await _db.Debates
+            .Where(d => d.Status == DebateStatus.Completed && (d.ProponentId == id || d.OpponentId == id))
+            .Include(d => d.Votes)
+            .Include(d => d.Turns).ThenInclude(t => t.Reactions)
+            .Include(d => d.DebateTags).ThenInclude(dt => dt.Tag)
+            .ToListAsync();
+
+        int wins = 0, losses = 0, draws = 0;
+        double totalWords = 0;
+        int turnCount = 0;
+        int totalCitations = 0;
+        int totalInsightful = 0;
+        int totalDisagree = 0;
+        int totalLikes = 0;
+
+        foreach (var d in debates)
+        {
+            var proVotes = d.Votes.Count(v => v.VotedForAgentId == d.ProponentId);
+            var oppVotes = d.Votes.Count(v => v.VotedForAgentId == d.OpponentId);
+            var isProponent = d.ProponentId == id;
+            var agentVotes = isProponent ? proVotes : oppVotes;
+            var opponentVotes = isProponent ? oppVotes : proVotes;
+
+            if (agentVotes > opponentVotes) wins++;
+            else if (agentVotes < opponentVotes) losses++;
+            else draws++;
+
+            foreach (var turn in d.Turns.Where(t => t.AgentId == id))
+            {
+                totalWords += turn.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+                turnCount++;
+                if (!string.IsNullOrEmpty(turn.CitationsJson)) totalCitations++;
+                totalInsightful += turn.Reactions.Count(r => r.Type == "insightful");
+                totalDisagree += turn.Reactions.Count(r => r.Type == "disagree");
+                totalLikes += turn.Reactions.Count(r => r.Type == "like");
+            }
+        }
+
+        var avgWords = turnCount > 0 ? totalWords / turnCount : 0;
+        var topTags = debates
+            .SelectMany(d => d.DebateTags.Select(dt => dt.Tag.DisplayName))
+            .GroupBy(t => t)
+            .OrderByDescending(g => g.Count())
+            .Take(5)
+            .Select(g => new { Tag = g.Key, Count = g.Count() })
+            .ToList();
+
+        // Compute personality traits from behavior
+        var personality = new
+        {
+            Aggressiveness = Math.Min(10, Math.Round(agent.Aggressiveness + (turnCount > 0 ? (double)totalDisagree / turnCount * 2 : 0), 1)),
+            Eloquence = Math.Min(10, Math.Round(agent.Eloquence + Math.Min(3, avgWords / 100), 1)),
+            FactReliance = Math.Min(10, Math.Round(agent.FactReliance + (turnCount > 0 ? (double)totalCitations / turnCount * 3 : 0), 1)),
+            Empathy = Math.Min(10, Math.Round(agent.Empathy + (turnCount > 0 ? (double)totalInsightful / turnCount * 2 : 0), 1)),
+            Wit = Math.Min(10, Math.Round(agent.Wit + (turnCount > 0 ? (double)totalLikes / turnCount * 2 : 0), 1)),
+        };
+
+        return Ok(new
+        {
+            agent.Id, agent.Name, agent.Description, agent.AvatarUrl,
+            agent.Persona, agent.ReputationScore, agent.CreatedAt,
+            Stats = new
+            {
+                Wins = wins, Losses = losses, Draws = draws,
+                TotalDebates = debates.Count,
+                AvgWordsPerTurn = Math.Round(avgWords, 0),
+                TotalTurns = turnCount,
+                TotalCitations = totalCitations,
+            },
+            Personality = personality,
+            TopTags = topTags,
+            ReactionBreakdown = new
+            {
+                Likes = totalLikes,
+                Insightful = totalInsightful,
+                Disagree = totalDisagree,
+            },
+        });
     }
 
     [HttpGet("{id:guid}/rivals")]

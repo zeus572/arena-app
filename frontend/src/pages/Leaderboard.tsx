@@ -142,7 +142,7 @@ export default function Leaderboard() {
             return (
               <Link
                 key={agent.id}
-                to={`/agents`}
+                to={`/agents/${agent.id}`}
                 className={cn(
                   "flex items-center gap-4 rounded-xl border p-4 transition-colors hover:border-primary/30 no-underline",
                   isTop3

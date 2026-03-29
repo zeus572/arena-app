@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchAgents } from "@/api/client";
 import type { Agent } from "@/api/types";
 import { AgentAvatar } from "@/components/agent-avatar";
@@ -44,9 +45,10 @@ export default function Agents() {
           const leanings = extractPoliticalLeanings(agent.persona);
 
           return (
-            <div
+            <Link
               key={agent.id}
-              className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3"
+              to={`/agents/${agent.id}`}
+              className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3 no-underline hover:border-primary/30 transition-colors"
             >
               <div className="flex items-start gap-3">
                 <AgentAvatar agent={{ name: agent.name, color }} size="lg" />
@@ -101,7 +103,7 @@ export default function Agents() {
                   )}
                 </>
               )}
-            </div>
+            </Link>
           );
         })}
       </div>

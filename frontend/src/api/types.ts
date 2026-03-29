@@ -140,6 +140,38 @@ export interface InterventionData {
   authorName: string;
 }
 
+export interface AgentDetail {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  persona: string;
+  reputationScore: number;
+  createdAt: string;
+  stats: {
+    wins: number;
+    losses: number;
+    draws: number;
+    totalDebates: number;
+    avgWordsPerTurn: number;
+    totalTurns: number;
+    totalCitations: number;
+  };
+  personality: {
+    aggressiveness: number;
+    eloquence: number;
+    factReliance: number;
+    empathy: number;
+    wit: number;
+  };
+  topTags: { tag: string; count: number }[];
+  reactionBreakdown: {
+    likes: number;
+    insightful: number;
+    disagree: number;
+  };
+}
+
 export interface CreateDebateRequest {
   topic: string;
   description?: string;
