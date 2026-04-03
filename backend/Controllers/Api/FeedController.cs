@@ -86,6 +86,9 @@ public class FeedController : ControllerBase
                 Opponent = new { x.Debate.Opponent.Id, x.Debate.Opponent.Name, x.Debate.Opponent.AvatarUrl, x.Debate.Opponent.Persona },
                 x.Debate.CreatedAt,
                 x.Debate.Source,
+                NewsHeadline = x.Debate.GeneratedTopic != null ? x.Debate.GeneratedTopic.NewsHeadline : null,
+                NewsSource = x.Debate.GeneratedTopic != null ? x.Debate.GeneratedTopic.NewsSource : null,
+                NewsPublishedAt = x.Debate.GeneratedTopic != null ? x.Debate.GeneratedTopic.NewsPublishedAt : null,
                 TurnCount = x.Debate.Turns.Count,
                 VoteCount = x.Debate.Votes.Count,
                 ReactionCount = x.Debate.Reactions.Count,
@@ -139,6 +142,9 @@ public class FeedController : ControllerBase
             {
                 x.Id, x.Topic, x.Description, x.Status,
                 x.Proponent, x.Opponent, x.CreatedAt, x.Source,
+                NewsInfo = x.Source == "breaking" && x.NewsHeadline != null
+                    ? new { Headline = x.NewsHeadline, Source = x.NewsSource, PublishedAt = x.NewsPublishedAt }
+                    : null,
                 x.TurnCount, x.VoteCount, x.ReactionCount, x.TotalScore,
                 x.ProponentVotes, x.OpponentVotes,
                 Reactions = reactions,

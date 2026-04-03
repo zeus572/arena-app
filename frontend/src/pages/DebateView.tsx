@@ -9,7 +9,7 @@ import { getAgentColor, getAgentLabel, BUBBLE_BG, type AgentColor } from "@/lib/
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown, Mic } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 function ReactionRow({
@@ -83,6 +83,39 @@ function ArbiterCard({ turn }: { turn: TurnDetail }) {
             ? "Both sides have presented their compromise proposals. Cast your vote for the most compelling argument."
             : "Both agents must now find common ground and propose a compromise budget."}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function CommentaryBoothCard({ turns }: { turns: TurnDetail[] }) {
+  return (
+    <div className="flex justify-center py-2">
+      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-5 py-4 max-w-lg w-full">
+        <div className="flex items-center gap-2 mb-3">
+          <Mic size={14} className="text-sky-500" />
+          <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
+            Commentary Booth
+          </span>
+        </div>
+        <div className="space-y-3">
+          {turns.map((turn) => (
+            <div key={turn.id} className="flex items-start gap-2.5">
+              <AgentAvatar
+                agent={{ name: turn.agent.name, color: "commentator" as AgentColor }}
+                size="sm"
+              />
+              <div className="min-w-0">
+                <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                  {turn.agent.name}
+                </span>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                  {turn.content}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -335,7 +368,7 @@ function TurnBubble({
         )}
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-none",
+            "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-none overflow-x-auto",
             "prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5",
             "prose-strong:text-inherit prose-em:text-inherit",
             "prose-table:my-3 prose-table:text-xs prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:font-semibold prose-th:border-b prose-th:border-border",
@@ -414,7 +447,7 @@ function computeMomentum(
   const history: { turnNumber: number; momentum: number; agentId: string }[] = [];
 
   for (const turn of turns) {
-    if (turn.type === "Arbiter") continue;
+    if (turn.type === "Arbiter" || turn.type === "Commentary") continue;
     const r = turn.reactions;
     const positive = (r["like"] ?? 0) + (r["insightful"] ?? 0) + (r["fire"] ?? 0);
     const negative = r["disagree"] ?? 0;
@@ -445,7 +478,7 @@ function MomentumMeter({
   proponentColor: AgentColor;
   opponentColor: AgentColor;
 }) {
-  const argumentTurns = debate.turns.filter((t) => t.type !== "Arbiter");
+  const argumentTurns = debate.turns.filter((t) => t.type !== "Arbiter" && t.type !== "Commentary");
   if (argumentTurns.length < 2) return null;
 
   const { current } = computeMomentum(
@@ -891,6 +924,20 @@ export default function DebateViewPage() {
           </span>
         </div>
 
+        {debate.newsInfo && (
+          <div className="flex items-start gap-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 px-3 py-2.5 mb-4">
+            <BookOpen size={14} className="text-blue-500 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                {debate.newsInfo.headline}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {debate.newsInfo.source} &middot; {new Date(debate.newsInfo.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          </div>
+        )}
+
         <h1 className="text-lg font-bold text-card-foreground leading-snug mb-6 text-balance">
           {debate.topic}
         </h1>
@@ -933,9 +980,19 @@ export default function DebateViewPage() {
       />
 
       <section className="flex flex-col gap-6 mb-8" aria-label="Debate turns">
-        {debate.turns.map((turn) => {
+        {debate.turns.map((turn, i) => {
           if (turn.type === "Arbiter") {
             return <ArbiterCard key={turn.id} turn={turn} />;
+          }
+
+          if (turn.type === "Commentary") {
+            // Only render booth on the first commentary turn of a consecutive pair
+            const prev = debate.turns[i - 1];
+            if (prev?.type === "Commentary") return null;
+            const boothTurns = [turn];
+            const next = debate.turns[i + 1];
+            if (next?.type === "Commentary") boothTurns.push(next);
+            return <CommentaryBoothCard key={turn.id} turns={boothTurns} />;
           }
 
           const isA = turn.agentId === debate.proponent.id;

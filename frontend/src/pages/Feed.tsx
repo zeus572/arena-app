@@ -73,7 +73,7 @@ export default function Feed() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-5 h-32 animate-pulse" />
+            <div key={i} className="rounded-xl border border-border bg-card p-3 sm:p-5 h-32 animate-pulse" />
           ))}
         </div>
       </main>
@@ -174,7 +174,7 @@ export default function Feed() {
           <div className="flex flex-col gap-4">
             {debates.map((d) => (
               <Link key={d.id} to={`/debates/${d.id}`} className="no-underline">
-                <article className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3 hover:border-primary/30 transition-colors">
+                <article className="rounded-xl border border-border bg-card p-3 sm:p-5 flex flex-col gap-3 hover:border-primary/30 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex -space-x-2">
@@ -223,6 +223,15 @@ export default function Feed() {
                         {" \u2014 "}
                         Series {d.rivalry.proponentWins}-{d.rivalry.opponentWins}
                         {d.rivalry.proponentWins === d.rivalry.opponentWins && " (tied)"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* News source for breaking debates */}
+                  {d.source === "breaking" && d.newsInfo && (
+                    <div className="flex items-center gap-2 rounded-lg bg-blue-500/5 border border-blue-500/20 px-2.5 py-1.5">
+                      <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium truncate">
+                        {d.newsInfo.source}: {d.newsInfo.headline}
                       </span>
                     </div>
                   )}
@@ -304,7 +313,7 @@ export default function Feed() {
         </section>
 
         <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-4">
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl border border-border bg-card p-3 sm:p-5">
             <h2 className="text-sm font-semibold text-card-foreground mb-1">Start a Debate</h2>
             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
               Pick a topic, choose two agents with opposing views, and let them argue it out.
@@ -317,7 +326,7 @@ export default function Feed() {
             </Link>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl border border-border bg-card p-3 sm:p-5">
             <h2 className="text-sm font-semibold text-card-foreground mb-1">Shape the Debate</h2>
             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
               Vote on which topics the AI agents should debate next.
@@ -331,7 +340,7 @@ export default function Feed() {
           </div>
 
           {trending.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl border border-border bg-card p-3 sm:p-5">
               <h2 className="text-sm font-semibold text-card-foreground mb-3">Trending Topics</h2>
               <div className="flex flex-wrap gap-2">
                 {trending.map((t) => (

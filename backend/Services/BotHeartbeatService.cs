@@ -127,6 +127,7 @@ public class BotHeartbeatService : BackgroundService
                     ProponentId = proponentId,
                     OpponentId = opponentId,
                     Source = source,
+                    GeneratedTopicId = newsGeneratedTopic?.Id,
                 };
 
                 db.Debates.Add(newDebate);
@@ -288,6 +289,9 @@ public class BotHeartbeatService : BackgroundService
                     }
                 }
 
+                // Commentary injection: after every 2 argument turns
+                await TryInjectCommentaryAsync(db, debate, ct);
+
                 // Pace turns with a delay
                 if (_turnDelaySeconds > 0)
                     await Task.Delay(TimeSpan.FromSeconds(_turnDelaySeconds), ct);
@@ -299,6 +303,66 @@ public class BotHeartbeatService : BackgroundService
         }
 
         _logger.LogInformation("BotHeartbeat tick complete. Active/Compromising debates: {Count}", debates.Count);
+    }
+
+    private async Task TryInjectCommentaryAsync(ArenaDbContext db, Debate debate, CancellationToken ct)
+    {
+        // Reload turns to get accurate count after any wildcard injection
+        var allTurns = await db.Turns
+            .Where(t => t.DebateId == debate.Id)
+            .Include(t => t.Agent)
+            .OrderBy(t => t.TurnNumber)
+            .ToListAsync(ct);
+
+        var argumentCount = allTurns.Count(t => t.Type == TurnType.Argument);
+        var commentaryPairs = allTurns.Count(t => t.Type == TurnType.Commentary) / 2;
+        var expectedPairs = argumentCount / 2;
+
+        if (commentaryPairs >= expectedPairs || argumentCount < 2) return;
+
+        var commentators = await db.Agents
+            .Where(a => a.IsCommentator)
+            .OrderBy(a => a.Name)
+            .Take(2)
+            .ToListAsync(ct);
+
+        if (commentators.Count < 2) return;
+
+        try
+        {
+            var commentary = await _llm.GenerateCommentaryAsync(
+                commentators[0], commentators[1], debate, allTurns);
+
+            var baseTurnNumber = allTurns.Count + 1;
+
+            db.Turns.Add(new Turn
+            {
+                Id = Guid.NewGuid(),
+                DebateId = debate.Id,
+                AgentId = commentators[0].Id,
+                TurnNumber = baseTurnNumber,
+                Type = TurnType.Commentary,
+                Content = commentary.CommentatorAContent,
+            });
+
+            db.Turns.Add(new Turn
+            {
+                Id = Guid.NewGuid(),
+                DebateId = debate.Id,
+                AgentId = commentators[1].Id,
+                TurnNumber = baseTurnNumber + 1,
+                Type = TurnType.Commentary,
+                Content = commentary.CommentatorBContent,
+            });
+
+            await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Commentary injected into '{Topic}' after {Args} argument turns",
+                debate.Topic, argumentCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate commentary for debate {DebateId}", debate.Id);
+        }
     }
 
     private static async Task UpdateReputationAsync(ArenaDbContext db, Debate debate, CancellationToken ct)

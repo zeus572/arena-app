@@ -59,9 +59,9 @@ public class TopicGeneratorService
 
     public (Guid proponentId, Guid opponentId) PickAgentPair(List<Agent> agents)
     {
-        var eligible = agents.Where(a => !a.IsWildcard).ToList();
+        var eligible = agents.Where(a => !a.IsWildcard && !a.IsCommentator).ToList();
         if (eligible.Count < 2)
-            throw new InvalidOperationException("Need at least 2 non-wildcard agents.");
+            throw new InvalidOperationException("Need at least 2 eligible debate agents.");
 
         var shuffled = eligible.OrderBy(_ => _rng.Next()).ToList();
         return (shuffled[0].Id, shuffled[1].Id);

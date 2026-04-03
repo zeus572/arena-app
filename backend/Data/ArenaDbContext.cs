@@ -48,6 +48,11 @@ public class ArenaDbContext : DbContext
                 .WithMany(a => a.DebatesAsOpponent)
                 .HasForeignKey(d => d.OpponentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(d => d.GeneratedTopic)
+                .WithMany()
+                .HasForeignKey(d => d.GeneratedTopicId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Turn>(e =>

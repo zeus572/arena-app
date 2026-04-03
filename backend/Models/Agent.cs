@@ -17,6 +17,7 @@ public class Agent
     public double Wit { get; set; } = 5;
 
     public bool IsWildcard { get; set; }
+    public bool IsCommentator { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Turn> Turns { get; set; } = new List<Turn>();

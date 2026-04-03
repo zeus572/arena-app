@@ -35,8 +35,15 @@ export interface DebateSummary {
   opponentVotes: number;
   reactions: ReactionCounts;
   source?: string;
+  newsInfo?: NewsInfo | null;
   label?: "Controversial" | "Insightful" | "Heated" | null;
   rivalry?: { matchups: number; proponentWins: number; opponentWins: number } | null;
+}
+
+export interface NewsInfo {
+  headline: string;
+  source: string;
+  publishedAt: string;
 }
 
 export type ReactionCounts = Record<string, number>;
@@ -53,7 +60,7 @@ export interface TurnDetail {
   agentId: string;
   agent: { id: string; name: string; avatarUrl?: string };
   turnNumber: number;
-  type?: "Argument" | "Arbiter" | "Compromise" | "Wildcard";
+  type?: "Argument" | "Arbiter" | "Compromise" | "Wildcard" | "Commentary";
   content: string;
   citationsJson?: string | null;
   analysisJson?: string | null;
@@ -81,6 +88,7 @@ export interface DebateDetail {
   turns: TurnDetail[];
   createdAt: string;
   source?: string;
+  newsInfo?: NewsInfo | null;
   proponentVotes: number;
   opponentVotes: number;
   reactions: ReactionCounts;

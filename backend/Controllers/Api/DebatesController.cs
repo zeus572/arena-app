@@ -43,6 +43,7 @@ public class DebatesController : ControllerBase
         var debate = await _db.Debates
             .Include(d => d.Proponent)
             .Include(d => d.Opponent)
+            .Include(d => d.GeneratedTopic)
             .Include(d => d.Turns.OrderBy(t => t.TurnNumber))
                 .ThenInclude(t => t.Agent)
             .Include(d => d.Turns)
@@ -66,6 +67,14 @@ public class DebatesController : ControllerBase
             Opponent = new { debate.Opponent.Id, debate.Opponent.Name, debate.Opponent.AvatarUrl, debate.Opponent.Persona },
             debate.CreatedAt,
             debate.Source,
+            NewsInfo = debate.Source == "breaking" && debate.GeneratedTopic != null
+                ? new
+                {
+                    Headline = debate.GeneratedTopic.NewsHeadline,
+                    Source = debate.GeneratedTopic.NewsSource,
+                    PublishedAt = debate.GeneratedTopic.NewsPublishedAt,
+                }
+                : null,
             ProponentVotes = proponentVotes,
             OpponentVotes = opponentVotes,
             Reactions = debate.Reactions

@@ -16,13 +16,16 @@ public class NewsTopicService
     private readonly HttpClient _http;
 
     // Neutral, no-API-key RSS feeds
-    private static readonly string[] RssFeeds =
+    private static readonly (string Url, string Source)[] RssFeeds =
     {
-        "https://feeds.npr.org/1001/rss.xml",          // NPR News
-        "https://rss.app/feeds/v1.1/tSmBDoO3eVHDGaQl.xml", // AP News (via rss.app proxy)
-        "https://feeds.bbci.co.uk/news/world/rss.xml",  // BBC World
-        "https://feeds.bbci.co.uk/news/rss.xml",        // BBC Top Stories
+        ("https://feeds.npr.org/1001/rss.xml", "NPR"),
+        ("https://rss.app/feeds/v1.1/tSmBDoO3eVHDGaQl.xml", "AP"),
+        ("https://feeds.bbci.co.uk/news/world/rss.xml", "BBC"),
+        ("https://feeds.bbci.co.uk/news/rss.xml", "BBC"),
     };
+
+    private record HeadlineItem(string Title, string Source, DateTime PublishedAt);
+    private record TopicWithHeadline(string Question, int HeadlineIndex);
 
     public NewsTopicService(
         IServiceScopeFactory scopeFactory,
@@ -50,20 +53,26 @@ public class NewsTopicService
 
         _logger.LogInformation("NewsTopicService: Fetched {Count} headlines, generating debate topics...", headlines.Count);
 
-        var debateTopics = await GenerateDebateQuestionsAsync(headlines, ct);
-        if (debateTopics.Count == 0)
+        var topicsWithHeadlines = await GenerateDebateQuestionsAsync(headlines, ct);
+        if (topicsWithHeadlines.Count == 0)
         {
             _logger.LogWarning("NewsTopicService: LLM returned no topics");
             return;
         }
 
-        // Moderate generated topics
+        // Moderate generated topics (extract question strings for existing moderation interface)
         using var scope = _scopeFactory.CreateScope();
         var moderation = scope.ServiceProvider.GetRequiredService<TopicModerationService>();
-        var approved = await moderation.FilterTopicsAsync(debateTopics);
+        var questionStrings = topicsWithHeadlines.Select(t => t.Question).ToList();
+        var approved = await moderation.FilterTopicsAsync(questionStrings);
         _logger.LogInformation("NewsTopicService: {Approved}/{Total} topics passed moderation",
-            approved.Count, debateTopics.Count);
-        debateTopics = approved;
+            approved.Count, topicsWithHeadlines.Count);
+
+        // Filter to only approved questions
+        var approvedSet = new HashSet<string>(approved, StringComparer.OrdinalIgnoreCase);
+        topicsWithHeadlines = topicsWithHeadlines
+            .Where(t => approvedSet.Contains(t.Question))
+            .ToList();
 
         var db = scope.ServiceProvider.GetRequiredService<ArenaDbContext>();
 
@@ -74,30 +83,38 @@ public class NewsTopicService
         var existingSet = new HashSet<string>(existingTopics, StringComparer.OrdinalIgnoreCase);
         var added = 0;
 
-        foreach (var topic in debateTopics)
+        foreach (var topic in topicsWithHeadlines)
         {
-            if (existingSet.Contains(topic)) continue;
+            if (existingSet.Contains(topic.Question)) continue;
+
+            // Look up the source headline (with bounds check)
+            HeadlineItem? headline = topic.HeadlineIndex >= 1 && topic.HeadlineIndex <= headlines.Count
+                ? headlines[topic.HeadlineIndex - 1]
+                : null;
 
             db.Set<GeneratedTopic>().Add(new GeneratedTopic
             {
                 Id = Guid.NewGuid(),
-                Title = topic,
+                Title = topic.Question,
                 Source = "news",
+                NewsHeadline = headline?.Title,
+                NewsSource = headline?.Source,
+                NewsPublishedAt = headline?.PublishedAt,
             });
-            existingSet.Add(topic);
+            existingSet.Add(topic.Question);
             added++;
         }
 
         await db.SaveChangesAsync(ct);
         _logger.LogInformation("NewsTopicService: Added {Added} new topics from news (total generated: {Total})",
-            added, debateTopics.Count);
+            added, topicsWithHeadlines.Count);
     }
 
-    private async Task<List<string>> FetchHeadlinesAsync(CancellationToken ct)
+    private async Task<List<HeadlineItem>> FetchHeadlinesAsync(CancellationToken ct)
     {
-        var headlines = new List<string>();
+        var headlines = new List<HeadlineItem>();
 
-        foreach (var feedUrl in RssFeeds)
+        foreach (var (feedUrl, sourceName) in RssFeeds)
         {
             try
             {
@@ -109,7 +126,13 @@ public class NewsTopicService
                 {
                     var title = item.Title?.Text?.Trim();
                     if (!string.IsNullOrEmpty(title) && title.Length > 15)
-                        headlines.Add(title);
+                    {
+                        var publishedAt = item.PublishDate != DateTimeOffset.MinValue
+                            ? item.PublishDate.UtcDateTime
+                            : DateTime.UtcNow;
+
+                        headlines.Add(new HeadlineItem(title, sourceName, publishedAt));
+                    }
                 }
             }
             catch (Exception ex)
@@ -118,15 +141,16 @@ public class NewsTopicService
             }
         }
 
-        // Deduplicate and shuffle
+        // Deduplicate by title and shuffle
         return headlines
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .GroupBy(h => h.Title, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
             .OrderBy(_ => Random.Shared.Next())
             .Take(30)
             .ToList();
     }
 
-    private async Task<List<string>> GenerateDebateQuestionsAsync(List<string> headlines, CancellationToken ct)
+    private async Task<List<TopicWithHeadline>> GenerateDebateQuestionsAsync(List<HeadlineItem> headlines, CancellationToken ct)
     {
         var apiKey = _config["Anthropic:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
@@ -135,7 +159,7 @@ public class NewsTopicService
             return [];
         }
 
-        var headlineBlock = string.Join("\n", headlines.Select((h, i) => $"{i + 1}. {h}"));
+        var headlineBlock = string.Join("\n", headlines.Select((h, i) => $"{i + 1}. [{h.Source}] {h.Title}"));
 
         var requestBody = new
         {
@@ -147,7 +171,7 @@ public class NewsTopicService
                 Each question should be debatable from multiple political perspectives.
                 Focus on policy implications, not just the news event itself.
                 Make questions concise (under 80 characters) and start with "Should", "Is", "Can", "Does", or "Will".
-                Return ONLY a JSON array of strings, no other text.
+                Return ONLY a JSON array of objects, each with "question" (string) and "headlineIndex" (number, the 1-based index of the headline that inspired it).
                 Generate 8-12 unique questions.
                 """,
             messages = new[]
@@ -190,11 +214,23 @@ public class NewsTopicService
             if (jsonStart < 0 || jsonEnd < 0) return [];
 
             var jsonArray = text[jsonStart..(jsonEnd + 1)];
-            var topics = JsonSerializer.Deserialize<List<string>>(jsonArray) ?? [];
 
-            return topics
-                .Where(t => t.Length > 15 && t.Length < 120 && t.EndsWith('?'))
-                .ToList();
+            // Parse as array of objects with question + headlineIndex
+            using var parsed = JsonDocument.Parse(jsonArray);
+            var results = new List<TopicWithHeadline>();
+
+            foreach (var element in parsed.RootElement.EnumerateArray())
+            {
+                var question = element.TryGetProperty("question", out var qProp) ? qProp.GetString() : null;
+                var headlineIndex = element.TryGetProperty("headlineIndex", out var hProp) && hProp.TryGetInt32(out var idx) ? idx : 0;
+
+                if (!string.IsNullOrEmpty(question) && question.Length > 15 && question.Length < 120 && question.EndsWith('?'))
+                {
+                    results.Add(new TopicWithHeadline(question, headlineIndex));
+                }
+            }
+
+            return results;
         }
         catch (Exception ex)
         {

@@ -298,6 +298,27 @@ using (var scope = app.Services.CreateScope())
             IsWildcard = true,
             Aggressiveness = 1, Eloquence = 9, FactReliance = 3, Empathy = 7, Wit = 8,
         },
+        // === COMMENTATOR AGENTS ===
+        new()
+        {
+            Id = Guid.Parse("a1a00000-0000-0000-0000-000000000020"),
+            Name = "Alex 'The Analyst' Chen",
+            Description = "Sharp analytical commentator who breaks down debate strategy and scoring",
+            Persona = "You are Alex Chen, a debate commentator known for sharp tactical analysis. You are part of a commentary booth. You break down rhetorical strategies, spot logical fallacies, and score the debate like a boxing match. You're fair but blunt — if someone lands a knockout point, you call it. If someone dodges a question, you notice. You speak in short, punchy observations. Think ESPN analyst meets political pundit.",
+            ReputationScore = 50,
+            IsCommentator = true,
+            Aggressiveness = 2, Eloquence = 8, FactReliance = 7, Empathy = 5, Wit = 6,
+        },
+        new()
+        {
+            Id = Guid.Parse("a1a00000-0000-0000-0000-000000000021"),
+            Name = "Jordan 'Hype' Williams",
+            Description = "Energetic color commentator who brings the excitement and crowd perspective",
+            Persona = "You are Jordan Williams, an energetic debate commentator who brings the hype. You are part of a commentary booth. You react to big moments with genuine excitement, translate complex policy into everyday language, and represent the audience perspective. You use vivid metaphors, sports analogies, and pop culture references. When someone makes a great point you get hyped. When the debate gets boring you call it out. Think color commentator meets podcast host.",
+            ReputationScore = 50,
+            IsCommentator = true,
+            Aggressiveness = 4, Eloquence = 7, FactReliance = 3, Empathy = 8, Wit = 9,
+        },
     };
 
     foreach (var expected in expectedAgents)
@@ -318,6 +339,7 @@ using (var scope = app.Services.CreateScope())
             existing.Empathy = expected.Empathy;
             existing.Wit = expected.Wit;
             existing.IsWildcard = expected.IsWildcard;
+            existing.IsCommentator = expected.IsCommentator;
         }
     }
     await db.SaveChangesAsync();

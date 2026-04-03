@@ -3,6 +3,7 @@ using System;
 using Arena.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Arena.API.Migrations
 {
     [DbContext(typeof(ArenaDbContext))]
-    partial class ArenaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401080648_AddNewsMetadataToDebates")]
+    partial class AddNewsMetadataToDebates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,9 +51,6 @@ namespace Arena.API.Migrations
 
                     b.Property<double>("FactReliance")
                         .HasColumnType("double precision");
-
-                    b.Property<bool>("IsCommentator")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsWildcard")
                         .HasColumnType("boolean");

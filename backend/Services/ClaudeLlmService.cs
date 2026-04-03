@@ -255,6 +255,116 @@ public class ClaudeLlmService : ILlmService
         throw new InvalidOperationException($"Final Claude call failed: {finalResponse.StatusCode}");
     }
 
+    public async Task<CommentaryResult> GenerateCommentaryAsync(Agent commentatorA, Agent commentatorB, Debate debate, List<Turn> previousTurns)
+    {
+        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514";
+
+        var systemPrompt = $"""
+            You are writing dialogue for two debate commentators in a live commentary booth.
+
+            Commentator 1: {commentatorA.Name} — {commentatorA.Persona}
+            Commentator 2: {commentatorB.Name} — {commentatorB.Persona}
+
+            The debate topic is: "{debate.Topic}"
+            {(debate.Description is not null ? $"Context: {debate.Description}" : "")}
+
+            COMMENTARY RULES:
+            - This is a sports-style commentary booth — keep it entertaining, snappy, and fun.
+            - Each commentator speaks 1-3 sentences MAX. Brevity is key.
+            - Focus on: who's winning, strong/weak moments, rhetorical highlights, entertainment.
+            - They should play off each other — agree, disagree, build on each other's takes.
+            - Do NOT summarize arguments in full — just react to key moments.
+            - Reference specific things the debaters said or did.
+            - Be opinionated! Take positions on who's doing better.
+            - Use casual, conversational language — not academic.
+            - Do not break character or reference being AI.
+
+            FORMAT (you MUST follow this exactly):
+            [{commentatorA.Name}]: <their commentary>
+            [{commentatorB.Name}]: <their commentary>
+            """;
+
+        // Only pass recent turns for context (last 6)
+        var recentTurns = previousTurns
+            .OrderBy(t => t.TurnNumber)
+            .TakeLast(6)
+            .ToList();
+
+        var turnSummary = string.Join("\n", recentTurns.Select(t =>
+        {
+            var typeLabel = t.Type != TurnType.Argument ? $" [{t.Type}]" : "";
+            var snippet = t.Content.Length > 300 ? t.Content[..300] + "..." : t.Content;
+            return $"Turn {t.TurnNumber}{typeLabel} ({t.Agent?.Name ?? "Agent"}): {snippet}";
+        }));
+
+        var messages = new List<object>
+        {
+            new Dictionary<string, object>
+            {
+                ["role"] = "user",
+                ["content"] = $"Here are the recent turns in the debate. Provide your commentary booth reaction:\n\n{turnSummary}"
+            }
+        };
+
+        var requestBody = new Dictionary<string, object>
+        {
+            ["model"] = model,
+            ["max_tokens"] = 400,
+            ["system"] = systemPrompt,
+            ["messages"] = messages,
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync("v1/messages", httpContent);
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Claude API error for commentary: {Status} {Body}", response.StatusCode, responseBody);
+            throw new InvalidOperationException($"Claude API returned {response.StatusCode}");
+        }
+
+        using var doc = JsonDocument.Parse(responseBody);
+        var text = ExtractText(doc.RootElement.GetProperty("content"));
+
+        // Parse the [Name]: content format
+        return ParseCommentary(text, commentatorA.Name, commentatorB.Name);
+    }
+
+    private static CommentaryResult ParseCommentary(string text, string nameA, string nameB)
+    {
+        var result = new CommentaryResult();
+
+        var markerA = $"[{nameA}]:";
+        var markerB = $"[{nameB}]:";
+
+        var idxA = text.IndexOf(markerA, StringComparison.OrdinalIgnoreCase);
+        var idxB = text.IndexOf(markerB, StringComparison.OrdinalIgnoreCase);
+
+        if (idxA >= 0 && idxB >= 0)
+        {
+            if (idxA < idxB)
+            {
+                result.CommentatorAContent = text[(idxA + markerA.Length)..idxB].Trim();
+                result.CommentatorBContent = text[(idxB + markerB.Length)..].Trim();
+            }
+            else
+            {
+                result.CommentatorBContent = text[(idxB + markerB.Length)..idxA].Trim();
+                result.CommentatorAContent = text[(idxA + markerA.Length)..].Trim();
+            }
+        }
+        else
+        {
+            // Fallback: give everything to A
+            result.CommentatorAContent = text.Trim();
+            result.CommentatorBContent = "Couldn't have said it better myself!";
+        }
+
+        return result;
+    }
+
     private async Task<List<FactProviders.FactResult>> ExecuteToolAsync(string toolName, string query)
     {
         var providerName = toolName switch

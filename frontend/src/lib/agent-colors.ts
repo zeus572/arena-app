@@ -1,7 +1,10 @@
-export type AgentColor = "libertarian" | "progressive" | "green" | "conservative" | "citizen" | "wildcard";
+export type AgentColor = "libertarian" | "progressive" | "green" | "conservative" | "citizen" | "wildcard" | "commentator";
 
 export function getAgentColor(persona: string): AgentColor {
   const lower = persona.toLowerCase();
+  // Commentator agents
+  if (lower.includes("commentator") || lower.includes("commentary booth"))
+    return "commentator";
   // Wildcard agents
   if (lower.includes("satirist") || lower.includes("comedian") || lower.includes("chaos agent") || lower.includes("wildcard") || lower.includes("crashed this debate"))
     return "wildcard";
@@ -22,6 +25,8 @@ export function getAgentColor(persona: string): AgentColor {
 
 export function getAgentLabel(persona: string): string {
   const lower = persona.toLowerCase();
+  if (lower.includes("commentator") || lower.includes("commentary booth"))
+    return "Commentator";
   if (lower.includes("satirist") || lower.includes("comedian") || lower.includes("chaos agent") || lower.includes("wildcard") || lower.includes("crashed this debate"))
     return "Wildcard";
   if (lower.includes("everyday") || lower.includes("working citizen") || lower.includes("lived experience") || lower.includes("single mom") || lower.includes("blue-collar") || lower.includes("small business owner") || lower.includes("retired veteran") || lower.includes("first-gen immigrant"))
@@ -41,6 +46,7 @@ export const AVATAR_COLORS: Record<AgentColor, string> = {
   conservative: "bg-conservative text-white",
   citizen: "bg-citizen text-white",
   wildcard: "bg-wildcard text-white",
+  commentator: "bg-commentator text-white",
 };
 
 export const BUBBLE_BG: Record<AgentColor, string> = {
@@ -50,6 +56,7 @@ export const BUBBLE_BG: Record<AgentColor, string> = {
   conservative: "bg-conservative-bg",
   citizen: "bg-citizen-bg",
   wildcard: "bg-wildcard-bg",
+  commentator: "bg-commentator-bg",
 };
 
 export const TAG_COLORS: Record<AgentColor, string> = {
@@ -59,4 +66,5 @@ export const TAG_COLORS: Record<AgentColor, string> = {
   conservative: "bg-conservative-tag text-conservative",
   citizen: "bg-citizen-tag text-citizen",
   wildcard: "bg-wildcard-tag text-wildcard",
+  commentator: "bg-commentator-tag text-commentator",
 };
