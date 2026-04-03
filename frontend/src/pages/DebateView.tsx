@@ -89,33 +89,32 @@ function ArbiterCard({ turn }: { turn: TurnDetail }) {
 }
 
 function CommentaryBoothCard({ turns }: { turns: TurnDetail[] }) {
+  if (turns.length === 0) return null;
   return (
-    <div className="flex justify-center py-2">
-      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-5 py-4 max-w-lg w-full">
-        <div className="flex items-center gap-2 mb-3">
-          <Mic size={14} className="text-sky-500" />
-          <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
-            Commentary Booth
-          </span>
-        </div>
-        <div className="space-y-3">
-          {turns.map((turn) => (
-            <div key={turn.id} className="flex items-start gap-2.5">
-              <AgentAvatar
-                agent={{ name: turn.agent.name, color: "commentator" as AgentColor }}
-                size="sm"
-              />
-              <div className="min-w-0">
-                <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300">
-                  {turn.agent.name}
-                </span>
-                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                  {turn.content}
-                </p>
-              </div>
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-5 py-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Mic size={14} className="text-sky-500" />
+        <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
+          TLDR &mdash; Commentary Booth
+        </span>
+      </div>
+      <div className="space-y-3">
+        {turns.map((turn) => (
+          <div key={turn.id} className="flex items-start gap-2.5">
+            <AgentAvatar
+              agent={{ name: turn.agent.name, color: "commentator" as AgentColor }}
+              size="sm"
+            />
+            <div className="min-w-0">
+              <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                {turn.agent.name}
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                {turn.content}
+              </p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -979,20 +978,16 @@ export default function DebateViewPage() {
         opponentColor={opponentColor}
       />
 
+      <CommentaryBoothCard
+        turns={debate.turns.filter((t) => t.type === "Commentary")}
+      />
+
       <section className="flex flex-col gap-6 mb-8" aria-label="Debate turns">
-        {debate.turns.map((turn, i) => {
+        {debate.turns
+          .filter((turn) => turn.type !== "Commentary")
+          .map((turn) => {
           if (turn.type === "Arbiter") {
             return <ArbiterCard key={turn.id} turn={turn} />;
-          }
-
-          if (turn.type === "Commentary") {
-            // Only render booth on the first commentary turn of a consecutive pair
-            const prev = debate.turns[i - 1];
-            if (prev?.type === "Commentary") return null;
-            const boothTurns = [turn];
-            const next = debate.turns[i + 1];
-            if (next?.type === "Commentary") boothTurns.push(next);
-            return <CommentaryBoothCard key={turn.id} turns={boothTurns} />;
           }
 
           const isA = turn.agentId === debate.proponent.id;
