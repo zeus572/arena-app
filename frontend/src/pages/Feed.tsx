@@ -31,12 +31,16 @@ function LiveHeroBanner({ debate }: { debate: DebateSummary }) {
   const proColor = getAgentColor(debate.proponent.persona ?? "", debate.proponent.agentType);
   const oppColor = getAgentColor(debate.opponent.persona ?? "", debate.opponent.agentType);
   const imgUrl = getTopicImageUrl(debate.topic, 1200, 500);
+  const hue = strHue(debate.topic);
 
   return (
     <Link to={`/debates/${debate.id}`} className="no-underline block group">
-      <div className="relative rounded-2xl overflow-hidden mb-6 min-h-[220px]">
-        {/* Background image */}
-        <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="eager" />
+      <div
+        className="relative rounded-2xl overflow-hidden mb-6 min-h-[220px]"
+        style={{ background: `linear-gradient(135deg, oklch(0.22 0.08 ${hue}), oklch(0.15 0.12 ${(hue + 60) % 360}))` }}
+      >
+        {/* Background image (falls back to gradient on error) */}
+        <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="eager" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-[shimmer_3s_infinite]" />
 
@@ -88,10 +92,14 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
   // Hero: large card with full background image, spans 2 columns
   if (variant === "hero") {
     const imgUrl = getTopicImageUrl(debate.topic, 800, 400);
+    const hue = strHue(debate.topic);
     return (
       <Link to={`/debates/${debate.id}`} className="no-underline block group sm:col-span-2">
-        <article className="relative rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 min-h-[200px]">
-          <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+        <article
+          className="relative rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 min-h-[200px]"
+          style={{ background: `linear-gradient(145deg, oklch(0.25 0.1 ${hue}), oklch(0.18 0.08 ${(hue + 50) % 360}))` }}
+        >
+          <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
 
           <div className="relative p-5 min-h-[200px] flex flex-col justify-end">
@@ -137,15 +145,19 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
   // Image: card with small image thumbnail on top
   if (variant === "image") {
     const imgUrl = getTopicImageUrl(debate.topic, 400, 200);
+    const hue = strHue(debate.topic);
     return (
       <Link to={`/debates/${debate.id}`} className="no-underline block group">
         <article className={cn(
           "rounded-xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
           isLive ? "border-primary/20" : "border-border hover:border-primary/20",
         )}>
-          {/* Thumbnail */}
-          <div className="relative h-28 overflow-hidden">
-            <img src={imgUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          {/* Thumbnail with gradient fallback */}
+          <div
+            className="relative h-28 overflow-hidden"
+            style={{ background: `linear-gradient(135deg, oklch(0.35 0.1 ${hue}), oklch(0.25 0.08 ${(hue + 40) % 360}))` }}
+          >
+            <img src={imgUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
               {isLive && (

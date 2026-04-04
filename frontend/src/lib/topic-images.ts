@@ -16,13 +16,13 @@ const TOPIC_PHOTOS: { keywords: string[]; id: string }[] = [
     id: "photo-1503676260728-1c00da094a0b" },
   // Trade / Tariff
   { keywords: ["trade", "tariff", "import", "export", "nafta", "shipping", "manufactur"],
-    id: "photo-1494412574643-ff11b0a5eb95" },
+    id: "photo-1578575437130-527eed3abbec" },
   // Immigration / Border
   { keywords: ["immigra", "border", "refugee", "asylum", "migra", "citizenship"],
     id: "photo-1521295121783-8a321d551ad2" },
   // Military / Defense
   { keywords: ["military", "defense", "war", "army", "weapon", "nuclear", "security", "veteran"],
-    id: "photo-1580752300992-559f8e1f3f44" },
+    id: "photo-1547036967-23d11aacaee0" },
   // Technology / AI
   { keywords: ["technolog", "ai", "artificial", "robot", "automat", "digital", "cyber", "surveillance"],
     id: "photo-1518770660439-4636190af475" },
@@ -37,7 +37,7 @@ const TOPIC_PHOTOS: { keywords: string[]; id: string }[] = [
     id: "photo-1446776811953-b23d57bd21aa" },
   // Gun / Firearms
   { keywords: ["gun", "firearm", "second amendment", "weapon ban", "shooting"],
-    id: "photo-1584281722575-0340824e7bed" },
+    id: "photo-1584483766114-2cea6facdf57" },
   // Justice / Law / Crime
   { keywords: ["justice", "law", "court", "prison", "crime", "police", "rights", "constitution"],
     id: "photo-1589829545856-d10d557cf95f" },
