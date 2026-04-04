@@ -428,6 +428,47 @@ function ArgumentBreakdown({ turn }: { turn: TurnDetail }) {
   );
 }
 
+/* ─────────────────── CollapsibleSources ─────────────────── */
+
+function CollapsibleSources({ citationsJson }: { citationsJson: string }) {
+  const [open, setOpen] = useState(false);
+
+  let citations: TurnCitation[];
+  try {
+    const raw = JSON.parse(citationsJson) as Record<string, string>[];
+    citations = raw.map((c) => ({
+      source: c.source || c.Source || "",
+      title: c.title || c.Title || "",
+      url: c.url || c.Url || "",
+    }));
+  } catch {
+    return null;
+  }
+
+  if (citations.length === 0) return null;
+
+  return (
+    <div className="mt-3 pt-2 border-t border-border/30">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+      >
+        {open ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+        {citations.length} source{citations.length !== 1 ? "s" : ""}
+      </button>
+      {open && (
+        <div className="flex flex-col gap-1 mt-1.5">
+          {citations.map((c, i) => (
+            <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate block" onClick={(e) => e.stopPropagation()}>
+              [{c.source}] {c.title}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────── TurnBubble (with animations) ─────────────────── */
 
 function TurnBubble({
@@ -547,31 +588,7 @@ function TurnBubble({
           ) : (
             <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>
           )}
-          {streamingDone && turn.citationsJson && (() => {
-            try {
-              const raw = JSON.parse(turn.citationsJson) as Record<string, string>[];
-              const citations: TurnCitation[] = raw.map((c) => ({
-                source: c.source || c.Source || "",
-                title: c.title || c.Title || "",
-                url: c.url || c.Url || "",
-              }));
-              if (citations.length === 0) return null;
-              return (
-                <div className="mt-3 pt-2 border-t border-border/30">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Sources</p>
-                  <div className="flex flex-col gap-1">
-                    {citations.map((c, i) => (
-                      <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate block" onClick={(e) => e.stopPropagation()}>
-                        [{c.source}] {c.title}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              );
-            } catch {
-              return null;
-            }
-          })()}
+          {streamingDone && turn.citationsJson && <CollapsibleSources citationsJson={turn.citationsJson} />}
         </div>
         <div className={cn("mt-1 px-1 flex items-center gap-2", isLeft ? "" : "flex-row-reverse")}>
           <ReactionRow
