@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { getAgentColor, FORMAT_LABELS } from "@/lib/agent-colors";
 import { getTopicImageUrl } from "@/lib/topic-images";
-import { TrendingUp, Flame, PlusCircle, Swords, Search, X, Clock, Trophy, MessageSquarePlus, ThumbsUp, Play, Zap, MessageCircle, ChevronRight } from "lucide-react";
+import { TrendingUp, Flame, Swords, Search, X, Clock, Trophy, MessageSquarePlus, ThumbsUp, Play, MessageCircle, ChevronRight } from "lucide-react";
 
 function strHue(s: string): number {
   let h = 0;
