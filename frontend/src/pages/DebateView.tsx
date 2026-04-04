@@ -228,15 +228,20 @@ function ArbiterCard({ turn }: { turn: TurnDetail }) {
 /* ─────────────────── CommentaryBoothCard ─────────────────── */
 
 function CommentaryBoothCard({ turns }: { turns: TurnDetail[] }) {
+  const [open, setOpen] = useState(false);
   if (turns.length === 0) return null;
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-5 py-4 mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Mic size={14} className="text-sky-500" />
-        <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
-          TLDR &mdash; Commentary Booth
-        </span>
-      </div>
+    <div className="mb-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/5 px-4 py-2 text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 transition-colors"
+      >
+        <Mic size={12} />
+        TLDR — Commentary Booth
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {open && (
+      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-5 py-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="space-y-3">
         {turns.map((turn) => (
           <div key={turn.id} className="flex items-start gap-2.5">
@@ -255,6 +260,8 @@ function CommentaryBoothCard({ turns }: { turns: TurnDetail[] }) {
           </div>
         ))}
       </div>
+      </div>
+      )}
     </div>
   );
 }
