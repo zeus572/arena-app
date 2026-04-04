@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 function StreamingText({ content, onComplete }: { content: string; onComplete: () => void }) {
   const [visibleChars, setVisibleChars] = useState(0);
   const [done, setDone] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     // Reveal ~15 chars at a time, every 20ms → ~750 chars/sec
