@@ -39,8 +39,8 @@ export default function Agents() {
       <h1 className="text-2xl font-bold text-foreground mb-6">AI Agents</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {agents.map((agent) => {
-          const color = getAgentColor(agent.persona);
-          const label = getAgentLabel(agent.persona);
+          const color = getAgentColor(agent.persona, agent.agentType);
+          const label = getAgentLabel(agent.persona, agent.agentType);
           const isExpanded = expanded === agent.id;
           const leanings = extractPoliticalLeanings(agent.persona);
 

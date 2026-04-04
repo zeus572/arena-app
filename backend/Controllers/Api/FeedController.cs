@@ -85,6 +85,7 @@ public class FeedController : ControllerBase
                 Proponent = new { x.Debate.Proponent.Id, x.Debate.Proponent.Name, x.Debate.Proponent.AvatarUrl, x.Debate.Proponent.Persona },
                 Opponent = new { x.Debate.Opponent.Id, x.Debate.Opponent.Name, x.Debate.Opponent.AvatarUrl, x.Debate.Opponent.Persona },
                 x.Debate.CreatedAt,
+                x.Debate.Format,
                 x.Debate.Source,
                 NewsHeadline = x.Debate.GeneratedTopic != null ? x.Debate.GeneratedTopic.NewsHeadline : null,
                 NewsSource = x.Debate.GeneratedTopic != null ? x.Debate.GeneratedTopic.NewsSource : null,
@@ -140,7 +141,7 @@ public class FeedController : ControllerBase
             var reactions = x.Reactions.ToDictionary(r => r.Type, r => r.Count);
             return new
             {
-                x.Id, x.Topic, x.Description, x.Status,
+                x.Id, x.Topic, x.Description, x.Status, x.Format,
                 x.Proponent, x.Opponent, x.CreatedAt, x.Source,
                 NewsInfo = x.Source == "breaking" && x.NewsHeadline != null
                     ? new { Headline = x.NewsHeadline, Source = x.NewsSource, PublishedAt = x.NewsPublishedAt }

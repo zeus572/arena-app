@@ -6,7 +6,10 @@ public enum TurnType
     Arbiter,
     Compromise,
     Wildcard,
-    Commentary
+    Commentary,
+    Agreement,
+    Question,
+    Roast
 }
 
 public class Turn

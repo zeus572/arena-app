@@ -16,6 +16,8 @@ export interface Agent {
   persona: string;
   reputationScore: number;
   createdAt: string;
+  agentType?: string | null;
+  era?: string | null;
   stats?: AgentStats;
 }
 
@@ -24,8 +26,9 @@ export interface DebateSummary {
   topic: string;
   description?: string;
   status: "Pending" | "Active" | "Completed" | "Cancelled" | "Compromising";
-  proponent: { id: string; name: string; avatarUrl?: string; persona?: string };
-  opponent: { id: string; name: string; avatarUrl?: string; persona?: string };
+  format?: string;
+  proponent: { id: string; name: string; avatarUrl?: string; persona?: string; agentType?: string | null; era?: string | null };
+  opponent: { id: string; name: string; avatarUrl?: string; persona?: string; agentType?: string | null; era?: string | null };
   createdAt: string;
   turnCount: number;
   voteCount: number;
@@ -60,7 +63,7 @@ export interface TurnDetail {
   agentId: string;
   agent: { id: string; name: string; avatarUrl?: string };
   turnNumber: number;
-  type?: "Argument" | "Arbiter" | "Compromise" | "Wildcard" | "Commentary";
+  type?: "Argument" | "Arbiter" | "Compromise" | "Wildcard" | "Commentary" | "Agreement" | "Question" | "Roast";
   content: string;
   citationsJson?: string | null;
   analysisJson?: string | null;
@@ -78,11 +81,22 @@ export interface Turn {
   createdAt: string;
 }
 
+export interface FormatConfig {
+  displayName: string;
+  maxTurns: number;
+  maxCharactersPerTurn?: number | null;
+  hasCompromisePhase: boolean;
+  hasWildcards: boolean;
+  hasCommentary: boolean;
+}
+
 export interface DebateDetail {
   id: string;
   topic: string;
   description?: string;
   status: string;
+  format?: string;
+  formatConfig?: FormatConfig;
   proponent: Agent;
   opponent: Agent;
   turns: TurnDetail[];
@@ -148,6 +162,16 @@ export interface InterventionData {
   authorName: string;
 }
 
+export interface AgentSourceInfo {
+  id: string;
+  sourceType: string;
+  title: string;
+  author: string;
+  year?: number | null;
+  themeTag?: string | null;
+  priority: number;
+}
+
 export interface AgentDetail {
   id: string;
   name: string;
@@ -156,6 +180,9 @@ export interface AgentDetail {
   persona: string;
   reputationScore: number;
   createdAt: string;
+  agentType?: string | null;
+  era?: string | null;
+  sources?: AgentSourceInfo[];
   stats: {
     wins: number;
     losses: number;
@@ -183,6 +210,21 @@ export interface AgentDetail {
 export interface CreateDebateRequest {
   topic: string;
   description?: string;
+  format?: string;
   proponentId?: string;
   opponentId?: string;
+}
+
+export interface DebateFormatInfo {
+  format: string;
+  displayName: string;
+  description: string;
+  maxTurns: number;
+  maxTokens: number;
+  maxCharactersPerTurn?: number | null;
+  hasCompromisePhase: boolean;
+  hasWildcards: boolean;
+  hasCommentary: boolean;
+  hasTools: boolean;
+  hasBudgetTable: boolean;
 }

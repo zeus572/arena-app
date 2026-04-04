@@ -15,6 +15,8 @@ public class RankingService
 
     public async Task<DebateAggregate> ComputeScoreAsync(ArenaDbContext db, Debate debate)
     {
+        var formatConfig = DebateFormatConfig.Get(debate.Format);
+
         var turns = await db.Turns.Where(t => t.DebateId == debate.Id).ToListAsync();
         var voteCount = await db.Votes.CountAsync(v => v.DebateId == debate.Id);
         var reactionCount = await db.Reactions.CountAsync(r => r.DebateId == debate.Id);
@@ -33,8 +35,10 @@ public class RankingService
             quality = Math.Min(10, avgWords / 30.0);
         }
 
-        // Engagement: based on votes and reactions
-        var engagement = Math.Min(10, (voteCount * 2.0 + reactionCount) / 5.0);
+        // Engagement: based on votes and reactions, with format multiplier
+        var rawEngagement = Math.Min(10, (voteCount * 2.0 + reactionCount) / 5.0);
+        var engagement = rawEngagement * formatConfig.EngagementMultiplier;
+        engagement = Math.Min(10, engagement); // cap at 10
 
         // Diversity: static for MVP
         var diversity = 5.0;
@@ -42,16 +46,16 @@ public class RankingService
         // Novelty: static for MVP
         var novelty = 5.0;
 
-        // Recency: exponential decay with ~33h half-life
+        // Recency: exponential decay with format-aware half-life
         var hoursAge = (DateTime.UtcNow - debate.CreatedAt).TotalHours;
-        var recency = 10.0 * Math.Exp(-hoursAge / 48.0);
+        var recency = 10.0 * Math.Exp(-hoursAge / formatConfig.RecencyHalfLifeHours);
 
         // Reputation: average of both agents
         var reputation = 0.0;
         if (proponent is not null && opponent is not null)
         {
             reputation = (proponent.ReputationScore + opponent.ReputationScore) / 2.0;
-            reputation = Math.Min(10, reputation / 10.0); // scale to 0-10
+            reputation = Math.Min(10, reputation / 10.0);
         }
 
         // Penalties

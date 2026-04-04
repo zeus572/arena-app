@@ -88,6 +88,7 @@ public class AgentsController : ControllerBase
             {
                 agent.Id, agent.Name, agent.Description, agent.AvatarUrl,
                 agent.Persona, agent.ReputationScore, agent.CreatedAt,
+                agent.AgentType, agent.Era,
                 Stats = new
                 {
                     Wins = wins, Losses = losses, Draws = draws,
@@ -322,10 +323,27 @@ public class AgentsController : ControllerBase
             Wit = Math.Min(10, Math.Round(agent.Wit + (turnCount > 0 ? (double)totalLikes / turnCount * 2 : 0), 1)),
         };
 
+        // Load sources for celebrity/historical agents
+        var sources = await _db.AgentSources
+            .Where(s => s.AgentId == id)
+            .OrderBy(s => s.Priority)
+            .Select(s => new
+            {
+                s.Id,
+                SourceType = s.SourceType.ToString(),
+                s.Title,
+                s.Author,
+                s.Year,
+                s.ThemeTag,
+                s.Priority,
+            })
+            .ToListAsync();
+
         return Ok(new
         {
             agent.Id, agent.Name, agent.Description, agent.AvatarUrl,
             agent.Persona, agent.ReputationScore, agent.CreatedAt,
+            agent.AgentType, agent.Era,
             Stats = new
             {
                 Wins = wins, Losses = losses, Draws = draws,
@@ -342,7 +360,34 @@ public class AgentsController : ControllerBase
                 Insightful = totalInsightful,
                 Disagree = totalDisagree,
             },
+            Sources = sources,
         });
+    }
+
+    [HttpGet("{id:guid}/sources")]
+    public async Task<IActionResult> GetSources(Guid id)
+    {
+        var agent = await _db.Agents.FindAsync(id);
+        if (agent is null) return NotFound();
+
+        var sources = await _db.AgentSources
+            .Where(s => s.AgentId == id)
+            .OrderBy(s => s.Priority)
+            .Select(s => new
+            {
+                s.Id,
+                SourceType = s.SourceType.ToString(),
+                s.Title,
+                s.Author,
+                s.Year,
+                s.ExcerptText,
+                s.Url,
+                s.ThemeTag,
+                s.Priority,
+            })
+            .ToListAsync();
+
+        return Ok(sources);
     }
 
     [HttpGet("{id:guid}/rivals")]

@@ -23,6 +23,6 @@ public class CommentaryResult
 
 public interface ILlmService
 {
-    Task<LlmTurnResult> GenerateTurnAsync(Agent agent, Debate debate, List<Turn> previousTurns, TurnType turnType = TurnType.Argument, string? crowdQuestion = null);
+    Task<LlmTurnResult> GenerateTurnAsync(Agent agent, Debate debate, List<Turn> previousTurns, TurnType turnType = TurnType.Argument, string? crowdQuestion = null, Agent? opponent = null);
     Task<CommentaryResult> GenerateCommentaryAsync(Agent commentatorA, Agent commentatorB, Debate debate, List<Turn> previousTurns);
 }

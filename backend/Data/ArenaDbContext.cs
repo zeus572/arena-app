@@ -22,6 +22,8 @@ public class ArenaDbContext : DbContext
     public DbSet<GeneratedTopic> GeneratedTopics => Set<GeneratedTopic>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<Intervention> Interventions => Set<Intervention>();
+    public DbSet<AgentSource> AgentSources => Set<AgentSource>();
+    public DbSet<DebateParticipant> DebateParticipants => Set<DebateParticipant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,6 +85,19 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<Prediction>(e =>
         {
             e.HasIndex(p => new { p.DebateId, p.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<DebateParticipant>(e =>
+        {
+            e.HasOne(dp => dp.Debate)
+                .WithMany(d => d.Participants)
+                .HasForeignKey(dp => dp.DebateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(dp => dp.Agent)
+                .WithMany()
+                .HasForeignKey(dp => dp.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DebateTag>(e =>

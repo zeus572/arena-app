@@ -57,14 +57,26 @@ public class DebatesController : ControllerBase
         var proponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.ProponentId);
         var opponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.OpponentId);
 
+        var formatConfig = DebateFormatConfig.Get(debate.Format);
+
         return Ok(new
         {
             debate.Id,
             debate.Topic,
             debate.Description,
             Status = debate.Status.ToString(),
-            Proponent = new { debate.Proponent.Id, debate.Proponent.Name, debate.Proponent.AvatarUrl, debate.Proponent.Persona },
-            Opponent = new { debate.Opponent.Id, debate.Opponent.Name, debate.Opponent.AvatarUrl, debate.Opponent.Persona },
+            debate.Format,
+            FormatConfig = new
+            {
+                formatConfig.DisplayName,
+                formatConfig.MaxTurns,
+                formatConfig.MaxCharactersPerTurn,
+                formatConfig.HasCompromisePhase,
+                formatConfig.HasWildcards,
+                formatConfig.HasCommentary,
+            },
+            Proponent = new { debate.Proponent.Id, debate.Proponent.Name, debate.Proponent.AvatarUrl, debate.Proponent.Persona, debate.Proponent.AgentType, debate.Proponent.Era },
+            Opponent = new { debate.Opponent.Id, debate.Opponent.Name, debate.Opponent.AvatarUrl, debate.Opponent.Persona, debate.Opponent.AgentType, debate.Opponent.Era },
             debate.CreatedAt,
             debate.Source,
             NewsInfo = debate.Source == "breaking" && debate.GeneratedTopic != null
@@ -129,11 +141,16 @@ public class DebatesController : ControllerBase
         if (proponentId == opponentId)
             return BadRequest(new { error = "Proponent and opponent must be different agents." });
 
+        var format = request.Format ?? "standard";
+        if (!DebateFormatConfig.All.ContainsKey(format))
+            return BadRequest(new { error = $"Invalid format: {format}" });
+
         var debate = new Debate
         {
             Id = Guid.NewGuid(),
             Topic = request.Topic.Trim(),
             Description = request.Description?.Trim(),
+            Format = format,
             Status = DebateStatus.Pending,
             ProponentId = proponentId,
             OpponentId = opponentId,

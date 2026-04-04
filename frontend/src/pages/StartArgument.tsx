@@ -4,10 +4,20 @@ import { fetchAgents, createDebate } from "@/api/client";
 import type { Agent } from "@/api/types";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
-import { getAgentColor, getAgentLabel } from "@/lib/agent-colors";
+import { getAgentColor, getAgentLabel, FORMAT_LABELS } from "@/lib/agent-colors";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Swords, ChevronLeft, Sparkles, CheckCircle2 } from "lucide-react";
+import { Swords, ChevronLeft, Sparkles, CheckCircle2, MessageSquare, Zap, BookOpen, Flame, Users, Handshake } from "lucide-react";
+
+const FORMAT_OPTIONS = [
+  { key: "standard", icon: Swords, desc: "Classic 6-turn debate with compromise phase" },
+  { key: "common_ground", icon: Handshake, desc: "Find genuine agreement between opponents" },
+  { key: "tweet", icon: MessageSquare, desc: "280 chars max, 10 rounds of social media combat" },
+  { key: "rapid_fire", icon: Zap, desc: "1-2 sentences per turn, 14 rounds of rapid sparring" },
+  { key: "longform", icon: BookOpen, desc: "500-800 word essays, deep sourced arguments" },
+  { key: "roast", icon: Flame, desc: "Humor-first political roast battle" },
+  { key: "town_hall", icon: Users, desc: "One agent on the hot seat, others ask questions" },
+] as const;
 
 const SUGGESTED_TOPICS = [
   "Should the minimum wage be raised to $20/hour?",
@@ -22,6 +32,7 @@ export default function StartArgument() {
   const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [topic, setTopic] = useState("");
+  const [format, setFormat] = useState("standard");
   const [selected, setSelected] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
 
@@ -45,6 +56,7 @@ export default function StartArgument() {
     try {
       const result = await createDebate({
         topic: topic.trim(),
+        format,
         proponentId: selected[0],
         opponentId: selected[1],
       });
@@ -114,12 +126,48 @@ export default function StartArgument() {
         </div>
       </section>
 
-      {/* Step 2: Agents */}
+      {/* Step 2: Format */}
+      <section className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+            2
+          </span>
+          <h2 className="text-sm font-semibold text-foreground">Choose a debate format</h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {FORMAT_OPTIONS.map(({ key, icon: Icon, desc }) => {
+            const fl = FORMAT_LABELS[key];
+            return (
+              <button
+                key={key}
+                onClick={() => setFormat(key)}
+                className={cn(
+                  "group rounded-xl border p-3 text-left transition-all",
+                  format === key
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border bg-card hover:border-primary/40"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon size={14} className={format === key ? "text-primary" : "text-muted-foreground"} />
+                  <span className={cn("text-xs font-bold rounded-full px-2 py-0.5", fl?.color)}>
+                    {fl?.label ?? key}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{desc}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Step 3: Agents */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-              2
+              3
             </span>
             <h2 className="text-sm font-semibold text-foreground">Select 2 agents</h2>
           </div>
@@ -130,7 +178,7 @@ export default function StartArgument() {
           {agents.map((agent) => {
             const isSelected = selected.includes(agent.id);
             const selIdx = selected.indexOf(agent.id);
-            const color = getAgentColor(agent.persona);
+            const color = getAgentColor(agent.persona, agent.agentType);
             return (
               <button
                 key={agent.id}
@@ -155,7 +203,10 @@ export default function StartArgument() {
                   <AgentAvatar agent={{ name: agent.name, color }} size="lg" />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm text-card-foreground truncate">{agent.name}</p>
-                    <IdeologyBadge label={getAgentLabel(agent.persona)} color={color} />
+                    <IdeologyBadge label={getAgentLabel(agent.persona, agent.agentType)} color={color} />
+                    {(agent.agentType === "celebrity" || agent.agentType === "historical") && (
+                      <span className="text-[9px] text-muted-foreground italic ml-1">AI simulation</span>
+                    )}
                   </div>
                 </div>
                 <p className="mt-2.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">

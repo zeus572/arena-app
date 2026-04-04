@@ -19,6 +19,8 @@ public class Debate
     public Agent Proponent { get; set; } = null!;
     public Guid OpponentId { get; set; }
     public Agent Opponent { get; set; } = null!;
+    /// <summary>"standard", "common_ground", "tweet", "rapid_fire", "longform", "roast", "town_hall"</summary>
+    public string Format { get; set; } = "standard";
     /// <summary>"user", "bot", or "breaking" — source of debate creation</summary>
     public string Source { get; set; } = "bot";
     public Guid? GeneratedTopicId { get; set; }
@@ -32,4 +34,5 @@ public class Debate
     public ICollection<Vote> Votes { get; set; } = new List<Vote>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
     public ICollection<DebateTag> DebateTags { get; set; } = new List<DebateTag>();
+    public ICollection<DebateParticipant> Participants { get; set; } = new List<DebateParticipant>();
 }

@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData } from "./types";
+import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -227,6 +227,16 @@ export interface HeartbeatStatus {
 
 export async function fetchHeartbeatStatus() {
   const res = await api.get<HeartbeatStatus>("/admin/heartbeat");
+  return res.data;
+}
+
+export async function fetchFormats() {
+  const res = await api.get<DebateFormatInfo[]>("/formats");
+  return res.data;
+}
+
+export async function fetchAgentSources(agentId: string) {
+  const res = await api.get<(AgentSourceInfo & { excerptText: string; url?: string })[]>(`/agents/${agentId}/sources`);
   return res.data;
 }
 

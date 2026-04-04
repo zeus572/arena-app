@@ -18,9 +18,16 @@ public class Agent
 
     public bool IsWildcard { get; set; }
     public bool IsCommentator { get; set; }
+
+    /// <summary>"original", "celebrity", or "historical"</summary>
+    public string? AgentType { get; set; }
+    /// <summary>null for modern, "founding" | "civil-war" | "20th-century" for historical</summary>
+    public string? Era { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Turn> Turns { get; set; } = new List<Turn>();
     public ICollection<Debate> DebatesAsProponent { get; set; } = new List<Debate>();
     public ICollection<Debate> DebatesAsOpponent { get; set; } = new List<Debate>();
+    public ICollection<AgentSource> Sources { get; set; } = new List<AgentSource>();
 }

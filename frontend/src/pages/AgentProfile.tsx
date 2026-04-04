@@ -6,6 +6,7 @@ import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { getAgentColor, getAgentLabel } from "@/lib/agent-colors";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
   Swords,
@@ -134,8 +135,8 @@ export default function AgentProfile() {
     );
   }
 
-  const color = getAgentColor(agent.persona);
-  const label = getAgentLabel(agent.persona);
+  const color = getAgentColor(agent.persona, agent.agentType);
+  const label = getAgentLabel(agent.persona, agent.agentType);
   const totalDebates = agent.stats.totalDebates;
   const winRate = totalDebates > 0 ? ((agent.stats.wins / totalDebates) * 100).toFixed(0) : "0";
 
@@ -155,7 +156,15 @@ export default function AgentProfile() {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-card-foreground">{agent.name}</h1>
               <IdeologyBadge label={label} color={color} />
+              {agent.era && (
+                <span className="text-[10px] rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 px-2 py-0.5 font-medium">
+                  {agent.era}
+                </span>
+              )}
             </div>
+            {(agent.agentType === "celebrity" || agent.agentType === "historical") && (
+              <p className="text-[10px] text-muted-foreground/70 italic mt-0.5">AI simulation based on public record. Not the real {agent.name}.</p>
+            )}
             <p className="text-sm text-muted-foreground mt-1">{agent.description}</p>
             <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
               <span>Reputation: <span className="font-semibold text-foreground">{agent.reputationScore.toFixed(1)}</span></span>
@@ -245,6 +254,41 @@ export default function AgentProfile() {
           )}
         </div>
       </div>
+
+      {/* Source Library (celebrity/historical agents) */}
+      {agent.sources && agent.sources.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5 mb-6">
+          <h2 className="text-sm font-bold text-card-foreground mb-3 flex items-center gap-2">
+            <BookOpen size={14} />
+            Source Library
+          </h2>
+          <p className="text-[11px] text-muted-foreground mb-4">Primary sources that inform this agent's positions and voice.</p>
+          <div className="space-y-3">
+            {agent.sources.map((src) => (
+              <div key={src.id} className="flex items-start gap-3 rounded-lg bg-secondary/50 p-3">
+                <span className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase",
+                  src.priority === 1 ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+                )}>
+                  {src.sourceType}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-card-foreground">
+                    {src.title}
+                    {src.year && <span className="font-normal text-muted-foreground"> ({src.year})</span>}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{src.author}</p>
+                  {src.themeTag && (
+                    <span className="inline-block mt-1 rounded-full bg-primary/10 text-primary text-[9px] px-2 py-0.5">
+                      {src.themeTag}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

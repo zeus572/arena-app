@@ -5,7 +5,7 @@ import type { DebateSummary } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { getAgentColor } from "@/lib/agent-colors";
+import { getAgentColor, FORMAT_LABELS } from "@/lib/agent-colors";
 import { TrendingUp, Flame, PlusCircle, Swords, Search, X, Clock, Trophy, MessageSquarePlus, Lightbulb, ThumbsUp, ThumbsDown } from "lucide-react";
 
 function timeAgo(dateStr: string): string {
@@ -277,6 +277,14 @@ export default function Feed() {
                     <span>{d.turnCount} turns</span>
                     <span>{d.voteCount} votes</span>
                     <span>{timeAgo(d.createdAt)}</span>
+                    {d.format && d.format !== "standard" && (() => {
+                      const fl = FORMAT_LABELS[d.format];
+                      return fl ? (
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", fl.color)}>
+                          {fl.label}
+                        </span>
+                      ) : null;
+                    })()}
                     {d.source === "breaking" && (
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-600/10 text-red-600 animate-pulse">
                         BREAKING
