@@ -1109,7 +1109,7 @@ export default function DebateViewPage() {
       >
       <div className={cn(
         "rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-700 ease-out",
-        themed && effectiveTheme !== "off" && `ring-1 ${BACKDROP_ACCENTS[effectiveTheme]}`,
+        themed && `ring-1 ${BACKDROP_ACCENTS[effectiveTheme]}`,
         isRevealing && !themed ? "ring-1 ring-primary/20" : "",
         isWatching && "opacity-[0.18] scale-[0.97] blur-[1.5px] pointer-events-none origin-top"
       )}>
