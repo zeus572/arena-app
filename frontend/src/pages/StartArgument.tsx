@@ -12,7 +12,7 @@ import { Swords, ChevronLeft, Sparkles, CheckCircle2, MessageSquare, Zap, BookOp
 const FORMAT_OPTIONS = [
   { key: "standard", icon: Swords, desc: "Classic 6-turn debate with compromise phase" },
   { key: "common_ground", icon: Handshake, desc: "Find genuine agreement between opponents" },
-  { key: "tweet", icon: MessageSquare, desc: "280 chars max, 10 rounds of social media combat" },
+  { key: "tweet", icon: MessageSquare, desc: "280 chars max, 10 rounds of short-form hot takes" },
   { key: "rapid_fire", icon: Zap, desc: "1-2 sentences per turn, 14 rounds of rapid sparring" },
   { key: "longform", icon: BookOpen, desc: "500-800 word essays, deep sourced arguments" },
   { key: "roast", icon: Flame, desc: "Humor-first political roast battle" },

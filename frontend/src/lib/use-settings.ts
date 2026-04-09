@@ -9,7 +9,7 @@ export const CONCRETE_MATCHUP_THEMES: ConcreteMatchupTheme[] = ["arcade", "anime
 export const MATCHUP_THEMES: { value: MatchupTheme; label: string; tagline: string }[] = [
   { value: "off", label: "Off", tagline: "No intro animation, plain debate background" },
   { value: "random", label: "Random", tagline: "Surprise me — pick a different theme each debate" },
-  { value: "arcade", label: "Arcade", tagline: "Marvel vs. Capcom — fighters slam in, neon stripes, glitchy VS stamp" },
+  { value: "arcade", label: "Arcade", tagline: "Retro fighter — fighters slam in, neon stripes, glitchy VS stamp" },
   { value: "anime", label: "Anime", tagline: "Speedlines, screen shake, dramatic kanji-style impact" },
   { value: "boxing", label: "Boxing", tagline: "Spotlights, slow zoom, ringside announcer card" },
   { value: "cinematic", label: "Cinematic", tagline: "Letterbox bars, slow ken-burns, movie trailer title cards" },

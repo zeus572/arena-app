@@ -133,7 +133,7 @@ Frontend displays a disclaimer badge on celebrity/historical agent avatars: *"AI
 | **Donald Trump** | 9 | 4 | 3 | 2 | 7 | Art of the Deal, rally transcripts, Truth Social posts, executive orders |
 | **Barack Obama** | 3 | 10 | 8 | 8 | 7 | "A More Perfect Union" speech, Dreams from My Father, ACA signing remarks, Nobel lecture |
 | **Bernie Sanders** | 7 | 6 | 8 | 7 | 4 | Senate floor speeches, Our Revolution, Burlington policy record, "millionaires and billionaires" messaging |
-| **Alexandria Ocasio-Cortez** | 7 | 8 | 7 | 8 | 8 | Green New Deal resolution, committee hearing clips, Instagram Live transcripts, Twitter threads |
+| **Alexandria Ocasio-Cortez** | 7 | 8 | 7 | 8 | 8 | Green New Deal resolution, committee hearing clips, livestream transcripts, social media threads |
 | **Ron DeSantis** | 7 | 5 | 6 | 2 | 3 | Florida executive orders, debate performances, "Florida Blueprint", education policy docs |
 | **Nikki Haley** | 5 | 7 | 7 | 5 | 5 | UN speeches, campaign policy papers, South Carolina governance record |
 
@@ -252,18 +252,18 @@ Roast       -- Used in Roast Battle mode
 | roast | 8 | 512 | — | No | 40% | Yes | Yes | No |
 | town_hall | 10 | 1024 | — | No | No | Yes | Yes | No |
 
-### 5.3 Tweet / SMS Style
+### 5.3 Hot Take / SMS Style
 
-280 characters max. 10 rounds. Twitter beef about policy.
+280 characters max. 10 rounds. Short-form policy beef.
 
 **Prompt override:**
 ```
-TWEET MODE (ACTIVE):
+HOT TAKE MODE (ACTIVE):
 - Your response MUST be 280 characters or less. Non-negotiable.
-- Write like you're posting on social media. Hashtags allowed. @mentions encouraged.
+- Write like a short-form social post. Hashtags allowed. Handles encouraged.
 - Be punchy. Be memorable. No hedging.
 - One fact-checking tool per turn max. Keep citations ultra-brief.
-- Think: "the tweet that gets 50K retweets because it's devastatingly correct."
+- Think: "the hot take that goes viral because it's devastatingly correct."
 - No bullet points. No markdown headers. One raw, devastating take.
 ```
 
@@ -312,7 +312,7 @@ LONGFORM ESSAY MODE (ACTIVE):
 
 ### 5.6 Roast Battle
 
-Comedy Central roast meets political debate. Humor-first, scored on wit.
+Stand-up roast meets political debate. Humor-first, scored on wit.
 
 **Prompt override:**
 ```
@@ -511,12 +511,12 @@ Refactor turn generation to dispatch on `debate.Format`:
 ## 9. Frontend Changes (Summary)
 
 - **Format selector** on StartArgument page — card-based picker with descriptions
-- **Format badge** on debate cards in Feed — "TWEET BATTLE", "COMMON GROUND", "ROAST" pills
-- **Tweet-bubble rendering** — For tweet format, render turns in tweet-style UI
+- **Format badge** on debate cards in Feed — "HOT TAKE BATTLE", "COMMON GROUND", "ROAST" pills
+- **Hot-take rendering** — For tweet format, render turns in compact post-style UI
 - **Agent badges** — "Celebrity" and "Historical" badges + disclaimer text
 - **Source library panel** — On agent profile pages, show sources with links
 - **Town Hall layout** — Questioner on side, respondent centered
-- **New reaction buttons** — "funny", "savage", "surprising", "ratio" shown conditionally by format
+- **New reaction buttons** — "funny", "savage", "surprising", "trending" shown conditionally by format
 
 ---
 

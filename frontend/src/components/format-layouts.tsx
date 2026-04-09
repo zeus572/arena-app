@@ -200,25 +200,25 @@ export function LaughterMeter({ turns }: { turns: TurnDetail[] }) {
   );
 }
 
-/* ─────────────────── Tweet — header strip ─────────────────── */
+/* ─────────────────── Hot Take — header strip ─────────────────── */
 
 export function TweetHeader({ totalTurns, currentTurn }: { totalTurns: number; currentTurn: number }) {
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 px-4 py-3 mb-5 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white font-bold">
-          𝕏
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white">
+          <Zap size={14} className="fill-white" />
         </span>
         <div>
-          <p className="text-sm font-bold text-sky-700 dark:text-sky-300">Tweet Battle</p>
-          <p className="text-[10px] text-muted-foreground">280 chars · ratio or be ratio'd</p>
+          <p className="text-sm font-bold text-sky-700 dark:text-sky-300">Hot Take Battle</p>
+          <p className="text-[10px] text-muted-foreground">280 chars · every word counts</p>
         </div>
       </div>
       <div className="text-right">
         <p className="text-xs font-mono text-sky-600 dark:text-sky-400">
           {currentTurn} / {totalTurns}
         </p>
-        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">tweets</p>
+        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">posts</p>
       </div>
     </div>
   );

@@ -316,12 +316,12 @@ public class ClaudeLlmService : ILlmService
             case "tweet":
                 sb.AppendLine("""
 
-                    TWEET MODE (ACTIVE):
+                    HOT TAKE MODE (ACTIVE):
                     - Your response MUST be 280 characters or less. Non-negotiable.
-                    - Write like you're posting on social media. Hashtags allowed. @mentions encouraged.
+                    - Write like a short-form social post. Hashtags allowed. Handles encouraged.
                     - Be punchy. Be memorable. No hedging.
                     - One fact-checking tool per turn max. Keep citations ultra-brief.
-                    - Think: "the tweet that gets 50K retweets because it's devastatingly correct."
+                    - Think: "the hot take that goes viral because it's devastatingly correct."
                     - No bullet points. No markdown headers. One raw, devastating take.
                     """);
                 break;
@@ -472,7 +472,7 @@ public class ClaudeLlmService : ILlmService
             (TurnType.Agreement, _) => "Find genuine areas of agreement with your opponent. Identify specific policies or principles you share and cite evidence for each.",
             (TurnType.Question, _) => "Ask your pointed question to the respondent. Make it specific and hard to dodge.",
             (TurnType.Roast, _) => "Deliver your roast. Lead with humor, back it up with policy, close with a callback.",
-            (_, "tweet") => "Post your tweet. 280 characters max. Make it count.",
+            (_, "tweet") => "Post your hot take. 280 characters max. Make it count.",
             (_, "rapid_fire") => "Fire back. 1-2 sentences max. Counter their last point directly.",
             (_, "longform") => "Write your essay. 500-800 words. Cite at least 4 sources.",
             (_, "roast") => "Deliver your roast. Lead with humor, back it up with policy.",
@@ -509,7 +509,7 @@ public class ClaudeLlmService : ILlmService
         // Format-aware commentary additions
         var formatCommentary = debate.Format switch
         {
-            "tweet" => "\n- Comment on the best tweets and who's winning the thread.",
+            "tweet" => "\n- Comment on the best hot takes and who's winning the thread.",
             "roast" => "\n- Score the roasts. Who got the biggest laugh? Who flopped?",
             "common_ground" => "\n- React to surprising agreements. Is this genuine or performative?",
             "town_hall" => "\n- Grade the respondent's answers. Are they dodging? Who asked the toughest question?",

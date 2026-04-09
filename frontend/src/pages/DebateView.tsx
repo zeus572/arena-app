@@ -129,7 +129,7 @@ function ReactionRow({
   }
   if (format === "tweet") {
     buttons.push(
-      { key: "ratio", label: "ratio", icon: TrendingUp, activeClass: "bg-sky-500 text-white" },
+      { key: "trending", label: "trending", icon: TrendingUp, activeClass: "bg-sky-500 text-white" },
     );
   }
 
@@ -584,7 +584,7 @@ function TurnBubble({
             <Sparkles size={10} /> Wildcard: {turn.agent.name}
           </span>
         )}
-        {/* Tweet-style header: name + @handle + timestamp */}
+        {/* Hot-take post header: name + handle + timestamp */}
         {format === "tweet" && (
           <div className="flex items-center gap-1.5 text-xs mb-1 px-1">
             <span className="font-bold text-foreground">{turn.agent.name}</span>

@@ -94,7 +94,7 @@ export const TAG_COLORS: Record<AgentColor, string> = {
 export const FORMAT_LABELS: Record<string, { label: string; color: string }> = {
   standard: { label: "STANDARD", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
   common_ground: { label: "COMMON GROUND", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
-  tweet: { label: "TWEET BATTLE", color: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400" },
+  tweet: { label: "HOT TAKE BATTLE", color: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400" },
   rapid_fire: { label: "RAPID FIRE", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
   longform: { label: "LONGFORM", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400" },
   roast: { label: "ROAST BATTLE", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },

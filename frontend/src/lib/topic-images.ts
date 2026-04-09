@@ -54,7 +54,7 @@ const TOPIC_PHOTOS: { keywords: string[]; id: string }[] = [
   { keywords: ["infrastructure", "bridge", "road", "transport", "highway", "transit", "rail"],
     id: "photo-1545558014-8692077e9b5c" },
   // Social Media / Internet
-  { keywords: ["social media", "internet", "facebook", "twitter", "platform", "misinform", "content"],
+  { keywords: ["social media", "internet", "online platform", "platform", "misinform", "content moderation", "newsfeed"],
     id: "photo-1611162617213-7d7a39e9b1d7" },
   // Genetic / Bioethics
   { keywords: ["genetic", "dna", "crispr", "bioethic", "cloning", "stem cell", "genome"],

@@ -45,8 +45,8 @@ public class DebateFormatConfig
         },
         ["tweet"] = new()
         {
-            Format = "tweet", DisplayName = "Tweet Battle",
-            Description = "280-character limit, 10 rounds of social media-style political combat",
+            Format = "tweet", DisplayName = "Hot Take Battle",
+            Description = "280-character limit, 10 rounds of short-form political hot takes",
             MaxTurns = 10, MaxTokens = 128, MaxCharactersPerTurn = 280,
             HasCompromisePhase = false, HasWildcards = true, WildcardChance = 0.30,
             HasCommentary = true, CommentaryEveryNTurns = 2,
@@ -77,7 +77,7 @@ public class DebateFormatConfig
         ["roast"] = new()
         {
             Format = "roast", DisplayName = "Roast Battle",
-            Description = "Comedy Central meets policy debate — destroy your opponent with humor",
+            Description = "Stand-up comedy meets policy debate — destroy your opponent with humor",
             MaxTurns = 8, MaxTokens = 512,
             HasCompromisePhase = false, HasWildcards = true, WildcardChance = 0.40, WildcardStartTurn = 2,
             HasCommentary = true, CommentaryEveryNTurns = 2,

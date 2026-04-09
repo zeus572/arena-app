@@ -161,7 +161,7 @@ public class FormatSampleSeederService
             {
                 Format = "tweet",
                 Topic = "Hot take: WFH was a massive productivity boost. Let companies who want it have it.",
-                Description = "Tweet battle on remote work.",
+                Description = "Hot take battle on remote work.",
                 Turns = new[]
                 {
                     new TurnSpec { Speaker = "proponent", Type = TurnType.Argument, Content = "Hot take: WFH was a massive productivity boost. The 9-5 commute was theater. Numbers don't lie. 🧵" },
@@ -267,7 +267,7 @@ Where I agree with my opponent: the existing safety net is fragmented, stigmatiz
                     new TurnSpec { Speaker = "opponent", Type = TurnType.Roast, Content = "Bro, you faxed a memo last Tuesday. To yourself. You stapled it to your printer for 'backup.' Don't lecture me about technology." },
                     new TurnSpec { Speaker = "proponent", Type = TurnType.Roast, Content = "At least my generation had attention spans longer than a TikTok. Yours can't watch a thirty-second commercial without needing a fidget spinner and a weighted blanket." },
                     new TurnSpec { Speaker = "opponent", Type = TurnType.Roast, Content = "We invented therapy because *you* never went. Every Boomer I know is one well-timed apology away from emotional regulation. You dodged it; we're cleaning up." },
-                    new TurnSpec { Speaker = "proponent", Type = TurnType.Roast, Content = "Cleaning up? Your apartment looks like a Sephora exploded into a Postmates warehouse. The only thing you've cleaned is your conscience after canceling a friend over a 2014 tweet." },
+                    new TurnSpec { Speaker = "proponent", Type = TurnType.Roast, Content = "Cleaning up? Your apartment looks like a beauty store exploded into a delivery warehouse. The only thing you've cleaned is your conscience after canceling a friend over a 2014 post." },
                     new TurnSpec { Speaker = "opponent", Type = TurnType.Roast, Content = "And yet we still vote, organize, and outwork you while paying $9 for an egg. You guys had pensions, lead paint, and a thirty-year mortgage at 4%. Stop pretending you played the game on hard mode." },
                 },
             },
