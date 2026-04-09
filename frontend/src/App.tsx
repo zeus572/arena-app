@@ -14,6 +14,7 @@ import Profile from "@/pages/Profile";
 import Sources from "@/pages/Sources";
 import Leaderboard from "@/pages/Leaderboard";
 import AgentProfile from "@/pages/AgentProfile";
+import Settings from "@/pages/Settings";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/sources" element={<Sources />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

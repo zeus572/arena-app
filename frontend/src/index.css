@@ -159,3 +159,155 @@
     transform: translateX(100%);
   }
 }
+
+/* Subtle floating motion for debate turn bubbles — gives them
+   a hint of life without being distracting. Each bubble gets a
+   staggered animation-delay so they don't bob in unison. The
+   `-counter` keyframe is applied to the inner text wrapper with
+   the exact same duration/delay/easing so the text visually
+   stays still while the shell bobs. */
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-3px) rotate(0.15deg); }
+}
+
+@keyframes bubble-float-counter {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(3px) rotate(-0.15deg); }
+}
+
+/* ─── Matchup intro animations ─── */
+
+/* Shared */
+@keyframes matchup-flash {
+  0%, 100% { opacity: 0; }
+  10%, 20% { opacity: 1; }
+}
+
+@keyframes matchup-fade-out {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+/* Arcade theme */
+@keyframes matchup-slam-left {
+  0%   { transform: translateX(-120vw) skewX(-25deg) scale(1.4); opacity: 0; filter: blur(8px); }
+  55%  { transform: translateX(8%) skewX(-15deg) scale(1.05); opacity: 1; filter: blur(0); }
+  70%  { transform: translateX(-2%) skewX(0deg) scale(1); }
+  100% { transform: translateX(0) skewX(0) scale(1); opacity: 1; filter: blur(0); }
+}
+
+@keyframes matchup-slam-right {
+  0%   { transform: translateX(120vw) skewX(25deg) scale(1.4); opacity: 0; filter: blur(8px); }
+  55%  { transform: translateX(-8%) skewX(15deg) scale(1.05); opacity: 1; filter: blur(0); }
+  70%  { transform: translateX(2%) skewX(0deg) scale(1); }
+  100% { transform: translateX(0) skewX(0) scale(1); opacity: 1; filter: blur(0); }
+}
+
+@keyframes matchup-vs-stamp {
+  0%   { transform: scale(8) rotate(-25deg); opacity: 0; filter: blur(12px); }
+  60%  { transform: scale(0.85) rotate(8deg); opacity: 1; filter: blur(0); }
+  72%  { transform: scale(1.08) rotate(-4deg); }
+  85%  { transform: scale(0.96) rotate(2deg); }
+  100% { transform: scale(1) rotate(-6deg); opacity: 1; }
+}
+
+@keyframes matchup-stripes-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 200px 0; }
+}
+
+@keyframes matchup-glitch {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2px, 1px); }
+  20% { transform: translate(2px, -1px); }
+  30% { transform: translate(-1px, 2px); }
+  40% { transform: translate(1px, -2px); }
+  50% { transform: translate(-2px, 0); }
+  60% { transform: translate(2px, 1px); }
+  70% { transform: translate(0, -1px); }
+}
+
+@keyframes matchup-name-pop {
+  0%   { transform: translateY(40px) scale(0.5); opacity: 0; letter-spacing: 0.5em; }
+  60%  { transform: translateY(-4px) scale(1.05); opacity: 1; letter-spacing: 0.05em; }
+  100% { transform: translateY(0) scale(1); opacity: 1; letter-spacing: 0.02em; }
+}
+
+/* Anime theme */
+@keyframes matchup-speedlines {
+  0%   { opacity: 0; transform: scale(0.6); }
+  30%  { opacity: 1; }
+  100% { opacity: 0.85; transform: scale(1.6); }
+}
+
+@keyframes matchup-screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 4px); }
+  40% { transform: translate(6px, -4px); }
+  60% { transform: translate(-4px, -6px); }
+  80% { transform: translate(4px, 6px); }
+}
+
+@keyframes matchup-anime-zoom-left {
+  0%   { transform: scale(0.2) translateX(-30%); opacity: 0; filter: blur(20px); }
+  50%  { transform: scale(1.15) translateX(0); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+@keyframes matchup-anime-zoom-right {
+  0%   { transform: scale(0.2) translateX(30%); opacity: 0; filter: blur(20px); }
+  50%  { transform: scale(1.15) translateX(0); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+@keyframes matchup-impact-stamp {
+  0%   { transform: scale(12) rotate(0deg); opacity: 0; }
+  40%  { transform: scale(0.7) rotate(-12deg); opacity: 1; }
+  60%  { transform: scale(1.15) rotate(-8deg); }
+  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+}
+
+/* Boxing theme */
+@keyframes matchup-spotlight-sweep {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  30%  { opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.7; }
+}
+
+@keyframes matchup-slow-zoom {
+  0%   { transform: scale(1.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes matchup-card-rise {
+  0%   { transform: translateY(80px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes matchup-rope-glow {
+  0%, 100% { box-shadow: 0 0 30px rgba(255, 200, 80, 0.4), inset 0 0 60px rgba(255, 200, 80, 0.15); }
+  50%      { box-shadow: 0 0 60px rgba(255, 200, 80, 0.7), inset 0 0 100px rgba(255, 200, 80, 0.25); }
+}
+
+/* Cinematic theme */
+@keyframes matchup-letterbox-top {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes matchup-letterbox-bottom {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes matchup-ken-burns {
+  0%   { transform: scale(1.0); }
+  100% { transform: scale(1.12); }
+}
+
+@keyframes matchup-cinematic-fade {
+  0%   { opacity: 0; transform: translateY(20px); letter-spacing: 0.4em; }
+  100% { opacity: 1; transform: translateY(0); letter-spacing: 0.15em; }
+}

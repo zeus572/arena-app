@@ -26,6 +26,7 @@ builder.Services.AddTransient<IFactProvider, BudgetDataProvider>();
 builder.Services.AddTransient<FactCheckService>();
 builder.Services.AddScoped<TaggingService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddSingleton<FormatSampleSeederService>();
 
 // Authentication
 builder.Services.AddAuthentication(options =>
@@ -171,6 +172,44 @@ if (app.Environment.IsDevelopment())
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Results.Ok(new { user.Id, Plan = user.Plan.ToString() });
+    }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    // Seed one fully-completed sample debate per non-standard format so the
+    // format-specific frontend layouts have something to render. Idempotent —
+    // re-running won't create duplicates (matches on Format + Topic).
+    app.MapPost("/dev/seed-format-samples", async (ArenaDbContext db, FormatSampleSeederService seeder) =>
+    {
+        var result = await seeder.SeedAsync(db);
+        return Results.Ok(new { status = "seed complete", result.Created, result.Skipped, result.Message });
+    }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    // Close most existing Active/Compromising debates so the heartbeat doesn't
+    // burn LLM credits processing stale test data. Leaves `keepOpen` newest
+    // ones still Active. Default keepOpen = 3.
+    app.MapPost("/dev/close-old-debates", async (ArenaDbContext db, int? keepOpen) =>
+    {
+        var keep = Math.Max(0, keepOpen ?? 3);
+        var openDebates = await db.Debates
+            .Where(d => d.Status == Arena.API.Models.DebateStatus.Active
+                     || d.Status == Arena.API.Models.DebateStatus.Compromising)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
+        var toClose = openDebates.Skip(keep).ToList();
+        var now = DateTime.UtcNow;
+        foreach (var d in toClose)
+        {
+            d.Status = Arena.API.Models.DebateStatus.Completed;
+            d.UpdatedAt = now;
+        }
+        await db.SaveChangesAsync();
+        return Results.Ok(new
+        {
+            status = "close complete",
+            wasOpen = openDebates.Count,
+            closed = toClose.Count,
+            stillOpen = openDebates.Count - toClose.Count,
+            keepOpen = keep,
+        });
     }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 }
 

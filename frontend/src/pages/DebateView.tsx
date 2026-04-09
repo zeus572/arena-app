@@ -8,9 +8,24 @@ import { cn } from "@/lib/utils";
 import { getAgentColor, getAgentLabel, BUBBLE_BG, FORMAT_LABELS, type AgentColor } from "@/lib/agent-colors";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
+import { MatchupIntro } from "@/components/matchup-intro";
+import { DebateBackdrop, BACKDROP_ACCENTS } from "@/components/debate-backdrop";
+import {
+  LoveMeter,
+  HotSeatHeader,
+  computeFireLevel,
+  LaughterMeter,
+  TweetHeader,
+  RapidFireBanner,
+  LongformHeader,
+  CommonGroundHeader,
+  RoastStageHeader,
+  getFormatBubbleStyles,
+} from "@/components/format-layouts";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown, Mic, Laugh, Flame, TrendingUp, Play, SkipForward, Zap } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown, Mic, Laugh, Flame, TrendingUp, Play, SkipForward, Zap, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings, resolveMatchupTheme, type ResolvedMatchupTheme } from "@/lib/use-settings";
 
 /* ─────────────────── StreamingText ─────────────────── */
 
@@ -506,28 +521,32 @@ function TurnBubble({
 
   useEffect(() => {
     if (isNew && bubbleRef.current) {
-      bubbleRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Only scroll if the new bubble isn't already visible — avoids
+      // jerking the page when the user has the bubble in view already.
+      bubbleRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
       setTimeout(() => setHasAnimated(true), 800);
     }
   }, [isNew]);
 
-  // Keep scrolling during streaming so user follows along
-  useEffect(() => {
-    if (isNew && !streamingDone && bubbleRef.current) {
-      const scrollInterval = setInterval(() => {
-        bubbleRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-      }, 300);
-      return () => clearInterval(scrollInterval);
-    }
-  }, [isNew, streamingDone]);
+  // Stagger a per-bubble float delay so they don't all bob in unison.
+  const floatDelay = `${(turn.id.charCodeAt(0) % 5) * 0.4}s`;
+
+  const formatStyles = getFormatBubbleStyles(format);
+  // Force alignment for formats that don't alternate
+  const effectiveIsLeft =
+    formatStyles.alignment === "left" ? true
+    : formatStyles.alignment === "right" ? false
+    : formatStyles.alignment === "center" ? true
+    : isLeft;
 
   return (
     <div
       ref={bubbleRef}
       className={cn(
         "flex gap-3 transition-all",
-        isWildcard ? "flex-row justify-center" : isLeft ? "flex-row" : "flex-row-reverse",
-        isNew && !hasAnimated ? "animate-in fade-in zoom-in-95 slide-in-from-bottom-12 duration-700" : ""
+        isWildcard ? "flex-row justify-center" : effectiveIsLeft ? "flex-row" : "flex-row-reverse",
+        isNew && !hasAnimated ? "animate-in fade-in zoom-in-95 slide-in-from-bottom-12 duration-700" : "",
+        formatStyles.rowClass
       )}
       style={{ animationDelay: isNew ? "100ms" : "0ms" }}
     >
@@ -544,10 +563,10 @@ function TurnBubble({
         )}
         <AgentAvatar
           agent={{ name: turn.agent.name, color: isWildcard ? "wildcard" as AgentColor : agentColor }}
-          size="md"
+          size={format === "tweet" || format === "rapid_fire" ? "sm" : "md"}
         />
       </div>
-      <div className={cn("min-w-0 flex-1 flex flex-col overflow-hidden", isWildcard ? "items-center" : isLeft ? "items-start" : "items-end")}>
+      <div className={cn("min-w-0 flex-1 flex flex-col overflow-hidden", isWildcard ? "items-center" : effectiveIsLeft ? "items-start" : "items-end")}>
         {/* Dramatic entrance label for new turns */}
         {isNew && !hasAnimated && (
           <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -565,21 +584,57 @@ function TurnBubble({
             <Sparkles size={10} /> Wildcard: {turn.agent.name}
           </span>
         )}
+        {/* Tweet-style header: name + @handle + timestamp */}
+        {format === "tweet" && (
+          <div className="flex items-center gap-1.5 text-xs mb-1 px-1">
+            <span className="font-bold text-foreground">{turn.agent.name}</span>
+            <span className="text-muted-foreground">@{turn.agent.name.toLowerCase().replace(/\s+/g, "_")}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">
+              {new Date(turn.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+        {format === "town_hall" && turn.type === "Question" && (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-1 px-1">
+            <Flame size={10} className="fill-orange-500" /> Question
+          </span>
+        )}
+        {format === "town_hall" && turn.type !== "Question" && turn.type !== "Commentary" && turn.type !== "Wildcard" && turn.type !== "Compromise" && (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1 px-1">
+            🪑 Hot Seat Response
+          </span>
+        )}
+        {format === "common_ground" && turn.type === "Agreement" && (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1 px-1">
+            <Heart size={10} className="fill-rose-500" /> Agreement
+          </span>
+        )}
+        {format === "roast" && turn.type === "Roast" && (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1 px-1">
+            <Mic size={10} /> Roast
+          </span>
+        )}
         <div
+          style={{ animationDelay: floatDelay }}
           className={cn(
-            "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-full transition-all duration-500 relative overflow-hidden break-words [overflow-wrap:anywhere]",
+            "rounded-2xl px-4 py-3 text-sm leading-relaxed prose prose-sm max-w-full transition-transform duration-300 ease-out relative overflow-hidden break-words [overflow-wrap:anywhere]",
             "prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5",
             "prose-strong:text-inherit prose-em:text-inherit",
             "prose-table:my-3 prose-table:text-xs prose-th:px-3 prose-th:py-1.5 prose-th:text-left prose-th:font-semibold prose-th:border-b prose-th:border-border",
             "prose-td:px-3 prose-td:py-1.5 prose-td:border-b prose-td:border-border/50",
             "prose-thead:bg-secondary/50 prose-tr:border-0",
+            "hover:shadow-md hover:brightness-105",
+            "animate-[bubble-float_5s_ease-in-out_infinite]",
             isWildcard
               ? "rounded-sm border border-amber-500/30 bg-amber-500/5 text-foreground"
               : isCompromise
                 ? "rounded-tl-sm border border-purple-500/20 bg-purple-500/5 text-foreground"
-                : isLeft
+                : effectiveIsLeft
                   ? cn("rounded-tl-sm text-foreground", BUBBLE_BG[agentColor])
                   : cn("rounded-tr-sm text-foreground", BUBBLE_BG[agentColor]),
+            // Format-specific override classes (border, bg, padding) — applied last so they win
+            formatStyles.bubbleClass,
             isNew && !hasAnimated ? "shadow-xl ring-2 ring-primary/30 ring-offset-2 ring-offset-background" : "shadow-sm",
           )}
         >
@@ -590,12 +645,20 @@ function TurnBubble({
               className="absolute top-2 right-2 animate-pulse text-primary/60"
             />
           )}
-          {isNew && !streamingDone ? (
-            <StreamingText content={turn.content} onComplete={handleStreamComplete} />
-          ) : (
-            <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>
-          )}
-          {streamingDone && turn.citationsJson && <CollapsibleSources citationsJson={turn.citationsJson} />}
+          {/* Counter-animated wrapper: applies the inverse of the bubble's
+              float so the text visually stays still while the shell bobs.
+              Same duration / delay / easing → the two animations cancel out. */}
+          <div
+            style={{ animationDelay: floatDelay }}
+            className="animate-[bubble-float-counter_5s_ease-in-out_infinite]"
+          >
+            {isNew && !streamingDone ? (
+              <StreamingText content={turn.content} onComplete={handleStreamComplete} />
+            ) : (
+              <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>
+            )}
+            {streamingDone && turn.citationsJson && <CollapsibleSources citationsJson={turn.citationsJson} />}
+          </div>
         </div>
         <div className={cn("mt-1 px-1 flex items-center gap-2", isLeft ? "" : "flex-row-reverse")}>
           <ReactionRow
@@ -831,6 +894,20 @@ export default function DebateViewPage() {
   const { id } = useParams<{ id: string }>();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
   const [userVote, setUserVote] = useState<string | null>(null);
+  const [settings] = useSettings();
+  // Resolve the theme once per debate visit so "random" picks one and stays stable
+  // until the user navigates to another debate.
+  const [effectiveTheme, setEffectiveTheme] = useState<ResolvedMatchupTheme>(() =>
+    resolveMatchupTheme(settings.matchupTheme)
+  );
+  const [introDone, setIntroDone] = useState(() => effectiveTheme === "off");
+
+  // Reset (and re-roll random) whenever the debate id or saved theme changes
+  useEffect(() => {
+    const next = resolveMatchupTheme(settings.matchupTheme);
+    setEffectiveTheme(next);
+    setIntroDone(next === "off");
+  }, [id, settings.matchupTheme]);
 
   // Progressive reveal state
   const [visibleTurns, setVisibleTurns] = useState(0);
@@ -983,8 +1060,35 @@ export default function DebateViewPage() {
   const currentTurnData = !isComplete && nonCommentaryTurns[visibleTurns];
   const activeAgentId = isRevealing && isTyping && currentTurnData ? currentTurnData.agentId : null;
 
+  const showIntro = !introDone && effectiveTheme !== "off";
+  const themed = effectiveTheme !== "off";
+  // After Watch Debate is clicked, the top card collapses + fades into the
+  // background so the debate text visually overlays on top.
+  const isWatching = revealPhase === "revealing" || revealPhase === "done";
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <>
+      <DebateBackdrop theme={effectiveTheme} />
+      {showIntro && (
+        <MatchupIntro
+          theme={effectiveTheme}
+          proponent={{
+            id: debate.proponent.id,
+            name: debate.proponent.name,
+            label: proponentLabel,
+            color: proponentColor,
+          }}
+          opponent={{
+            id: debate.opponent.id,
+            name: debate.opponent.name,
+            label: opponentLabel,
+            color: opponentColor,
+          }}
+          topic={debate.topic}
+          onComplete={() => setIntroDone(true)}
+        />
+      )}
+    <main className={cn("mx-auto max-w-3xl px-4 py-8", themed && "relative")}>
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-5 gap-1.5 text-xs text-muted-foreground -ml-2">
           <ChevronLeft size={14} />
@@ -992,12 +1096,24 @@ export default function DebateViewPage() {
         </Button>
       </Link>
 
-      {/* Header card */}
+      {/* Header card — wrapped in a collapsing container so it can fade
+          into the background once Watch Debate has been clicked. The wrapper
+          shrinks its in-flow height while the inner card content overflows
+          visually with reduced opacity, letting the debate text overlay on top. */}
+      <div
+        className={cn(
+          "relative overflow-visible transition-[max-height,margin-bottom] duration-700 ease-out",
+          isWatching ? "max-h-[72px] mb-2" : "max-h-[800px] mb-5"
+        )}
+        aria-hidden={isWatching || undefined}
+      >
       <div className={cn(
-        "rounded-xl border border-border bg-card p-6 mb-6 shadow-sm transition-all duration-500",
-        isRevealing ? "ring-1 ring-primary/20" : ""
+        "rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-700 ease-out",
+        themed && effectiveTheme !== "off" && `ring-1 ${BACKDROP_ACCENTS[effectiveTheme]}`,
+        isRevealing && !themed ? "ring-1 ring-primary/20" : "",
+        isWatching && "opacity-[0.18] scale-[0.97] blur-[1.5px] pointer-events-none origin-top"
       )}>
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <span className={cn(
             "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
             debate.status === "Active" ? "bg-red-500/10 text-red-500"
@@ -1032,51 +1148,49 @@ export default function DebateViewPage() {
           </div>
         )}
 
-        <h1 className="text-lg font-bold text-card-foreground leading-snug mb-6 text-balance">{debate.topic}</h1>
-        {debate.description && <p className="text-sm text-muted-foreground mb-4">{debate.description}</p>}
+        <h1 className="text-base font-bold text-card-foreground leading-snug mb-3 text-balance">{debate.topic}</h1>
+        {debate.description && <p className="text-xs text-muted-foreground mb-3">{debate.description}</p>}
 
         {/* Agent cards with active speaker highlight */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-2">
           <div className={cn(
-            "flex flex-col items-center gap-2 text-center flex-1 p-4 rounded-xl transition-all duration-500",
-            activeAgentId === debate.proponent.id ? "bg-primary/5 scale-105 shadow-lg ring-2 ring-primary/30" : ""
+            "flex items-center gap-2.5 flex-1 min-w-0 p-2 rounded-lg transition-all duration-500",
+            activeAgentId === debate.proponent.id ? "bg-primary/5 shadow-md ring-1 ring-primary/30" : ""
           )}>
-            <div className="relative">
-              <AgentAvatar agent={{ name: debate.proponent.name, color: proponentColor }} size="xl" />
+            <div className="relative shrink-0">
+              <AgentAvatar agent={{ name: debate.proponent.name, color: proponentColor }} size="md" />
               {activeAgentId === debate.proponent.id && (
-                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                  <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center shadow">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                 </span>
               )}
             </div>
-            <div>
-              <p className="font-semibold text-sm text-card-foreground">{debate.proponent.name}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-xs text-card-foreground truncate">{debate.proponent.name}</p>
               <IdeologyBadge label={proponentLabel} color={proponentColor} />
               {(debate.proponent.agentType === "celebrity" || debate.proponent.agentType === "historical") && (
-                <p className="text-[9px] text-muted-foreground/70 italic mt-0.5">AI simulation based on public record</p>
+                <p className="text-[9px] text-muted-foreground/70 italic mt-0.5 truncate" title="AI simulation based on public record">AI simulation</p>
               )}
             </div>
           </div>
-          <div className="flex flex-col items-center gap-1 shrink-0">
-            <span className={cn("text-2xl font-black transition-all duration-500", isRevealing ? "text-primary" : "text-muted-foreground/30")}>VS</span>
-          </div>
+          <span className={cn("text-sm font-black tracking-wider transition-all duration-500 shrink-0 px-1", isRevealing ? "text-primary" : "text-muted-foreground/40")}>VS</span>
           <div className={cn(
-            "flex flex-col items-center gap-2 text-center flex-1 p-4 rounded-xl transition-all duration-500",
-            activeAgentId === debate.opponent.id ? "bg-primary/5 scale-105 shadow-lg ring-2 ring-primary/30" : ""
+            "flex items-center gap-2.5 flex-1 min-w-0 p-2 rounded-lg transition-all duration-500 flex-row-reverse text-right",
+            activeAgentId === debate.opponent.id ? "bg-primary/5 shadow-md ring-1 ring-primary/30" : ""
           )}>
-            <div className="relative">
-              <AgentAvatar agent={{ name: debate.opponent.name, color: opponentColor }} size="xl" />
+            <div className="relative shrink-0">
+              <AgentAvatar agent={{ name: debate.opponent.name, color: opponentColor }} size="md" />
               {activeAgentId === debate.opponent.id && (
-                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                  <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center shadow">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                 </span>
               )}
             </div>
-            <div>
-              <p className="font-semibold text-sm text-card-foreground">{debate.opponent.name}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-xs text-card-foreground truncate">{debate.opponent.name}</p>
               <IdeologyBadge label={opponentLabel} color={opponentColor} />
               {(debate.opponent.agentType === "celebrity" || debate.opponent.agentType === "historical") && (
-                <p className="text-[9px] text-muted-foreground/70 italic mt-0.5">AI simulation based on public record</p>
+                <p className="text-[9px] text-muted-foreground/70 italic mt-0.5 truncate" title="AI simulation based on public record">AI simulation</p>
               )}
             </div>
           </div>
@@ -1104,6 +1218,51 @@ export default function DebateViewPage() {
           </div>
         )}
       </div>
+      </div>
+
+      <div className="relative z-10">
+      {/* Format-specific banners / meters — show as soon as the user has
+          clicked Watch Debate so each format reads visually distinct.
+          Standard format gets none. */}
+      {isWatching && debate.format && debate.format !== "standard" && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+          {debate.format === "town_hall" && (
+            <HotSeatHeader
+              respondent={debate.proponent}
+              questioner={debate.opponent}
+              respondentColor={proponentColor}
+              questionerColor={opponentColor}
+              fireLevel={computeFireLevel(nonCommentaryTurns.slice(0, visibleTurns))}
+            />
+          )}
+          {debate.format === "common_ground" && (
+            <>
+              <CommonGroundHeader
+                proponent={debate.proponent}
+                opponent={debate.opponent}
+                proponentColor={proponentColor}
+                opponentColor={opponentColor}
+              />
+              <LoveMeter turns={nonCommentaryTurns.slice(0, visibleTurns)} totalTurns={nonCommentaryTurns.length} />
+            </>
+          )}
+          {debate.format === "roast" && (
+            <>
+              <RoastStageHeader proponent={debate.proponent} opponent={debate.opponent} />
+              <LaughterMeter turns={nonCommentaryTurns.slice(0, visibleTurns)} />
+            </>
+          )}
+          {debate.format === "tweet" && (
+            <TweetHeader currentTurn={visibleTurns} totalTurns={nonCommentaryTurns.length} />
+          )}
+          {debate.format === "rapid_fire" && (
+            <RapidFireBanner currentTurn={visibleTurns} totalTurns={nonCommentaryTurns.length} />
+          )}
+          {debate.format === "longform" && (
+            <LongformHeader proponentName={debate.proponent.name} opponentName={debate.opponent.name} />
+          )}
+        </div>
+      )}
 
       {/* Widgets shown after reveal is done or in live mode */}
       {(revealPhase === "done" || isLive) && (
@@ -1139,7 +1298,17 @@ export default function DebateViewPage() {
 
       {/* Debate turns (progressive reveal or full) */}
       {(revealPhase === "revealing" || revealPhase === "done") && (
-        <section className="flex flex-col gap-6 mb-8 overflow-x-hidden" aria-label="Debate turns">
+        <section
+          className={cn(
+            "flex flex-col mb-8 overflow-x-hidden",
+            // Per-format gap & padding so the layouts feel different
+            debate.format === "tweet" ? "gap-2" :
+            debate.format === "rapid_fire" ? "gap-3" :
+            debate.format === "longform" ? "gap-10" :
+            "gap-6"
+          )}
+          aria-label="Debate turns"
+        >
           {nonCommentaryTurns.slice(0, visibleTurns).map((turn, i) => {
             if (turn.type === "Arbiter") {
               return <ArbiterCard key={turn.id} turn={turn} />;
@@ -1276,6 +1445,8 @@ export default function DebateViewPage() {
           )}
         </div>
       )}
+      </div>
     </main>
+    </>
   );
 }
