@@ -41,6 +41,15 @@ export interface DebateSummary {
   newsInfo?: NewsInfo | null;
   label?: "Controversial" | "Insightful" | "Heated" | null;
   rivalry?: { matchups: number; proponentWins: number; opponentWins: number } | null;
+  topQuote?: TopQuote | null;
+}
+
+export interface TopQuote {
+  text: string;
+  agentName: string;
+  isProponent: boolean;
+  reactionCount: number;
+  insightfulCount: number;
 }
 
 export interface NewsInfo {

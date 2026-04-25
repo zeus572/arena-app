@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
@@ -100,6 +101,27 @@ public class FeedController : ControllerBase
                     .GroupBy(r => r.Type)
                     .Select(g => new { Type = g.Key, Count = g.Count() })
                     .ToList(),
+                // Pull candidate "aha-moment" turns: argument-style turns with substantive
+                // content, ranked by aha-style reactions then total reactions. We don't
+                // gate on reactions because early debates have few — we still want a
+                // quote to surface; reaction counts just bump it up the ranking.
+                QuoteCandidates = x.Debate.Turns
+                    .Where(t => t.Type != TurnType.Arbiter && t.Type != TurnType.Commentary
+                        && t.Content != null && t.Content.Length > 60)
+                    .OrderByDescending(t => t.Reactions.Count(r =>
+                        r.Type == "insightful" || r.Type == "fire" || r.Type == "savage" || r.Type == "surprising"))
+                    .ThenByDescending(t => t.Reactions.Count)
+                    .ThenBy(t => t.TurnNumber)
+                    .Take(3)
+                    .Select(t => new QuoteCandidate(
+                        t.Content,
+                        t.Agent.Name,
+                        t.AgentId == x.Debate.ProponentId,
+                        t.Reactions.Count,
+                        t.Reactions.Count(r =>
+                            r.Type == "insightful" || r.Type == "fire" || r.Type == "savage" || r.Type == "surprising")
+                    ))
+                    .ToList(),
             })
             .ToListAsync();
 
@@ -139,6 +161,7 @@ public class FeedController : ControllerBase
         {
             var total = x.Reactions.Sum(r => r.Count);
             var reactions = x.Reactions.ToDictionary(r => r.Type, r => r.Count);
+            var topQuote = ExtractTopQuote(x.QuoteCandidates);
             return new
             {
                 x.Id, x.Topic, x.Description, x.Status, x.Format,
@@ -151,10 +174,75 @@ public class FeedController : ControllerBase
                 Reactions = reactions,
                 Label = ComputeLabel(reactions, total, x.ProponentVotes, x.OpponentVotes),
                 Rivalry = GetRivalry(x.Proponent.Id, x.Opponent.Id),
+                TopQuote = topQuote,
             };
         });
 
         return Ok(new { items, totalCount });
+    }
+
+    private record QuoteCandidate(string Content, string AgentName, bool IsProponent, int ReactionCount, int InsightfulCount);
+
+    private static readonly Regex BoldRegex = new(@"\*\*([^*\n]{15,200})\*\*", RegexOptions.Compiled);
+    private static readonly Regex MarkdownNoise = new(@"[*_`>\[\]\(\)]+|^[\s\-•]+", RegexOptions.Compiled | RegexOptions.Multiline);
+
+    /// <summary>
+    /// Pull a punchy "aha moment" quote from a turn's content. Prefers the first
+    /// bolded fragment (authors emphasize the punchline themselves), falls back to
+    /// the first complete sentence trimmed to a tweet-length window. Skips quotes
+    /// that look like list markers or quoted citations.
+    /// </summary>
+    private static object? ExtractTopQuote(IEnumerable<QuoteCandidate> candidates)
+    {
+        foreach (var c in candidates)
+        {
+            var content = c.Content ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(content)) continue;
+
+            string? quote = null;
+
+            // Prefer bolded text — debaters emphasize their punchlines.
+            var bold = BoldRegex.Match(content);
+            if (bold.Success)
+            {
+                var b = bold.Groups[1].Value.Trim();
+                if (b.Length >= 20 && b.Length <= 220 && !b.StartsWith("Total"))
+                {
+                    quote = b;
+                }
+            }
+
+            // Fall back to the first impactful sentence.
+            if (quote == null)
+            {
+                var cleaned = MarkdownNoise.Replace(content, " ").Trim();
+                var sentences = Regex.Split(cleaned, @"(?<=[\.!\?])\s+");
+                foreach (var raw in sentences)
+                {
+                    var s = raw.Trim();
+                    if (s.Length < 30 || s.Length > 240) continue;
+                    if (s.StartsWith("http")) continue;
+                    quote = s;
+                    break;
+                }
+            }
+
+            if (quote == null) continue;
+
+            quote = Regex.Replace(quote, @"\s+", " ").Trim().TrimEnd(',', ';', ':');
+            if (quote.Length < 20) continue;
+            if (quote.Length > 220) quote = quote.Substring(0, 217).TrimEnd() + "…";
+
+            return new
+            {
+                Text = quote,
+                c.AgentName,
+                c.IsProponent,
+                c.ReactionCount,
+                c.InsightfulCount,
+            };
+        }
+        return null;
     }
 
     private static string? ComputeLabel(Dictionary<string, int> reactions, int totalReactions, int proVotes, int oppVotes)
