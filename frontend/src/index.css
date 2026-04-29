@@ -205,6 +205,176 @@
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
+/* Home-feed: cards begin hidden and rise once the IntersectionObserver flips
+   data-revealed. Pairing class + attribute lets us reveal on scroll instead of
+   only on mount, while keeping the original timing curve. */
+.feed-card-reveal {
+  opacity: 0;
+  transform: translateY(18px) scale(0.97);
+  will-change: transform, opacity;
+}
+.feed-card-reveal[data-revealed="true"] {
+  animation: feed-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* Home-feed: vote-bar flash when the split shifts — draws the eye to a
+   live update without yanking layout. */
+@keyframes feed-vote-flash {
+  0%   { filter: brightness(1); transform: scaleY(1); }
+  35%  { filter: brightness(1.6) saturate(1.3); transform: scaleY(1.6); }
+  100% { filter: brightness(1); transform: scaleY(1); }
+}
+.feed-vote-flash {
+  animation: feed-vote-flash 600ms ease-out;
+  transform-origin: center;
+}
+
+/* Home-feed: reaction count badge bumps when its value increments. */
+@keyframes feed-reaction-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.28) rotate(-4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.feed-reaction-pop {
+  display: inline-block;
+  animation: feed-reaction-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Home-feed: aha-moment quote text reveals word-by-word once its card scrolls
+   into view. Each word inherits a staggered delay via inline style. */
+@keyframes feed-word-rise {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.feed-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  white-space: pre;
+}
+[data-revealed="true"] .feed-word {
+  animation: feed-word-rise 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--word-index, 0) * 30ms);
+}
+
+/* Home-feed: hero headline characters cascade in on first paint so the topic
+   reads in before the user can finish a glance. */
+@keyframes feed-headline-char-in {
+  0%   { opacity: 0; transform: translateY(6px); filter: blur(2px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.feed-headline-char {
+  display: inline-block;
+  opacity: 0;
+  animation: feed-headline-char-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--char-index, 0) * 12ms);
+  white-space: pre;
+}
+
+/* Home-feed: marquee strip above the hero scrolls across continuously. We
+   duplicate the items in the DOM and slide -50% so the loop is seamless. */
+@keyframes feed-marquee-x {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.feed-breaking-ticker-track {
+  width: max-content;
+  animation: feed-marquee-x 45s linear infinite;
+}
+.feed-breaking-ticker:hover .feed-breaking-ticker-track {
+  animation-play-state: paused;
+}
+
+/* Home-feed: a card whose turnCount just incremented gets a brief banner
+   sliding down from the top edge. */
+@keyframes feed-new-turn-ribbon {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  15%  { transform: translateY(0); opacity: 1; }
+  85%  { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+.feed-new-turn-ribbon {
+  animation: feed-new-turn-ribbon 2500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Home-feed: 3D tilt + cursor-following glow. The hook writes --tilt-x/y and
+   --glow-x/y; the article transforms accordingly. perspective lives on the
+   wrapper so siblings stay in their own stacking context. */
+.feed-tilt-root {
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+.feed-tilt-root > * {
+  transform: rotateY(var(--tilt-x, 0deg)) rotateX(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform var(--tilt-transition, 350ms) ease-out, box-shadow 250ms ease-out;
+}
+.feed-tilt-glow {
+  position: relative;
+}
+.feed-tilt-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    rgba(255, 255, 255, 0.18),
+    transparent 55%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 250ms ease-out;
+}
+.feed-tilt-root:hover .feed-tilt-glow::after {
+  opacity: 1;
+}
+
+/* Home-feed: parallax — child elements (image thumbnails) translate vertically
+   based on scroll progress. The hook writes --parallax-y. */
+.feed-parallax {
+  transform: translate3d(0, var(--parallax-y, 0px), 0) scale(1.08);
+  transition: transform 80ms linear;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Reveal cards immediately, no animation */
+  .feed-card-reveal,
+  .feed-card-reveal[data-revealed="true"] {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .feed-word,
+  [data-revealed="true"] .feed-word,
+  .feed-headline-char {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .feed-vote-flash,
+  .feed-reaction-pop,
+  .feed-new-turn-ribbon {
+    animation: none;
+  }
+  .feed-breaking-ticker-track {
+    animation: none;
+  }
+  .feed-tilt-root > * {
+    transform: none;
+    transition: none;
+  }
+  .feed-tilt-glow::after {
+    display: none;
+  }
+  .feed-parallax {
+    transform: none;
+  }
+}
+
 /* Subtle floating motion for debate turn bubbles — gives them
    a hint of life without being distracting. Each bubble gets a
    staggered animation-delay so they don't bob in unison. The

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { fetchFeed, fetchTrendingTopics, type FeedParams } from "@/api/client";
 import type { DebateSummary } from "@/api/types";
@@ -6,7 +6,86 @@ import { cn } from "@/lib/utils";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { getAgentColor, FORMAT_LABELS } from "@/lib/agent-colors";
 import { getTopicImageUrl } from "@/lib/topic-images";
-import { TrendingUp, Flame, Swords, Search, X, Clock, Trophy, MessageSquarePlus, ThumbsUp, Play, MessageCircle, ChevronRight, Quote, Sparkles, Lightbulb } from "lucide-react";
+import { BreakingTicker } from "@/components/BreakingTicker";
+import { RollingNumber } from "@/components/RollingNumber";
+import { useInView } from "@/hooks/useInView";
+import { useTilt } from "@/hooks/useTilt";
+import { useParallax } from "@/hooks/useParallax";
+import { useChangeKey } from "@/hooks/useChangeKey";
+import { TrendingUp, Flame, Swords, Search, X, Clock, Trophy, MessageSquarePlus, ThumbsUp, Play, MessageCircle, ChevronRight, Quote, Sparkles, Lightbulb, Zap } from "lucide-react";
+
+/* ─────────────────── Motion helpers ─────────────────── */
+
+// Wraps each grid cell so it stays hidden until its IntersectionObserver flips
+// data-revealed. Cards already in view at mount reveal with their staggered
+// delay; cards below the fold reveal as the user scrolls down.
+function RevealCard({
+  children,
+  delayMs,
+  className,
+}: {
+  children: ReactNode;
+  delayMs: number;
+  className?: string;
+}) {
+  const [ref, inView] = useInView<HTMLDivElement>({ threshold: 0.12 });
+  return (
+    <div
+      ref={ref}
+      className={cn("feed-card-reveal", className)}
+      data-revealed={inView ? "true" : "false"}
+      style={{ ["--reveal-delay" as string]: `${delayMs}ms` } as CSSProperties}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Splits text into per-word spans so they can stagger-rise once the wrapping
+// card flips data-revealed=true. Capped to keep long quotes manageable.
+function StaggeredQuote({ text }: { text: string }) {
+  const words = text.split(/(\s+)/);
+  let wordIdx = 0;
+  return (
+    <>
+      {words.map((token, i) => {
+        if (/^\s+$/.test(token)) return <span key={i}>{token}</span>;
+        const idx = Math.min(wordIdx++, 18);
+        return (
+          <span
+            key={i}
+            className="feed-word"
+            style={{ ["--word-index" as string]: idx } as CSSProperties}
+          >
+            {token}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+// Hero headline characters cascade in once on first paint. Skips spaces from
+// the index so the wave reads smoothly across word boundaries.
+function CascadeHeadline({ text, className }: { text: string; className?: string }) {
+  let idx = 0;
+  return (
+    <span className={className}>
+      {text.split("").map((ch, i) => {
+        const charIdx = ch === " " ? idx : idx++;
+        return (
+          <span
+            key={i}
+            className="feed-headline-char"
+            style={{ ["--char-index" as string]: charIdx } as CSSProperties}
+          >
+            {ch}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 function strHue(s: string): number {
   let h = 0;
@@ -63,11 +142,13 @@ function LiveHeroBanner({ debate, tickerItems }: { debate: DebateSummary; ticker
   const oppColor = getAgentColor(debate.opponent.persona ?? "", debate.opponent.agentType);
   const imgUrl = getTopicImageUrl(debate.topic, 1200, 500);
   const hue = strHue(debate.topic);
+  const tiltRef = useTilt<HTMLAnchorElement>({ maxTiltDeg: 4 });
+  const parallaxRef = useParallax<HTMLImageElement>(20);
 
   return (
-    <Link to={`/debates/${debate.id}`} className="no-underline block group">
+    <Link ref={tiltRef} to={`/debates/${debate.id}`} className="no-underline block group feed-tilt-root mb-6">
       <div
-        className="relative rounded-2xl overflow-hidden mb-6 min-h-[260px]"
+        className="feed-tilt-glow relative rounded-2xl overflow-hidden min-h-[260px]"
         style={{
           // 200% size so feed-gradient-pan can slide the wash across the hero.
           backgroundSize: "200% 200%",
@@ -75,7 +156,7 @@ function LiveHeroBanner({ debate, tickerItems }: { debate: DebateSummary; ticker
           animation: "feed-gradient-pan 14s ease-in-out infinite",
         }}
       >
-        <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1500ms] group-hover:scale-110" loading="eager" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        <img ref={parallaxRef} src={imgUrl} alt="" className="feed-parallax absolute inset-0 w-full h-full object-cover" loading="eager" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent animate-[shimmer_3s_infinite]" />
 
@@ -91,14 +172,14 @@ function LiveHeroBanner({ debate, tickerItems }: { debate: DebateSummary; ticker
               return fl ? <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", fl.color)}>{fl.label}</span> : null;
             })()}
             <span className="ml-auto text-[10px] text-white/55 font-medium flex items-center gap-1">
-              <MessageCircle size={10} /> {debate.turnCount}
+              <MessageCircle size={10} /> <RollingNumber value={debate.turnCount} />
               <span className="mx-1 text-white/30">·</span>
-              <ThumbsUp size={10} /> {debate.voteCount}
+              <ThumbsUp size={10} /> <RollingNumber value={debate.voteCount} />
             </span>
           </div>
 
           <h2 className="text-lg sm:text-2xl font-black text-white leading-tight mb-3 max-w-xl drop-shadow-lg">
-            {debate.topic}
+            <CascadeHeadline text={debate.topic} />
           </h2>
 
           {tickerItems.length > 0 && (
@@ -137,6 +218,9 @@ function QuoteCard({ debate }: { debate: DebateSummary }) {
   const oppColor = getAgentColor(debate.opponent.persona ?? "", debate.opponent.agentType);
   const isLive = debate.status === "Active" || debate.status === "Compromising";
   const quote = debate.topQuote;
+  const tiltRef = useTilt<HTMLAnchorElement>({ maxTiltDeg: 5 });
+  const reactionPopKey = useChangeKey(quote?.reactionCount ?? 0);
+  const newTurnKey = useChangeKey(debate.turnCount, { onlyIncrease: true });
   if (!quote) return null;
   const speaker = quote.isProponent ? debate.proponent : debate.opponent;
   const speakerColor = quote.isProponent ? proColor : oppColor;
@@ -145,15 +229,24 @@ function QuoteCard({ debate }: { debate: DebateSummary }) {
   const isInsightful = quote.insightfulCount >= 2;
 
   return (
-    <Link to={`/debates/${debate.id}`} className="no-underline block group">
+    <Link ref={tiltRef} to={`/debates/${debate.id}`} className="no-underline block group feed-tilt-root">
       <article
-        className="relative rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 min-h-[200px] border border-white/5"
+        className="feed-tilt-glow relative rounded-xl overflow-hidden transition-shadow duration-300 hover:shadow-xl min-h-[200px] border border-white/5"
         style={{
           backgroundSize: "180% 180%",
           backgroundImage: `linear-gradient(120deg, oklch(0.28 0.12 ${hue}), oklch(0.20 0.10 ${(hue + 90) % 360}), oklch(0.24 0.13 ${(hue + 200) % 360}))`,
           animation: "feed-gradient-pan 18s ease-in-out infinite",
         }}
       >
+        {newTurnKey > 0 && (
+          <div
+            key={newTurnKey}
+            className="feed-new-turn-ribbon absolute top-0 left-0 right-0 z-20 bg-amber-400 text-amber-950 text-[9px] font-bold uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1"
+          >
+            <Zap size={10} /> New Turn
+          </div>
+        )}
+
         {/* Oversized opening quote glyph drifts behind the text. */}
         <Quote
           size={140}
@@ -185,14 +278,19 @@ function QuoteCard({ debate }: { debate: DebateSummary }) {
               return fl ? <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold", fl.color)}>{fl.label}</span> : null;
             })()}
             <span className="ml-auto text-[10px] text-white/45 flex items-center gap-2">
-              <span><ThumbsUp size={9} className="inline" /> {quote.reactionCount}</span>
+              <span
+                key={reactionPopKey}
+                className={cn("inline-flex items-center gap-0.5", reactionPopKey > 0 && "feed-reaction-pop")}
+              >
+                <ThumbsUp size={9} className="inline" /> {quote.reactionCount}
+              </span>
               <span>{timeAgo(debate.createdAt)}</span>
             </span>
           </div>
 
           <blockquote className="my-4 sm:my-5 max-w-[34ch] sm:max-w-[44ch]">
             <p className="text-[15px] sm:text-[17px] font-semibold text-white leading-snug drop-shadow-md italic [text-wrap:balance]">
-              "{quote.text}"
+              "<StaggeredQuote text={quote.text} />"
             </p>
           </blockquote>
 
@@ -227,18 +325,32 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
   const isLive = debate.status === "Active" || debate.status === "Compromising";
   const totalVotes = debate.proponentVotes + debate.opponentVotes;
   const pctA = totalVotes > 0 ? (debate.proponentVotes / totalVotes) * 100 : 50;
+  const newTurnKey = useChangeKey(debate.turnCount, { onlyIncrease: true });
+  const voteFlashKey = useChangeKey(totalVotes);
+  const heroTiltRef = useTilt<HTMLAnchorElement>({ maxTiltDeg: 5 });
+  const heroParallaxRef = useParallax<HTMLImageElement>(14);
+  const imageTiltRef = useTilt<HTMLAnchorElement>({ maxTiltDeg: 6 });
+  const imageParallaxRef = useParallax<HTMLImageElement>(12);
 
   // Hero: large card with full background image, spans 2 columns
   if (variant === "hero") {
     const imgUrl = getTopicImageUrl(debate.topic, 800, 400);
     const hue = strHue(debate.topic);
     return (
-      <Link to={`/debates/${debate.id}`} className="no-underline block group">
+      <Link ref={heroTiltRef} to={`/debates/${debate.id}`} className="no-underline block group feed-tilt-root">
         <article
-          className="relative rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 min-h-[200px]"
+          className="feed-tilt-glow relative rounded-xl overflow-hidden transition-shadow duration-200 hover:shadow-lg min-h-[200px]"
           style={{ background: `linear-gradient(145deg, oklch(0.25 0.1 ${hue}), oklch(0.18 0.08 ${(hue + 50) % 360}))` }}
         >
-          <img src={imgUrl} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          {newTurnKey > 0 && (
+            <div
+              key={newTurnKey}
+              className="feed-new-turn-ribbon absolute top-0 left-0 right-0 z-20 bg-amber-400 text-amber-950 text-[9px] font-bold uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1"
+            >
+              <Zap size={10} /> New Turn
+            </div>
+          )}
+          <img ref={heroParallaxRef} src={imgUrl} alt="" className="feed-parallax absolute inset-0 w-full h-full object-cover" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
 
           <div className="relative p-5 min-h-[200px] flex flex-col justify-end">
@@ -278,8 +390,8 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
                 <AgentAvatar agent={{ name: debate.opponent.name, color: oppColor }} size="sm" />
               </div>
               <div className="ml-auto flex items-center gap-2 text-[10px] text-white/40">
-                <span><MessageCircle size={9} className="inline" /> {debate.turnCount}</span>
-                <span><ThumbsUp size={9} className="inline" /> {debate.voteCount}</span>
+                <span><MessageCircle size={9} className="inline" /> <RollingNumber value={debate.turnCount} /></span>
+                <span><ThumbsUp size={9} className="inline" /> <RollingNumber value={debate.voteCount} /></span>
               </div>
             </div>
           </div>
@@ -293,17 +405,25 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
     const imgUrl = getTopicImageUrl(debate.topic, 400, 200);
     const hue = strHue(debate.topic);
     return (
-      <Link to={`/debates/${debate.id}`} className="no-underline block group">
+      <Link ref={imageTiltRef} to={`/debates/${debate.id}`} className="no-underline block group feed-tilt-root">
         <article className={cn(
-          "rounded-xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+          "feed-tilt-glow rounded-xl border bg-card overflow-hidden transition-shadow duration-200 hover:shadow-md relative",
           isLive ? "border-primary/20" : "border-border hover:border-primary/20",
         )}>
+          {newTurnKey > 0 && (
+            <div
+              key={newTurnKey}
+              className="feed-new-turn-ribbon absolute top-0 left-0 right-0 z-20 bg-amber-400 text-amber-950 text-[9px] font-bold uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1"
+            >
+              <Zap size={10} /> New Turn
+            </div>
+          )}
           {/* Thumbnail with gradient fallback */}
           <div
             className="relative h-28 overflow-hidden"
             style={{ background: `linear-gradient(135deg, oklch(0.35 0.1 ${hue}), oklch(0.25 0.08 ${(hue + 40) % 360}))` }}
           >
-            <img src={imgUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <img ref={imageParallaxRef} src={imgUrl} alt="" className="feed-parallax w-full h-full object-cover" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
               {isLive && (
@@ -339,15 +459,21 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
             </div>
 
             {totalVotes > 0 && (
-              <div className="h-1 w-full rounded-full bg-secondary overflow-hidden flex mb-2">
+              <div
+                key={voteFlashKey}
+                className={cn(
+                  "h-1 w-full rounded-full bg-secondary overflow-hidden flex mb-2",
+                  voteFlashKey > 0 && "feed-vote-flash",
+                )}
+              >
                 <div className={cn("h-full transition-[width] duration-700", `bg-${proColor}`)} style={{ width: `${pctA}%` }} />
                 <div className={cn("h-full transition-[width] duration-700", `bg-${oppColor}`)} style={{ width: `${100 - pctA}%` }} />
               </div>
             )}
 
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
-              <span><MessageCircle size={9} className="inline" /> {debate.turnCount}</span>
-              <span><ThumbsUp size={9} className="inline" /> {debate.voteCount}</span>
+              <span><MessageCircle size={9} className="inline" /> <RollingNumber value={debate.turnCount} /></span>
+              <span><ThumbsUp size={9} className="inline" /> <RollingNumber value={debate.voteCount} /></span>
               <ChevronRight size={10} className="ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-primary" />
             </div>
           </div>
@@ -371,6 +497,14 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
           animation: `feed-gradient-pan ${16 + (strHue(debate.id) % 8)}s ease-in-out infinite`,
         }}
       >
+        {newTurnKey > 0 && (
+          <div
+            key={newTurnKey}
+            className="feed-new-turn-ribbon absolute top-0 left-0 right-0 z-20 bg-amber-400 text-amber-950 text-[9px] font-bold uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1"
+          >
+            <Zap size={10} /> New Turn
+          </div>
+        )}
         <div className="p-4 min-h-[140px] flex flex-col justify-end relative">
           <div className="flex items-center gap-1.5 mb-2">
             {isLive && (
@@ -407,8 +541,8 @@ function DebateCard({ debate, variant }: { debate: DebateSummary; variant: "hero
           </div>
 
           <div className="flex items-center gap-2 text-[10px] text-white/35">
-            <span><MessageCircle size={9} className="inline" /> {debate.turnCount}</span>
-            <span><ThumbsUp size={9} className="inline" /> {debate.voteCount}</span>
+            <span><MessageCircle size={9} className="inline" /> <RollingNumber value={debate.turnCount} /></span>
+            <span><ThumbsUp size={9} className="inline" /> <RollingNumber value={debate.voteCount} /></span>
             <ChevronRight size={10} className="ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-white/60" />
           </div>
         </div>
@@ -564,6 +698,7 @@ export default function Feed() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
+      {!isFiltering && <BreakingTicker debates={debates} />}
       {liveDebate && !isFiltering && <LiveHeroBanner debate={liveDebate} tickerItems={tickerItems} />}
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -630,19 +765,17 @@ export default function Feed() {
               const spans2 = isPromotedQuote || (!isFiltering && variant === "hero");
               const delayMs = Math.min(i * 60, 600);
               return (
-                <div
+                <RevealCard
                   key={d.id}
+                  delayMs={delayMs}
                   className={cn(spans2 && "sm:col-span-2")}
-                  style={{
-                    animation: `feed-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${delayMs}ms both`,
-                  }}
                 >
                   {isPromotedQuote ? (
                     <QuoteCard debate={d} />
                   ) : (
                     <DebateCard debate={d} variant={variant} />
                   )}
-                </div>
+                </RevealCard>
               );
             })}
           </div>
