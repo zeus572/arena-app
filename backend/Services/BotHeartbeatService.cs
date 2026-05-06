@@ -121,6 +121,7 @@ public class BotHeartbeatService : BackgroundService
             .Where(d => d.Status == DebateStatus.Active || d.Status == DebateStatus.Compromising)
             .Include(d => d.Proponent)
             .Include(d => d.Opponent)
+            .Include(d => d.Arena)
             .Include(d => d.Turns.OrderBy(t => t.TurnNumber))
             .Include(d => d.Participants).ThenInclude(p => p.Agent)
             .ToListAsync(ct);
@@ -141,28 +142,67 @@ public class BotHeartbeatService : BackgroundService
 
         if (agents.Count < 2) return;
 
-        var format = PickRandomFormat();
-        var config = DebateFormatConfig.Get(format);
+        // Round-robin across official arenas. Null means no arenas seeded — fall
+        // back to legacy behavior so dev/test environments without seeds still work.
+        var arena = await PickNextArenaAsync(db, ct);
 
-        // Pick topic
-        var newsGeneratedTopic = await db.GeneratedTopics
-            .Where(t => !t.Used && t.Source == "news")
-            .OrderBy(t => t.CreatedAt)
-            .FirstOrDefaultAsync(ct);
-
+        string format;
         string topic;
         var source = "bot";
+        GeneratedTopic? newsGeneratedTopic = null;
 
-        if (newsGeneratedTopic != null)
+        if (arena is null)
         {
-            topic = newsGeneratedTopic.Title;
-            newsGeneratedTopic.Used = true;
-            source = "breaking";
+            format = PickRandomFormat();
+
+            newsGeneratedTopic = await db.GeneratedTopics
+                .Where(t => !t.Used && t.Source == "news")
+                .OrderBy(t => t.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            if (newsGeneratedTopic != null)
+            {
+                topic = newsGeneratedTopic.Title;
+                newsGeneratedTopic.Used = true;
+                source = "breaking";
+            }
+            else
+            {
+                topic = await _topics.PickRandomTopicAsync();
+            }
         }
         else
         {
-            topic = await _topics.PickRandomTopicAsync();
+            format = arena.DefaultFormat;
+
+            // Politics arena absorbs breaking news + user-proposed topics — most of
+            // those are political given the seed topic banks. Other arenas pull
+            // straight from their themed bank.
+            if (string.Equals(arena.Slug, "politics", StringComparison.OrdinalIgnoreCase))
+            {
+                newsGeneratedTopic = await db.GeneratedTopics
+                    .Where(t => !t.Used && t.Source == "news")
+                    .OrderBy(t => t.CreatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                if (newsGeneratedTopic != null)
+                {
+                    topic = newsGeneratedTopic.Title;
+                    newsGeneratedTopic.Used = true;
+                    source = "breaking";
+                }
+                else
+                {
+                    topic = await _topics.PickRandomTopicAsync();
+                }
+            }
+            else
+            {
+                topic = ArenaTopicBank.PickRandom(arena.Slug);
+            }
         }
+
+        var config = DebateFormatConfig.Get(format);
 
         // Pick agents based on format
         var debateAgents = agents.Where(a => !a.IsWildcard).ToList();
@@ -192,6 +232,7 @@ public class BotHeartbeatService : BackgroundService
             OpponentId = opponentId,
             Source = source,
             GeneratedTopicId = newsGeneratedTopic?.Id,
+            ArenaId = arena?.Id,
         };
 
         db.Debates.Add(newDebate);
@@ -233,7 +274,29 @@ public class BotHeartbeatService : BackgroundService
         var tagging = _scopeFactory.CreateScope().ServiceProvider.GetRequiredService<TaggingService>();
         await tagging.ExtractAndAssignTagsAsync(db, newDebate);
 
-        _logger.LogInformation("Created new {Format} {Source} debate: '{Topic}'", format, source, topic);
+        _logger.LogInformation("Created new {Format} {Source} debate in arena '{Arena}': '{Topic}'",
+            format, source, arena?.Slug ?? "none", topic);
+    }
+
+    private static async Task<DebateArena?> PickNextArenaAsync(ArenaDbContext db, CancellationToken ct)
+    {
+        var officialArenas = await db.Arenas
+            .Where(a => a.IsOfficial)
+            .ToListAsync(ct);
+        if (officialArenas.Count == 0) return null;
+
+        // Round-robin: pick the arena whose most recent bot/breaking debate is oldest.
+        // User-started debates don't count — those reflect what users want, not what
+        // the rotation has covered.
+        var lastDebateByArena = await db.Debates
+            .Where(d => d.ArenaId != null && d.Source != "user")
+            .GroupBy(d => d.ArenaId!.Value)
+            .Select(g => new { ArenaId = g.Key, Last = g.Max(d => d.CreatedAt) })
+            .ToDictionaryAsync(x => x.ArenaId, x => x.Last, ct);
+
+        return officialArenas
+            .OrderBy(a => lastDebateByArena.TryGetValue(a.Id, out var last) ? last : DateTime.MinValue)
+            .First();
     }
 
     private async Task ProcessDebateTurnAsync(ArenaDbContext db, Debate debate, CancellationToken ct)
