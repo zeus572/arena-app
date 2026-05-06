@@ -23,7 +23,8 @@ import {
   getFormatBubbleStyles,
 } from "@/components/format-layouts";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown, Mic, Laugh, Flame, TrendingUp, Play, SkipForward, Zap, Heart } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Lightbulb, ChevronLeft, Trophy, Scale, Target, Check, X, Activity, ChevronDown, ChevronUp, Crosshair, BookOpen, HelpCircle, AlertTriangle, MessageCircleQuestion, ArrowUp, Send, Sparkles, Share2, Copy, Link2, Crown, Mic, Laugh, Flame, TrendingUp, Play, SkipForward, Zap, Heart, GitFork } from "lucide-react";
+import { ForkDebateDialog } from "@/components/fork-debate-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings, resolveMatchupTheme, type ResolvedMatchupTheme } from "@/lib/use-settings";
 
@@ -894,6 +895,7 @@ export default function DebateViewPage() {
   const { id } = useParams<{ id: string }>();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
   const [userVote, setUserVote] = useState<string | null>(null);
+  const [forkOpen, setForkOpen] = useState(false);
   const [settings] = useSettings();
   // Resolve the theme once per debate visit so "random" picks one and stays stable
   // until the user navigates to another debate.
@@ -1130,13 +1132,48 @@ export default function DebateViewPage() {
             const fl = FORMAT_LABELS[debate.format];
             return fl ? <span className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold", fl.color)}>{fl.label}</span> : null;
           })()}
+          {debate.arena && (
+            <Link
+              to={`/arenas/${debate.arena.slug}`}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold no-underline transition-opacity hover:opacity-80"
+              style={{ backgroundColor: `${debate.arena.accentColor}1f`, color: debate.arena.accentColor }}
+            >
+              <span>{debate.arena.iconEmoji}</span>
+              <span>{debate.arena.name}</span>
+            </Link>
+          )}
           {debate.source === "breaking" && (
             <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold bg-red-600/10 text-red-600">BREAKING NEWS</span>
+          )}
+          {debate.forkedFromDebateId && (
+            <Link
+              to={`/debates/${debate.forkedFromDebateId}`}
+              className="flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-[10px] font-bold text-purple-600 no-underline hover:bg-purple-500/20"
+              title={debate.forkNote ?? "View parent debate"}
+            >
+              <GitFork size={10} /> FORKED
+            </Link>
           )}
           <span className="text-[11px] text-muted-foreground">
             {new Date(debate.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
           </span>
+          <button
+            onClick={() => setForkOpen(true)}
+            className="ml-auto flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+            title="Fork this debate into a new branch"
+          >
+            <GitFork size={10} />
+            Fork
+            {debate.forkCount && debate.forkCount > 0 ? ` (${debate.forkCount})` : ""}
+          </button>
         </div>
+
+        {debate.forkNote && (
+          <div className="mb-3 rounded-lg border-l-2 border-purple-400 bg-purple-500/5 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-600 mb-0.5">Fork note</p>
+            <p className="text-xs text-foreground/80 leading-relaxed">{debate.forkNote}</p>
+          </div>
+        )}
 
         {debate.newsInfo && (
           <div className="flex items-start gap-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20 px-3 py-2.5 mb-4">
@@ -1447,6 +1484,14 @@ export default function DebateViewPage() {
       )}
       </div>
     </main>
+    {forkOpen && id && (
+      <ForkDebateDialog
+        debateId={id}
+        parentTopic={debate.topic}
+        parentArenaId={debate.arena?.id ?? null}
+        onClose={() => setForkOpen(false)}
+      />
+    )}
     </>
   );
 }

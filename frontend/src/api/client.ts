@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo } from "./types";
+import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo, ArenaSummary, ArenaDetail, ArenaFeedResponse, ForkDebateRequest, ForkSummary } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -237,6 +237,44 @@ export async function fetchFormats() {
 
 export async function fetchAgentSources(agentId: string) {
   const res = await api.get<(AgentSourceInfo & { excerptText: string; url?: string })[]>(`/agents/${agentId}/sources`);
+  return res.data;
+}
+
+// Arenas
+export async function fetchArenas() {
+  const res = await api.get<ArenaSummary[]>("/arenas");
+  return res.data;
+}
+
+export async function fetchArena(slug: string) {
+  const res = await api.get<ArenaDetail>(`/arenas/${slug}`);
+  return res.data;
+}
+
+export interface ArenaFeedParams {
+  page?: number;
+  pageSize?: number;
+  sort?: "hot" | "new" | "top" | "controversial";
+}
+
+export async function fetchArenaFeed(slug: string, params: ArenaFeedParams = {}) {
+  const res = await api.get<ArenaFeedResponse>(`/arenas/${slug}/feed`, {
+    params: { page: 1, pageSize: 20, sort: "hot", ...params },
+  });
+  return res.data;
+}
+
+// Forking debates
+export async function forkDebate(debateId: string, req: ForkDebateRequest) {
+  const res = await api.post<{ id: string; topic: string; forkedFromDebateId: string; arenaId: string | null; parentTopic: string }>(
+    `/debates/${debateId}/fork`,
+    req,
+  );
+  return res.data;
+}
+
+export async function fetchForks(debateId: string) {
+  const res = await api.get<ForkSummary[]>(`/debates/${debateId}/forks`);
   return res.data;
 }
 

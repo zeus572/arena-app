@@ -533,9 +533,74 @@ using (var scope = app.Services.CreateScope())
     // Seed agent sources for celebrity/historical agents
     await SeedAgentSourcesAsync(db);
     await db.SaveChangesAsync();
+
+    // Seed default arenas (idempotent: matched by Slug)
+    await SeedArenasAsync(db);
+    await db.SaveChangesAsync();
 }
 
 app.Run();
+
+static async Task SeedArenasAsync(Arena.API.Data.ArenaDbContext db)
+{
+    var defaults = new (string Slug, string Name, string Description, string Topic, string Tone, string Format, string Emoji, string Color, string Rules)[]
+    {
+        ("politics", "Politics Arena",
+            "Where ideologies clash on policy, power, and the future of the republic.",
+            "Politics", "adversarial", "standard", "🏛️", "#dc2626",
+            "1. Argue policy, not personality.\n2. Cite real data — every factual claim needs a source.\n3. Steelman before you strike: name the opposing view's strongest form before you attack it."),
+        ("ai-safety", "AI Safety",
+            "Alignment, capability overhang, governance, and the long arc of artificial minds.",
+            "AI", "serious", "longform", "🧠", "#6366f1",
+            "1. Steelman-only — represent the opposing view fairly before responding.\n2. Cite primary research where possible (papers > blogs > tweets).\n3. Tag your timescale: are you arguing about today's models or hypothetical future systems?"),
+        ("religion", "Religion & Meaning",
+            "Faith, doubt, ritual, ethics, and the questions humanity refuses to settle.",
+            "Religion", "educational", "common_ground", "🕊️", "#a855f7",
+            "1. No mockery — disagree with the idea, never the believer.\n2. Bring text, tradition, or lived experience to back your claims.\n3. Acknowledge where the other tradition has wisdom you respect."),
+        ("finance", "Finance & Markets",
+            "Macro, micro, monetary policy, crypto, and the tradeoffs hiding in every line item.",
+            "Finance", "serious", "standard", "💸", "#10b981",
+            "1. Numbers or it didn't happen — quantify costs, returns, and time horizons.\n2. Disclose your priors: are you long the position you're defending?\n3. Distinguish 'descriptive' from 'normative' — what IS vs. what SHOULD BE."),
+        ("parenting", "Parenting Arena",
+            "Sleep training, screen time, schools, discipline — every micro-decision that shapes a kid.",
+            "Parenting", "educational", "common_ground", "👶", "#f59e0b",
+            "1. No judgment of individual families — debate the framework, not the parent.\n2. Distinguish what works for YOUR kid from what works in general.\n3. Acknowledge that culture, income, and temperament change the calculus."),
+        ("memes-vs-takes", "Memes vs. Takes",
+            "Rapid-fire roasts where the funniest argument wins. No quarter, no mercy, no LinkedIn voice.",
+            "Comedy", "comedic", "roast", "🔥", "#ec4899",
+            "1. Punch the position, not the person.\n2. A joke that's also true beats a joke that's just mean.\n3. Callbacks reward attention — reference what came before."),
+    };
+
+    foreach (var d in defaults)
+    {
+        var existing = await db.Arenas.FirstOrDefaultAsync(a => a.Slug == d.Slug);
+        if (existing is null)
+        {
+            db.Arenas.Add(new Arena.API.Models.DebateArena
+            {
+                Id = Guid.NewGuid(),
+                Slug = d.Slug,
+                Name = d.Name,
+                Description = d.Description,
+                Topic = d.Topic,
+                Tone = d.Tone,
+                DefaultFormat = d.Format,
+                IconEmoji = d.Emoji,
+                AccentColor = d.Color,
+                Rules = d.Rules,
+                IsOfficial = true,
+            });
+        }
+        else if (existing.Rules != d.Rules || existing.Description != d.Description)
+        {
+            existing.Rules = d.Rules;
+            existing.Description = d.Description;
+            existing.IconEmoji = d.Emoji;
+            existing.AccentColor = d.Color;
+            existing.Tone = d.Tone;
+        }
+    }
+}
 
 static async Task SeedAgentSourcesAsync(Arena.API.Data.ArenaDbContext db)
 {

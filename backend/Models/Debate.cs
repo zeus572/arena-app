@@ -27,6 +27,13 @@ public class Debate
     public GeneratedTopic? GeneratedTopic { get; set; }
     public Guid? StartedByUserId { get; set; }
     public User? StartedByUser { get; set; }
+    public Guid? ArenaId { get; set; }
+    public DebateArena? Arena { get; set; }
+    /// <summary>If this debate was forked from another, the parent debate's Id.</summary>
+    public Guid? ForkedFromDebateId { get; set; }
+    public Debate? ForkedFromDebate { get; set; }
+    /// <summary>Optional notes the forker attached — "what changed" in this fork.</summary>
+    public string? ForkNote { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
@@ -35,4 +42,5 @@ public class Debate
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
     public ICollection<DebateTag> DebateTags { get; set; } = new List<DebateTag>();
     public ICollection<DebateParticipant> Participants { get; set; } = new List<DebateParticipant>();
+    public ICollection<Debate> Forks { get; set; } = new List<Debate>();
 }

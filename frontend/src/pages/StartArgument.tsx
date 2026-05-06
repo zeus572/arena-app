@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { fetchAgents, createDebate } from "@/api/client";
-import type { Agent } from "@/api/types";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { fetchAgents, createDebate, fetchArenas } from "@/api/client";
+import type { Agent, ArenaSummary } from "@/api/types";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { IdeologyBadge } from "@/components/ideology-badge";
 import { getAgentColor, getAgentLabel, FORMAT_LABELS } from "@/lib/agent-colors";
@@ -30,7 +30,11 @@ const SUGGESTED_TOPICS = [
 
 export default function StartArgument() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const arenaSlugFromUrl = searchParams.get("arena");
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [arenas, setArenas] = useState<ArenaSummary[]>([]);
+  const [arenaSlug, setArenaSlug] = useState<string | null>(arenaSlugFromUrl);
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState("standard");
   const [selected, setSelected] = useState<string[]>([]);
@@ -38,7 +42,17 @@ export default function StartArgument() {
 
   useEffect(() => {
     fetchAgents().then(setAgents);
+    fetchArenas().then(setArenas);
   }, []);
+
+  // When an arena is chosen, snap the format to the arena's default unless the
+  // user already picked one explicitly. The arena's house rules feed the prompt
+  // server-side, so the format default is the visible cue that something changed.
+  useEffect(() => {
+    if (!arenaSlug) return;
+    const a = arenas.find((x) => x.slug === arenaSlug);
+    if (a && format === "standard") setFormat(a.defaultFormat);
+  }, [arenaSlug, arenas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleAgent = (id: string) => {
     setSelected((prev) => {
@@ -59,6 +73,7 @@ export default function StartArgument() {
         format,
         proponentId: selected[0],
         opponentId: selected[1],
+        arenaSlug: arenaSlug ?? undefined,
       });
       navigate(`/debates/${result.id}`);
     } catch {
@@ -123,6 +138,53 @@ export default function StartArgument() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Step 1.5: Arena (optional) */}
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-[10px] font-bold">
+              ★
+            </span>
+            <h2 className="text-sm font-semibold text-foreground">
+              Choose an Arena <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            </h2>
+          </div>
+          {arenaSlug && (
+            <button
+              onClick={() => setArenaSlug(null)}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Each arena has its own tone, default format, and house rules that shape how the debate plays out.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {arenas.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => setArenaSlug(a.slug === arenaSlug ? null : a.slug)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-all",
+                arenaSlug === a.slug
+                  ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40",
+              )}
+              style={
+                arenaSlug === a.slug
+                  ? { borderColor: a.accentColor, color: a.accentColor, backgroundColor: `${a.accentColor}1a` }
+                  : undefined
+              }
+            >
+              <span>{a.iconEmoji}</span>
+              <span>{a.name}</span>
+            </button>
+          ))}
         </div>
       </section>
 

@@ -115,6 +115,17 @@ export interface DebateDetail {
   proponentVotes: number;
   opponentVotes: number;
   reactions: ReactionCounts;
+  arena?: {
+    id: string;
+    slug: string;
+    name: string;
+    iconEmoji: string;
+    accentColor: string;
+    tone: string;
+  } | null;
+  forkedFromDebateId?: string | null;
+  forkNote?: string | null;
+  forkCount?: number;
 }
 
 // Keep for backwards compat
@@ -222,6 +233,86 @@ export interface CreateDebateRequest {
   format?: string;
   proponentId?: string;
   opponentId?: string;
+  arenaId?: string;
+  arenaSlug?: string;
+}
+
+export interface ArenaSummary {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  topic: string;
+  tone: "serious" | "comedic" | "adversarial" | "educational";
+  defaultFormat: string;
+  iconEmoji: string;
+  accentColor: string;
+  isOfficial: boolean;
+  debateCount: number;
+  activeDebateCount: number;
+}
+
+export interface ArenaDetail extends ArenaSummary {
+  rules: string;
+  createdAt: string;
+}
+
+export interface ArenaFeedItem {
+  id: string;
+  topic: string;
+  description?: string;
+  status: string;
+  format: string;
+  source?: string;
+  proponent: { id: string; name: string; avatarUrl?: string; persona?: string };
+  opponent: { id: string; name: string; avatarUrl?: string; persona?: string };
+  createdAt: string;
+  turnCount: number;
+  voteCount: number;
+  reactionCount: number;
+  totalScore: number;
+  proponentVotes: number;
+  opponentVotes: number;
+  forkCount: number;
+  isForked: boolean;
+}
+
+export interface ArenaFeedResponse {
+  arena: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string;
+    topic: string;
+    tone: string;
+    rules: string;
+    defaultFormat: string;
+    iconEmoji: string;
+    accentColor: string;
+  };
+  items: ArenaFeedItem[];
+  totalCount: number;
+}
+
+export interface ForkDebateRequest {
+  topic?: string;
+  forkNote?: string;
+  format?: string;
+  arenaId?: string;
+  proponentId?: string;
+  opponentId?: string;
+}
+
+export interface ForkSummary {
+  id: string;
+  topic: string;
+  forkNote?: string | null;
+  status: string;
+  format: string;
+  proponent: { id: string; name: string; avatarUrl?: string };
+  opponent: { id: string; name: string; avatarUrl?: string };
+  createdAt: string;
+  turnCount: number;
 }
 
 export interface DebateFormatInfo {

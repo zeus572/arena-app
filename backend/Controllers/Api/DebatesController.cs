@@ -44,6 +44,7 @@ public class DebatesController : ControllerBase
             .Include(d => d.Proponent)
             .Include(d => d.Opponent)
             .Include(d => d.GeneratedTopic)
+            .Include(d => d.Arena)
             .Include(d => d.Turns.OrderBy(t => t.TurnNumber))
                 .ThenInclude(t => t.Agent)
             .Include(d => d.Turns)
@@ -56,6 +57,7 @@ public class DebatesController : ControllerBase
 
         var proponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.ProponentId);
         var opponentVotes = debate.Votes.Count(v => v.VotedForAgentId == debate.OpponentId);
+        var forkCount = await _db.Debates.CountAsync(d => d.ForkedFromDebateId == debate.Id);
 
         var formatConfig = DebateFormatConfig.Get(debate.Format);
 
@@ -66,6 +68,14 @@ public class DebatesController : ControllerBase
             debate.Description,
             Status = debate.Status.ToString(),
             debate.Format,
+            Arena = debate.Arena == null ? null : new
+            {
+                debate.Arena.Id, debate.Arena.Slug, debate.Arena.Name,
+                debate.Arena.IconEmoji, debate.Arena.AccentColor, debate.Arena.Tone,
+            },
+            debate.ForkedFromDebateId,
+            debate.ForkNote,
+            ForkCount = forkCount,
             FormatConfig = new
             {
                 formatConfig.DisplayName,
@@ -141,7 +151,19 @@ public class DebatesController : ControllerBase
         if (proponentId == opponentId)
             return BadRequest(new { error = "Proponent and opponent must be different agents." });
 
-        var format = request.Format ?? "standard";
+        DebateArena? arena = null;
+        if (request.ArenaId.HasValue)
+        {
+            arena = await _db.Arenas.FindAsync(request.ArenaId.Value);
+            if (arena is null) return BadRequest(new { error = "Arena not found." });
+        }
+        else if (!string.IsNullOrWhiteSpace(request.ArenaSlug))
+        {
+            arena = await _db.Arenas.FirstOrDefaultAsync(a => a.Slug == request.ArenaSlug);
+            if (arena is null) return BadRequest(new { error = "Arena not found." });
+        }
+
+        var format = request.Format ?? arena?.DefaultFormat ?? "standard";
         if (!DebateFormatConfig.All.ContainsKey(format))
             return BadRequest(new { error = $"Invalid format: {format}" });
 
@@ -155,6 +177,7 @@ public class DebatesController : ControllerBase
             ProponentId = proponentId,
             OpponentId = opponentId,
             StartedByUserId = user.Id,
+            ArenaId = arena?.Id,
         };
 
         _db.Debates.Add(debate);
@@ -163,6 +186,115 @@ public class DebatesController : ControllerBase
         await _tagging.ExtractAndAssignTagsAsync(_db, debate);
 
         return CreatedAtAction(nameof(GetById), new { id = debate.Id }, new { debate.Id, debate.Topic, debate.Status });
+    }
+
+    [HttpPost("{id:guid}/fork")]
+    [Authorize(Policy = "Premium")]
+    public async Task<IActionResult> Fork(Guid id, [FromBody] ForkDebateRequest request)
+    {
+        var parent = await _db.Debates
+            .Include(d => d.Arena)
+            .FirstOrDefaultAsync(d => d.Id == id);
+        if (parent is null) return NotFound();
+
+        var user = await _userService.GetOrCreateUserAsync();
+
+        // Resolve target arena: explicit override > parent's arena.
+        DebateArena? targetArena = parent.Arena;
+        if (request.ArenaId.HasValue && request.ArenaId.Value != parent.ArenaId)
+        {
+            targetArena = await _db.Arenas.FindAsync(request.ArenaId.Value);
+            if (targetArena is null) return BadRequest(new { error = "Target arena not found." });
+        }
+
+        // Pick agents: caller-supplied or fresh random (different from parent if possible).
+        Guid proponentId, opponentId;
+        if (request.ProponentId.HasValue && request.OpponentId.HasValue)
+        {
+            proponentId = request.ProponentId.Value;
+            opponentId = request.OpponentId.Value;
+        }
+        else
+        {
+            var pool = await _db.Agents
+                .Where(a => !a.IsCommentator && !a.IsWildcard)
+                .ToListAsync();
+            if (pool.Count < 2)
+                return BadRequest(new { error = "Not enough agents available to fork." });
+
+            // Bias toward fresh debaters — exclude parent's pair if possible.
+            var fresh = pool.Where(a => a.Id != parent.ProponentId && a.Id != parent.OpponentId).ToList();
+            var candidates = fresh.Count >= 2 ? fresh : pool;
+            var shuffled = candidates.OrderBy(_ => Guid.NewGuid()).Take(2).ToList();
+            proponentId = request.ProponentId ?? shuffled[0].Id;
+            opponentId = request.OpponentId ?? shuffled[1].Id;
+        }
+
+        if (proponentId == opponentId)
+            return BadRequest(new { error = "Proponent and opponent must be different agents." });
+
+        var format = request.Format ?? parent.Format;
+        if (!DebateFormatConfig.All.ContainsKey(format))
+            return BadRequest(new { error = $"Invalid format: {format}" });
+
+        var topic = string.IsNullOrWhiteSpace(request.Topic)
+            ? $"Re: {parent.Topic}"
+            : request.Topic.Trim();
+
+        var fork = new Debate
+        {
+            Id = Guid.NewGuid(),
+            Topic = topic,
+            Description = parent.Description,
+            Format = format,
+            Status = DebateStatus.Pending,
+            ProponentId = proponentId,
+            OpponentId = opponentId,
+            StartedByUserId = user.Id,
+            ArenaId = targetArena?.Id,
+            ForkedFromDebateId = parent.Id,
+            ForkNote = request.ForkNote?.Trim(),
+            Source = "user",
+        };
+
+        _db.Debates.Add(fork);
+        await _db.SaveChangesAsync();
+
+        await _tagging.ExtractAndAssignTagsAsync(_db, fork);
+
+        return CreatedAtAction(nameof(GetById), new { id = fork.Id }, new
+        {
+            fork.Id,
+            fork.Topic,
+            fork.ForkedFromDebateId,
+            fork.ArenaId,
+            ParentTopic = parent.Topic,
+        });
+    }
+
+    [HttpGet("{id:guid}/forks")]
+    public async Task<IActionResult> GetForks(Guid id)
+    {
+        var forks = await _db.Debates
+            .Where(d => d.ForkedFromDebateId == id)
+            .Include(d => d.Proponent)
+            .Include(d => d.Opponent)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new
+            {
+                d.Id,
+                d.Topic,
+                d.ForkNote,
+                Status = d.Status.ToString(),
+                d.Format,
+                Proponent = new { d.Proponent.Id, d.Proponent.Name, d.Proponent.AvatarUrl },
+                Opponent = new { d.Opponent.Id, d.Opponent.Name, d.Opponent.AvatarUrl },
+                d.CreatedAt,
+                TurnCount = d.Turns.Count,
+            })
+            .ToListAsync();
+
+        return Ok(forks);
     }
 
     [HttpPost("{id:guid}/votes")]

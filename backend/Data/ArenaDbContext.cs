@@ -24,6 +24,7 @@ public class ArenaDbContext : DbContext
     public DbSet<Intervention> Interventions => Set<Intervention>();
     public DbSet<AgentSource> AgentSources => Set<AgentSource>();
     public DbSet<DebateParticipant> DebateParticipants => Set<DebateParticipant>();
+    public DbSet<DebateArena> Arenas => Set<DebateArena>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +56,24 @@ public class ArenaDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.GeneratedTopicId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(d => d.Arena)
+                .WithMany(a => a.Debates)
+                .HasForeignKey(d => d.ArenaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(d => d.ForkedFromDebate)
+                .WithMany(d => d.Forks)
+                .HasForeignKey(d => d.ForkedFromDebateId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(d => d.ArenaId);
+            e.HasIndex(d => d.ForkedFromDebateId);
+        });
+
+        modelBuilder.Entity<DebateArena>(e =>
+        {
+            e.HasIndex(a => a.Slug).IsUnique();
         });
 
         modelBuilder.Entity<Turn>(e =>

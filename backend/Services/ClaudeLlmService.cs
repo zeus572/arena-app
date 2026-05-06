@@ -244,6 +244,29 @@ public class ClaudeLlmService : ILlmService
             {(debate.Description is not null ? $"Context: {debate.Description}" : "")}
             """);
 
+        // Arena context — house rules, tone, topical focus.
+        if (debate.Arena is not null)
+        {
+            var toneGuidance = debate.Arena.Tone switch
+            {
+                "comedic" => "The arena's tone is COMEDIC — humor and wit are explicitly rewarded. Land jokes, but make them true.",
+                "adversarial" => "The arena's tone is ADVERSARIAL — push hard, draw blood, but stay on the merits.",
+                "educational" => "The arena's tone is EDUCATIONAL — assume an audience that's learning. Define jargon, surface tradeoffs, teach as you argue.",
+                _ => "The arena's tone is SERIOUS — substance over showmanship. Earn every claim.",
+            };
+
+            sb.AppendLine();
+            sb.AppendLine($"""
+                ARENA: {debate.Arena.Name} ({debate.Arena.Topic})
+                {debate.Arena.Description}
+
+                {toneGuidance}
+
+                HOUSE RULES (binding — violations break character of the arena):
+                {debate.Arena.Rules}
+                """);
+        }
+
         // Source library for celebrity/historical agents
         if (agentSources is { Count: > 0 })
         {

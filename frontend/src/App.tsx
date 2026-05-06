@@ -15,6 +15,8 @@ import Sources from "@/pages/Sources";
 import Leaderboard from "@/pages/Leaderboard";
 import AgentProfile from "@/pages/AgentProfile";
 import Settings from "@/pages/Settings";
+import Arenas from "@/pages/Arenas";
+import ArenaDetail from "@/pages/ArenaDetail";
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
           <Route path="/agents/:id" element={<AgentProfile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/topics" element={<Topics />} />
+          <Route path="/arenas" element={<Arenas />} />
+          <Route path="/arenas/:slug" element={<ArenaDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
