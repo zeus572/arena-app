@@ -1,0 +1,72 @@
+[
+  {
+    "key": "govt-role",
+    "name": "Government role",
+    "lowLabel": "Minimal state",
+    "highLabel": "Active public builder",
+    "order": 1
+  },
+  {
+    "key": "liberty-safety",
+    "name": "Liberty vs. safety",
+    "lowLabel": "Liberty-first",
+    "highLabel": "Safety-first",
+    "order": 2
+  },
+  {
+    "key": "change-speed",
+    "name": "Change speed",
+    "lowLabel": "Gradualist",
+    "highLabel": "Transformational",
+    "order": 3
+  },
+  {
+    "key": "economic-fairness",
+    "name": "Economic fairness",
+    "lowLabel": "Market outcome",
+    "highLabel": "Redistributive correction",
+    "order": 4
+  },
+  {
+    "key": "authority",
+    "name": "Authority",
+    "lowLabel": "Decentralized",
+    "highLabel": "Centralized",
+    "order": 5
+  },
+  {
+    "key": "expertise",
+    "name": "Expertise",
+    "lowLabel": "Populist judgment",
+    "highLabel": "Expert-guided",
+    "order": 6
+  },
+  {
+    "key": "speech",
+    "name": "Speech",
+    "lowLabel": "Open expression",
+    "highLabel": "Harm-aware moderation",
+    "order": 7
+  },
+  {
+    "key": "risk",
+    "name": "Risk",
+    "lowLabel": "Precautionary",
+    "highLabel": "Innovation-tolerant",
+    "order": 8
+  },
+  {
+    "key": "community",
+    "name": "Community",
+    "lowLabel": "Individual-first",
+    "highLabel": "Community-first",
+    "order": 9
+  },
+  {
+    "key": "time-horizon",
+    "name": "Time horizon",
+    "lowLabel": "Present relief",
+    "highLabel": "Future resilience",
+    "order": 10
+  }
+]

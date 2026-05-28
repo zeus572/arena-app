@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "us-general-2026",
+    "name": "2026 U.S. Midterm General Election",
+    "scope": "National",
+    "scheduledAt": "2026-11-03T05:00:00Z",
+    "region": null,
+    "description": "All 435 U.S. House seats, 33 U.S. Senate seats, and 36 state governorships are on the ballot."
+  },
+  {
+    "slug": "us-general-2028",
+    "name": "2028 U.S. Presidential Election",
+    "scope": "National",
+    "scheduledAt": "2028-11-07T05:00:00Z",
+    "region": null,
+    "description": "Presidential, congressional, and state elections held across the United States."
+  }
+]

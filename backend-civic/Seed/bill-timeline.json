@@ -1,0 +1,42 @@
+[
+  {
+    "externalId": "ts-001",
+    "label": "Introduction",
+    "description": "A member of Congress writes the bill and submits it to the House or Senate clerk. It gets a number and is referred to a committee.",
+    "branch": "Legislative",
+    "status": "Done",
+    "order": 1
+  },
+  {
+    "externalId": "ts-002",
+    "label": "Committee",
+    "description": "The committee studies the bill, holds hearings, marks it up, and votes on whether to send it to the full chamber. Most bills die here.",
+    "branch": "Legislative",
+    "status": "Current",
+    "order": 2
+  },
+  {
+    "externalId": "ts-003",
+    "label": "House vote",
+    "description": "The full House debates and votes. A majority is required to pass.",
+    "branch": "Legislative",
+    "status": "Upcoming",
+    "order": 3
+  },
+  {
+    "externalId": "ts-004",
+    "label": "Senate vote",
+    "description": "The Senate goes through its own version of the process. Differences between the two chambers must be reconciled.",
+    "branch": "Legislative",
+    "status": "Upcoming",
+    "order": 4
+  },
+  {
+    "externalId": "ts-005",
+    "label": "President",
+    "description": "The president signs the bill into law, vetoes it, or lets it become law without a signature.",
+    "branch": "Executive",
+    "status": "Upcoming",
+    "order": 5
+  }
+]

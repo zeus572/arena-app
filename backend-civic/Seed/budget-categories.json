@@ -1,0 +1,107 @@
+[
+  {
+    "key": "defense",
+    "name": "Defense & national security",
+    "description": "Military, cybersecurity, intelligence",
+    "order": 1,
+    "axisDeltas": [
+      { "axisKey": "liberty-safety", "delta": 0.4 },
+      { "axisKey": "govt-role", "delta": 0.2 }
+    ]
+  },
+  {
+    "key": "healthcare",
+    "name": "Healthcare",
+    "description": "Medicare, Medicaid, public health",
+    "order": 2,
+    "axisDeltas": [
+      { "axisKey": "govt-role", "delta": 0.5 },
+      { "axisKey": "economic-fairness", "delta": 0.4 },
+      { "axisKey": "community", "delta": 0.3 }
+    ]
+  },
+  {
+    "key": "safety-net",
+    "name": "Social safety net",
+    "description": "Food aid, unemployment support, disability support",
+    "order": 3,
+    "axisDeltas": [
+      { "axisKey": "govt-role", "delta": 0.6 },
+      { "axisKey": "economic-fairness", "delta": 0.5 },
+      { "axisKey": "community", "delta": 0.5 }
+    ]
+  },
+  {
+    "key": "education",
+    "name": "Education & workforce",
+    "description": "Schools, college aid, apprenticeships",
+    "order": 4,
+    "axisDeltas": [
+      { "axisKey": "govt-role", "delta": 0.3 },
+      { "axisKey": "time-horizon", "delta": 0.5 },
+      { "axisKey": "community", "delta": 0.3 }
+    ]
+  },
+  {
+    "key": "infrastructure",
+    "name": "Infrastructure",
+    "description": "Roads, bridges, transit, broadband",
+    "order": 5,
+    "axisDeltas": [
+      { "axisKey": "govt-role", "delta": 0.4 },
+      { "axisKey": "time-horizon", "delta": 0.5 }
+    ]
+  },
+  {
+    "key": "climate",
+    "name": "Climate & energy",
+    "description": "Clean energy, disaster resilience, conservation",
+    "order": 6,
+    "axisDeltas": [
+      { "axisKey": "time-horizon", "delta": 0.7 },
+      { "axisKey": "risk", "delta": -0.3 },
+      { "axisKey": "expertise", "delta": 0.3 }
+    ]
+  },
+  {
+    "key": "debt-reduction",
+    "name": "Debt reduction",
+    "description": "Lowering future interest burden",
+    "order": 7,
+    "axisDeltas": [
+      { "axisKey": "time-horizon", "delta": 0.4 },
+      { "axisKey": "change-speed", "delta": -0.3 }
+    ]
+  },
+  {
+    "key": "tax-relief",
+    "name": "Tax relief",
+    "description": "Returning money to households and businesses",
+    "order": 8,
+    "axisDeltas": [
+      { "axisKey": "govt-role", "delta": -0.6 },
+      { "axisKey": "economic-fairness", "delta": -0.5 }
+    ]
+  },
+  {
+    "key": "immigration",
+    "name": "Immigration & border systems",
+    "description": "Courts, enforcement, processing, integration",
+    "order": 9,
+    "axisDeltas": [
+      { "axisKey": "liberty-safety", "delta": 0.3 },
+      { "axisKey": "authority", "delta": 0.2 }
+    ]
+  },
+  {
+    "key": "science-innovation",
+    "name": "Science & innovation",
+    "description": "Research, space, AI, biotech",
+    "order": 10,
+    "axisDeltas": [
+      { "axisKey": "time-horizon", "delta": 0.6 },
+      { "axisKey": "expertise", "delta": 0.5 },
+      { "axisKey": "risk", "delta": 0.4 }
+    ]
+  }
+]

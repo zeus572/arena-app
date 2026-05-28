@@ -1,0 +1,43 @@
+[
+  {
+    "slug": "student-data-privacy",
+    "issue": "Should Congress create national rules for student data privacy?",
+    "firstReactionPrompt": "Do you mostly think stronger rules are needed, or do you worry national rules could go too far?",
+    "values": ["Privacy", "Safety", "Innovation", "Local control", "National consistency"],
+    "strongestArgumentA": "Every student deserves basic privacy protections, no matter where they live.",
+    "strongestArgumentB": "Local schools may know their students' needs better than Congress does.",
+    "whatSideAMayMiss": "Privacy advocates may underestimate how useful some technology can be.",
+    "whatSideBMayMiss": "Flexibility advocates may underestimate how hard it is for students and families to understand data practices.",
+    "whatWouldChangeYourMind": [
+      "Evidence that education technology improves learning significantly",
+      "Evidence that student data is being misused",
+      "Proof that local rules are enough",
+      "Proof that companies exploit weak protections"
+    ],
+    "canBothBeTrue": "Technology can help students, and students may still need stronger privacy protections.",
+    "buildYourViewPrompt": "Write a 2-sentence position that includes both your main value and one concern from the other side."
+  },
+  {
+    "slug": "online-speech",
+    "issue": "Should government have more power to regulate online platform moderation?",
+    "firstReactionPrompt": "Do you mostly worry about censorship by platforms or control by government?",
+    "values": [
+      "Free speech",
+      "Private property",
+      "Safety",
+      "Democratic debate",
+      "Government limits",
+      "Public access"
+    ],
+    "strongestArgumentA": "Large platforms have enormous influence over public conversation.",
+    "strongestArgumentB": "Government control over platform decisions could become a threat to speech.",
+    "whatSideAMayMiss": "Regulation supporters may underestimate risks of government overreach.",
+    "whatSideBMayMiss": "Regulation opponents may underestimate how much platforms shape public debate.",
+    "whatWouldChangeYourMind": [
+      "Evidence that platforms are systematically suppressing legal speech",
+      "Evidence that government-imposed rules have caused new chilling effects"
+    ],
+    "canBothBeTrue": "Platforms can be powerful, and government control can also be dangerous.",
+    "buildYourViewPrompt": "Name the value you weight most heavily, then describe one safeguard you'd want for the other side."
+  }
+]

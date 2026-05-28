@@ -1,0 +1,53 @@
+[
+  {
+    "slug": "committee-hearing",
+    "title": "Committee Hearing",
+    "category": "Congress",
+    "plainDefinition": "A committee hearing is a meeting where a smaller group of lawmakers studies an issue, asks questions, listens to experts, and decides what to do next.",
+    "whyItMatters": "Most of the work in Congress does not happen in big dramatic votes. Committees are where many bills are studied, changed, slowed down, or moved forward.",
+    "whereYouSeeIt": [
+      "A bill about school safety",
+      "A bill about technology",
+      "Oversight of a government agency",
+      "Investigations into public problems"
+    ],
+    "currentExample": "A student data privacy bill may go through a committee before the full House or Senate votes on it.",
+    "commonMisunderstanding": "A committee hearing does not mean a bill is now law. It is one step in a longer process.",
+    "relatedConcepts": ["bill", "markup", "subcommittee", "floor-vote"],
+    "tryItQuestion": "If a committee approves a bill, what still has to happen before it becomes law?"
+  },
+  {
+    "slug": "oral-argument",
+    "title": "Oral Argument",
+    "category": "Supreme Court",
+    "plainDefinition": "Oral argument is when lawyers appear before a court and answer judges' questions about a case.",
+    "whyItMatters": "It helps judges test each side's arguments before making a decision.",
+    "whereYouSeeIt": [
+      "Supreme Court cases",
+      "Appeals court cases",
+      "Major constitutional disputes"
+    ],
+    "currentExample": "When the Supreme Court hears a case about online speech, the justices may ask lawyers how old constitutional rules should apply to new technology.",
+    "commonMisunderstanding": "Oral argument is not the final decision. The Court usually writes and releases an opinion later.",
+    "relatedConcepts": ["supreme-court", "precedent", "opinion", "dissent", "judicial-review"],
+    "tryItQuestion": "Why might judges ask difficult questions to both sides, even if they already lean one way?"
+  },
+  {
+    "slug": "agency-rulemaking",
+    "title": "Agency Rulemaking",
+    "category": "Executive Branch",
+    "plainDefinition": "Agency rulemaking is the process federal agencies use to create detailed rules based on laws passed by Congress.",
+    "whyItMatters": "Congress often writes broad laws. Agencies fill in many of the details that affect daily life.",
+    "whereYouSeeIt": [
+      "Environmental rules",
+      "Workplace safety",
+      "Education policy",
+      "AI and technology regulations",
+      "Health and food safety"
+    ],
+    "currentExample": "A federal agency might propose rules about AI hiring tools and ask the public for comments.",
+    "commonMisunderstanding": "Agencies do not have unlimited power. Their rules can be challenged in court, changed by future administrations, or limited by Congress.",
+    "relatedConcepts": ["executive-branch", "public-comment", "regulation", "administrative-law", "judicial-review"],
+    "tryItQuestion": "Why might Congress let agencies make detailed rules instead of writing every detail itself?"
+  }
+]

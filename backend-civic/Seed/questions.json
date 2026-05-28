@@ -1,0 +1,402 @@
+[
+  {
+    "externalId": "q-pairing-01-society",
+    "type": "SimplePairing",
+    "topic": "Government role",
+    "order": 1,
+    "prompt": "Which matters more to you in a healthy society?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "People have freedom to make their own choices",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": -0.5 },
+          { "axisKey": "liberty-safety", "delta": -0.5 },
+          { "axisKey": "community", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "People have strong support when life goes wrong",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": 0.5 },
+          { "axisKey": "liberty-safety", "delta": 0.3 },
+          { "axisKey": "community", "delta": 0.5 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-02-govt-worry",
+    "type": "SimplePairing",
+    "topic": "Government role",
+    "order": 2,
+    "prompt": "Which problem worries you more?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Government doing too much",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": -0.6 },
+          { "axisKey": "authority", "delta": -0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Government failing to solve major problems",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": 0.6 },
+          { "axisKey": "authority", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-03-taxes-vs-services",
+    "type": "SimplePairing",
+    "topic": "Economic fairness",
+    "order": 3,
+    "prompt": "Which outcome feels more important?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Keeping taxes low",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": -0.5 },
+          { "axisKey": "economic-fairness", "delta": -0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Funding strong public services",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": 0.5 },
+          { "axisKey": "economic-fairness", "delta": 0.4 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-04-risk-protection",
+    "type": "SimplePairing",
+    "topic": "Risk orientation",
+    "order": 4,
+    "prompt": "A society should…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Reward people who take risks",
+        "axisDeltas": [
+          { "axisKey": "risk", "delta": 0.6 },
+          { "axisKey": "community", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Protect people from catastrophic failure",
+        "axisDeltas": [
+          { "axisKey": "risk", "delta": -0.6 },
+          { "axisKey": "community", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-05-expertise-vs-democracy",
+    "type": "SimplePairing",
+    "topic": "Expertise",
+    "order": 5,
+    "prompt": "In complex policy areas, who should have more influence?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Experts should have more influence",
+        "axisDeltas": [
+          { "axisKey": "expertise", "delta": 0.6 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Ordinary citizens should have more direct control, even when issues are complex",
+        "axisDeltas": [
+          { "axisKey": "expertise", "delta": -0.6 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-06-rule-consistency",
+    "type": "SimplePairing",
+    "topic": "Authority",
+    "order": 6,
+    "prompt": "How should the law work?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Applied consistently, even when outcomes feel harsh",
+        "axisDeltas": [
+          { "axisKey": "change-speed", "delta": -0.3 },
+          { "axisKey": "authority", "delta": 0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Allow flexibility for individual circumstances",
+        "axisDeltas": [
+          { "axisKey": "change-speed", "delta": 0.3 },
+          { "axisKey": "authority", "delta": -0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-07-growth-stability",
+    "type": "SimplePairing",
+    "topic": "Change orientation",
+    "order": 7,
+    "prompt": "When the economy changes…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Rapid economic growth is worth some disruption",
+        "axisDeltas": [
+          { "axisKey": "change-speed", "delta": 0.5 },
+          { "axisKey": "risk", "delta": 0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Stability and community continuity matter more than speed",
+        "axisDeltas": [
+          { "axisKey": "change-speed", "delta": -0.5 },
+          { "axisKey": "risk", "delta": -0.4 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-08-speech-harm",
+    "type": "SimplePairing",
+    "topic": "Speech",
+    "order": 8,
+    "prompt": "Which is more dangerous?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "When speech is restricted",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": -0.6 },
+          { "axisKey": "govt-role", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "When harmful speech spreads unchecked",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": 0.6 },
+          { "axisKey": "govt-role", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-09-time-horizon",
+    "type": "SimplePairing",
+    "topic": "Time horizon",
+    "order": 9,
+    "prompt": "Public spending should mainly aim to…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Provide relief and support now",
+        "axisDeltas": [
+          { "axisKey": "time-horizon", "delta": -0.5 },
+          { "axisKey": "community", "delta": 0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Invest in long-term resilience, even with short-term costs",
+        "axisDeltas": [
+          { "axisKey": "time-horizon", "delta": 0.5 },
+          { "axisKey": "community", "delta": -0.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pairing-10-platform-speech",
+    "type": "SimplePairing",
+    "topic": "Speech",
+    "order": 10,
+    "prompt": "When a platform hosts legal but harmful misinformation…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Government should regulate platform behavior",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": 0.5 },
+          { "axisKey": "govt-role", "delta": 0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Platforms should self-regulate",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": -0.5 },
+          { "axisKey": "govt-role", "delta": -0.4 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pressure-01-campus-speaker",
+    "type": "PressureTest",
+    "topic": "Speech",
+    "order": 11,
+    "prompt": "A public university invites a controversial speaker. Many students say the speaker's views make them feel unsafe. What should the university do?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Allow the event with security",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": -0.6 },
+          { "axisKey": "liberty-safety", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Cancel the event",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": 0.6 },
+          { "axisKey": "liberty-safety", "delta": 0.4 }
+        ]
+      },
+      {
+        "key": "C",
+        "label": "Allow it, with a moderated counter-event",
+        "axisDeltas": [
+          { "axisKey": "speech", "delta": -0.2 },
+          { "axisKey": "community", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pressure-02-surveillance",
+    "type": "PressureTest",
+    "topic": "Liberty vs. safety",
+    "order": 12,
+    "prompt": "A new technology lets police prevent more violent crimes by analyzing public-camera feeds with AI. Should they use it?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Yes — preventing harm is worth the tradeoff",
+        "axisDeltas": [
+          { "axisKey": "liberty-safety", "delta": 0.6 },
+          { "axisKey": "authority", "delta": 0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "No — government surveillance power expands too easily",
+        "axisDeltas": [
+          { "axisKey": "liberty-safety", "delta": -0.6 },
+          { "axisKey": "authority", "delta": -0.4 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-pressure-03-local-vs-federal",
+    "type": "PressureTest",
+    "topic": "Authority",
+    "order": 13,
+    "prompt": "A state passes a law that experts say will harm vulnerable residents. The federal government considers overriding it. Should they?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Yes — federal protection of basic rights matters more",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": 0.5 },
+          { "axisKey": "govt-role", "delta": 0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "No — states should be able to govern themselves",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": -0.5 },
+          { "axisKey": "govt-role", "delta": -0.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-tradeoff-01-budget-cut",
+    "type": "ForcedTradeoff",
+    "topic": "Economic fairness",
+    "order": 14,
+    "prompt": "You can fully fund only two of these three. Which do you cut?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Cut universal school lunch",
+        "axisDeltas": [
+          { "axisKey": "economic-fairness", "delta": -0.5 },
+          { "axisKey": "community", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Cut public transit expansion",
+        "axisDeltas": [
+          { "axisKey": "time-horizon", "delta": -0.4 },
+          { "axisKey": "community", "delta": -0.2 }
+        ]
+      },
+      {
+        "key": "C",
+        "label": "Cut police recruitment and training",
+        "axisDeltas": [
+          { "axisKey": "liberty-safety", "delta": -0.5 },
+          { "axisKey": "authority", "delta": -0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-tradeoff-02-climate",
+    "type": "ForcedTradeoff",
+    "topic": "Time horizon",
+    "order": 15,
+    "prompt": "Which climate path would you choose?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Faster clean-energy transition with higher short-term costs",
+        "axisDeltas": [
+          { "axisKey": "time-horizon", "delta": 0.6 },
+          { "axisKey": "change-speed", "delta": 0.5 },
+          { "axisKey": "risk", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Slower transition with lower short-term costs",
+        "axisDeltas": [
+          { "axisKey": "time-horizon", "delta": -0.4 },
+          { "axisKey": "change-speed", "delta": -0.4 }
+        ]
+      },
+      {
+        "key": "C",
+        "label": "Market incentives, but no mandates",
+        "axisDeltas": [
+          { "axisKey": "govt-role", "delta": -0.4 },
+          { "axisKey": "expertise", "delta": -0.2 }
+        ]
+      }
+    ]
+  }
+]

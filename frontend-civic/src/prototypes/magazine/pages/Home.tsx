@@ -1,0 +1,271 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import type { CivicBriefingSummary, Concept } from "@/api/types";
+import { getBriefings } from "@/api/briefings";
+import { getConcepts } from "@/api/concepts";
+import { useAuth } from "@/auth/AuthContext";
+import { CoverStory } from "../components/CoverStory";
+import { CountdownTimer } from "../components/CountdownTimer";
+import { PullQuote } from "../components/PullQuote";
+
+export default function MagazineHome() {
+  const { user, isAuthenticated } = useAuth();
+  const [briefings, setBriefings] = useState<CivicBriefingSummary[]>([]);
+  const [concept, setConcept] = useState<Concept | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    void getBriefings()
+      .then(setBriefings)
+      .finally(() => setLoaded(true));
+    void getConcepts().then((cs) => setConcept(cs[0] ?? null));
+  }, []);
+
+  const cover = briefings[0];
+  const rest = briefings.slice(1);
+
+  return (
+    <div>
+      {!loaded && (
+        <p className="py-12 text-sm text-[var(--muted)]" data-testid="loading">
+          Loading the issue…
+        </p>
+      )}
+      {loaded && briefings.length === 0 && (
+        <p
+          className="py-12 text-base text-[var(--muted)]"
+          data-testid="empty-issue"
+        >
+          This issue is still being assembled. Check back soon.
+        </p>
+      )}
+      <CountdownTimer scope="National" testId="countdown-national" />
+
+      {cover && <CoverStory briefing={cover} />}
+
+      <section className="mt-14" data-testid="explainers-section">
+        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+          Inside this issue
+        </p>
+        <h2 className="display mt-2 text-3xl md:text-4xl">60-second explainers</h2>
+
+        {/* Mobile: horizontal snap-carousel of cards. Desktop: two-column grid. */}
+        <ul
+          className="-mx-4 mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 md:mx-0 md:mt-8 md:grid md:snap-none md:grid-cols-2 md:gap-10 md:overflow-visible md:px-0 md:pb-0"
+          data-testid="explainers-list"
+        >
+          {rest.map((b) => (
+            <li
+              key={b.id}
+              className="w-[80vw] max-w-[340px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink"
+            >
+              <Link
+                to={`/briefings/${b.slug}`}
+                className="group block h-full border border-[var(--border)] bg-[var(--bg-elev)] p-5 md:border-x-0 md:border-b-0 md:border-t md:bg-transparent md:p-0 md:pt-6"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                  {b.institution} · {b.status}
+                </p>
+                <h3 className="display mt-2 text-2xl group-hover:text-[var(--accent)] md:text-3xl">
+                  {b.headline}
+                </h3>
+                <p className="mt-3 line-clamp-4 text-base leading-relaxed text-[var(--fg-soft)] md:line-clamp-none">
+                  {b.summary30}
+                </p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  Key concept · {b.keyConcept}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-20 border-y border-[var(--border)] py-10">
+        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+          Words you need to know
+        </p>
+        <PullQuote
+          text="Most bills do not become law just because someone introduces them. They move through committees, where most quietly die."
+          source="From: Congress advances a student data privacy bill"
+        />
+      </section>
+
+      <section className="mt-16">
+        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+          Reflection
+        </p>
+        <Link
+          to="/think-deeper/student-data-privacy"
+          className="display mt-3 block text-3xl hover:text-[var(--accent)]"
+        >
+          Think deeper → When should student privacy rules be national, and
+          when should schools or states decide?
+        </Link>
+      </section>
+
+      {concept && (
+        <section
+          className="mt-16 border border-[var(--border)] bg-[var(--bg-elev)] p-8"
+          data-testid="concept-of-the-day"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+            Concept of the day
+          </p>
+          <Link
+            to={`/concepts/${concept.slug}`}
+            className="display mt-2 block text-3xl hover:text-[var(--accent)]"
+            data-testid="concept-of-the-day-link"
+          >
+            {concept.title}
+          </Link>
+          <p className="mt-3 text-base leading-relaxed text-[var(--fg-soft)]">
+            {concept.plainDefinition}
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Read the full concept →
+          </p>
+        </section>
+      )}
+
+      <section className="mt-16" data-testid="learn-more-grid">
+        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+          Go deeper
+        </p>
+        <h2 className="display mt-2 text-4xl">Three ways to learn</h2>
+        <ul className="mt-8 grid gap-6 md:grid-cols-3">
+          <li>
+            <Link
+              to="/quizzes"
+              className="group block h-full border border-[var(--border)] bg-[var(--bg-elev)] p-6 hover:border-[var(--accent)]"
+              data-testid="cta-quiz"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                Civics 101
+              </p>
+              <h3 className="display mt-2 text-2xl group-hover:text-[var(--accent)]">
+                Test what you know
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--fg-soft)]">
+                Four quick questions. Each one tells you what's actually
+                happening behind the headline.
+              </p>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/timelines/bill"
+              className="group block h-full border border-[var(--border)] bg-[var(--bg-elev)] p-6 hover:border-[var(--accent)]"
+              data-testid="cta-timeline"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                Process diagram
+              </p>
+              <h3 className="display mt-2 text-2xl group-hover:text-[var(--accent)]">
+                How a bill becomes law
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--fg-soft)]">
+                The five-step map. Place this week's headline on it and you'll
+                see what's really going on.
+              </p>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/teachers"
+              className="group block h-full border border-[var(--border)] bg-[var(--bg-elev)] p-6 hover:border-[var(--accent)]"
+              data-testid="cta-teachers"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                For teachers & parents
+              </p>
+              <h3 className="display mt-2 text-2xl group-hover:text-[var(--accent)]">
+                Classroom & dinner-table prompts
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--fg-soft)]">
+                Discussion starters keyed to any briefing — built to be
+                teachable without being partisan.
+              </p>
+            </Link>
+          </li>
+        </ul>
+      </section>
+
+      {isAuthenticated && user ? (
+        <section
+          className="mt-16 grid gap-3 border border-[var(--border)] bg-[var(--bg-elev)] p-8 md:grid-cols-[1fr_auto] md:items-center"
+          data-testid="welcome-back-cta"
+        >
+          <div>
+            <p className="display text-2xl">
+              Welcome back, {user.displayName ?? user.email}.
+            </p>
+            <p className="mt-1 text-sm text-[var(--fg-soft)]">
+              Your Civic Compass and Political Arena profile are in sync. Pick
+              up where you left off.
+            </p>
+          </div>
+          <Link
+            to="/profile"
+            className="rounded-full bg-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-white"
+          >
+            View my Civic Compass
+          </Link>
+        </section>
+      ) : (
+        <section
+          className="mt-16 grid gap-3 border border-[var(--border)] bg-[var(--bg-elev)] p-8 md:grid-cols-[1fr_auto] md:items-center"
+          data-testid="onboarding-cta"
+        >
+          <div>
+            <p className="display text-2xl">Build your Civic Compass.</p>
+            <p className="mt-1 text-sm text-[var(--fg-soft)]">
+              Ten quick choices. No party labels. You can change your mind
+              later.
+            </p>
+          </div>
+          <Link
+            to="/onboarding"
+            className="rounded-full bg-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-white"
+          >
+            Start the questions
+          </Link>
+        </section>
+      )}
+
+      <section
+        className="mt-8 grid gap-3 border border-[var(--border)] p-8 md:grid-cols-[1fr_auto] md:items-center"
+        data-testid="signup-cta"
+      >
+        <div>
+          <p className="display text-2xl">
+            {isAuthenticated
+              ? "Your account works in Political Arena too."
+              : "One account, two arenas."}
+          </p>
+          <p className="mt-1 text-sm text-[var(--fg-soft)]">
+            {isAuthenticated
+              ? "Jump into a debate on the Political Arena floor with the same login."
+              : "Create a Public Lab account and use the same login on the Political Arena debate floor — your civic profile follows you."}
+          </p>
+        </div>
+        {isAuthenticated ? (
+          <a
+            href="http://localhost:5173"
+            className="rounded-full border border-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-[var(--accent)]"
+            data-testid="signup-cta-debate-link"
+          >
+            Open Political Arena
+          </a>
+        ) : (
+          <Link
+            to="/register"
+            className="rounded-full border border-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-[var(--accent)]"
+            data-testid="signup-cta-register-link"
+          >
+            Sign up
+          </Link>
+        )}
+      </section>
+    </div>
+  );
+}

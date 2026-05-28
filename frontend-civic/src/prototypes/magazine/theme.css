@@ -1,0 +1,39 @@
+.theme-magazine {
+  --bg: oklch(0.985 0.008 60);
+  --bg-elev: oklch(1 0 0);
+  --fg: oklch(0.15 0.01 50);
+  --fg-soft: oklch(0.32 0.01 50);
+  --muted: oklch(0.5 0.01 50);
+  --border: oklch(0.85 0.01 50);
+  --accent: oklch(0.6 0.22 35);
+  --radius: 0px;
+  --font-display:
+    "Iowan Old Style", "Charter", "Source Serif Pro", "Georgia", serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --text-base: 18px;
+
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.65;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.theme-magazine h1,
+.theme-magazine h2,
+.theme-magazine h3,
+.theme-magazine .display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.theme-magazine .dropcap::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-size: 4.5em;
+  line-height: 0.85;
+  padding: 0.05em 0.1em 0 0;
+  color: var(--accent);
+}

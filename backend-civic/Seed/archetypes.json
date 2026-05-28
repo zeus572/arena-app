@@ -1,0 +1,97 @@
+[
+  {
+    "key": "institution-reformer",
+    "name": "The Institution Reformer",
+    "description": "Believes institutions matter, but need modernization and accountability.",
+    "axisVector": [
+      { "axisKey": "govt-role", "expectedScore": 0.3 },
+      { "axisKey": "authority", "expectedScore": 0.2 },
+      { "axisKey": "change-speed", "expectedScore": 0.4 },
+      { "axisKey": "expertise", "expectedScore": 0.4 }
+    ]
+  },
+  {
+    "key": "liberty-guardian",
+    "name": "The Liberty Guardian",
+    "description": "Prioritizes individual rights and limits on centralized power.",
+    "axisVector": [
+      { "axisKey": "govt-role", "expectedScore": -0.7 },
+      { "axisKey": "liberty-safety", "expectedScore": -0.8 },
+      { "axisKey": "authority", "expectedScore": -0.7 },
+      { "axisKey": "speech", "expectedScore": -0.7 },
+      { "axisKey": "community", "expectedScore": -0.5 }
+    ]
+  },
+  {
+    "key": "public-builder",
+    "name": "The Public Builder",
+    "description": "Believes strong public systems create opportunity and stability.",
+    "axisVector": [
+      { "axisKey": "govt-role", "expectedScore": 0.8 },
+      { "axisKey": "economic-fairness", "expectedScore": 0.6 },
+      { "axisKey": "community", "expectedScore": 0.5 },
+      { "axisKey": "time-horizon", "expectedScore": 0.3 }
+    ]
+  },
+  {
+    "key": "local-steward",
+    "name": "The Local Steward",
+    "description": "Values community, place, continuity, and local decision-making.",
+    "axisVector": [
+      { "axisKey": "authority", "expectedScore": -0.7 },
+      { "axisKey": "community", "expectedScore": 0.7 },
+      { "axisKey": "change-speed", "expectedScore": -0.5 }
+    ]
+  },
+  {
+    "key": "risk-balancer",
+    "name": "The Risk Balancer",
+    "description": "Weighs safety, freedom, innovation, and unintended consequences.",
+    "axisVector": [
+      { "axisKey": "expertise", "expectedScore": 0.2 },
+      { "axisKey": "time-horizon", "expectedScore": 0.3 }
+    ]
+  },
+  {
+    "key": "fairness-advocate",
+    "name": "The Fairness Advocate",
+    "description": "Focuses on dignity, access, and reducing structural disadvantage.",
+    "axisVector": [
+      { "axisKey": "economic-fairness", "expectedScore": 0.7 },
+      { "axisKey": "community", "expectedScore": 0.6 },
+      { "axisKey": "govt-role", "expectedScore": 0.4 }
+    ]
+  },
+  {
+    "key": "order-trust-voter",
+    "name": "The Order & Trust Voter",
+    "description": "Prioritizes safety, predictability, and social cohesion.",
+    "axisVector": [
+      { "axisKey": "liberty-safety", "expectedScore": 0.7 },
+      { "axisKey": "change-speed", "expectedScore": -0.5 },
+      { "axisKey": "authority", "expectedScore": 0.5 },
+      { "axisKey": "community", "expectedScore": 0.4 }
+    ]
+  },
+  {
+    "key": "future-investor",
+    "name": "The Future Investor",
+    "description": "Prioritizes climate, technology, education, and long-term resilience.",
+    "axisVector": [
+      { "axisKey": "time-horizon", "expectedScore": 0.8 },
+      { "axisKey": "expertise", "expectedScore": 0.5 },
+      { "axisKey": "risk", "expectedScore": 0.3 },
+      { "axisKey": "govt-role", "expectedScore": 0.4 }
+    ]
+  },
+  {
+    "key": "civic-pluralist",
+    "name": "The Civic Pluralist",
+    "description": "Values debate, compromise, and institutional legitimacy.",
+    "axisVector": [
+      { "axisKey": "speech", "expectedScore": -0.3 },
+      { "axisKey": "expertise", "expectedScore": 0.2 },
+      { "axisKey": "community", "expectedScore": 0.3 }
+    ]
+  }
+]

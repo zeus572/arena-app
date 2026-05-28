@@ -1,0 +1,50 @@
+[
+  {
+    "externalId": "q-001",
+    "topic": "Which branch acted?",
+    "question": "A federal agency proposes a new rule about AI hiring tools. Which branch is most directly involved?",
+    "options": ["Legislative", "Executive", "Judicial", "State"],
+    "correctAnswerIndex": 1,
+    "explanation": "Federal agencies are part of the executive branch. They often create detailed rules to carry out laws.",
+    "relatedConceptSlug": "agency-rulemaking",
+    "order": 1
+  },
+  {
+    "externalId": "q-002",
+    "topic": "Is it law yet?",
+    "question": "A House committee advances a bill. Is the bill now law?",
+    "options": [
+      "Yes",
+      "No",
+      "Only in that state",
+      "Only if the president agrees privately"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Committee action can move a bill forward, but most bills still need votes in both chambers of Congress and presidential action before becoming law.",
+    "relatedConceptSlug": "committee-hearing",
+    "order": 2
+  },
+  {
+    "externalId": "q-003",
+    "topic": "Fact, interpretation, prediction, or value?",
+    "question": "\"This rule will make hiring fairer.\" This statement is best described as a:",
+    "options": ["Fact", "Interpretation", "Prediction", "Value judgment"],
+    "correctAnswerIndex": 2,
+    "explanation": "The statement is making a claim about what will happen in the future. It may also reflect values, but it is mainly predictive.",
+    "order": 3
+  },
+  {
+    "externalId": "q-004",
+    "topic": "Values in conflict",
+    "question": "A law limits student phone use in schools. Which values might be in conflict?",
+    "options": [
+      "Focus and student independence",
+      "Privacy and taxation",
+      "Trade and foreign policy",
+      "Courts and precedent"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Phone restrictions may support classroom focus but limit student independence or flexibility.",
+    "order": 4
+  }
+]

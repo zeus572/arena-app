@@ -1,0 +1,140 @@
+[
+  {
+    "slug": "congress-student-data-privacy-bill",
+    "headline": "Congress Advances a Bill on Student Data Privacy",
+    "institution": "Congress",
+    "branch": "Legislative",
+    "status": "Committee advanced",
+    "audienceLevel": "High School",
+    "keyConcept": "Committee hearing",
+    "tags": ["Congress", "Privacy", "Schools", "Technology", "Lawmaking"],
+    "issueOrder": 1,
+    "summary30": "A House committee advanced a bill that would create stronger rules for how schools and education technology companies handle student data. The bill is not law yet, but committee action is one of the steps that can move a proposal closer to a full vote.",
+    "summary3Min": "Many schools use apps and online platforms for assignments, attendance, grades, communication, and classroom activities. That means companies and school systems may collect data about students. A new bill would set stronger rules around what data can be collected, how long it can be kept, and when it can be shared.\n\nThe important civic point is that a bill does not become law just because someone introduces it. It usually moves through committees, where members of Congress hold hearings, debate changes, and decide whether the bill should move forward.\n\nThis story is useful because it shows how Congress can respond to new technology problems, but also how slow and layered lawmaking can be.",
+    "summary10Min": "The Student Data Privacy Modernization Act, advanced this week by the House Education and the Workforce Committee on a bipartisan vote, represents the first major attempt in a decade to update federal rules governing how K–12 schools and ed-tech vendors collect, retain, and share information about students.\n\nThe bill builds on the existing Family Educational Rights and Privacy Act (FERPA) framework but adds several new requirements: vendors must obtain affirmative parental or school-district consent before using student data to train commercial models; retention windows are capped at the duration of a student's enrollment plus 12 months; and a new private right of action lets families sue over willful violations.\n\nCommittee chair Rep. Holcomb framed the bill as 'a national floor, not a ceiling,' arguing that the patchwork of state-level student privacy laws creates compliance burdens for vendors and uneven protections for students. The ranking minority member supported the committee report but signaled concerns about preemption of stronger state laws, an issue likely to dominate amendments on the House floor.\n\nNext steps: the bill heads to the House Rules Committee, which will set the terms for a floor debate. If passed by the House, it would still need to clear the Senate (where a companion bill has fewer cosponsors) and be signed by the president before becoming law.",
+    "whoActed": "A committee in the House of Representatives.",
+    "whatChanged": "The bill moved forward in the legislative process, but it has not become law.",
+    "whyItMatters": "Student data privacy affects schools, families, technology companies, and students themselves. The question is not just 'should privacy matter?' but also who should decide the rules: Congress, states, school districts, or companies.",
+    "wordsToKnow": [
+      { "term": "Committee", "definition": "A smaller group of lawmakers that studies and changes bills before the full chamber votes." },
+      { "term": "Bill", "definition": "A proposed law." },
+      { "term": "Markup", "definition": "A meeting where lawmakers debate and change a bill." },
+      { "term": "Privacy", "definition": "Control over how personal information is collected, used, and shared." }
+    ],
+    "disagreement": "People may agree that student privacy matters but disagree about how strict the rules should be, who should enforce them, and whether national rules should override local choices.",
+    "strongestArgumentFor": "Students should not have different privacy protections depending on where they live. National rules could create a clear baseline and prevent companies from exploiting weak local standards.",
+    "strongestArgumentAgainst": "Schools and states may need flexibility. A national law could create burdens for small districts, limit useful education technology, or move too slowly as technology changes.",
+    "valuesInConflict": ["Privacy", "Innovation", "School safety", "Local control", "National consistency"],
+    "thinkDeeperQuestion": "When should student privacy rules be national, and when should schools or states decide?",
+    "relatedConcepts": ["committee-hearing", "agency-rulemaking"],
+    "whereToGoNext": [
+      "Concept: Committee hearing",
+      "Concept: How a bill becomes law",
+      "Timeline: From bill introduction to final vote",
+      "Quiz: Which branch acted here?"
+    ]
+  },
+  {
+    "slug": "supreme-court-online-speech",
+    "headline": "Supreme Court Hears a Case About Online Speech",
+    "institution": "Supreme Court",
+    "branch": "Judicial",
+    "status": "Oral argument",
+    "audienceLevel": "High School",
+    "keyConcept": "Oral argument",
+    "tags": ["Supreme Court", "Speech", "Internet", "Rights", "Courts"],
+    "issueOrder": 2,
+    "summary30": "The Supreme Court heard arguments in a case about whether the government can regulate certain online platform decisions. The Court has not decided the case yet. Oral argument is when lawyers answer questions from the justices before a decision is written.",
+    "summary3Min": "Online speech cases can be difficult because they often involve several questions at once. Does the platform have its own speech rights? Does the government have a duty to protect users or public safety? Are online platforms more like newspapers, phone companies, public squares, or something entirely new?\n\nThe Supreme Court's job is not to write a broad technology policy from scratch. Its job is to decide legal questions in a specific case. But decisions in major cases can shape what governments, companies, and users are allowed to do in the future.\n\nThis case is useful for learning how courts handle new technology questions using older constitutional principles.",
+    "summary10Min": "The case, NetSpeech Coalition v. Texas, arrived at the Supreme Court after a federal appeals court split on the constitutionality of a state law that bars large online platforms from removing or demoting content based on the speaker's viewpoint. Lower courts disagreed sharply about whether such laws regulate the platforms' own speech (and thus violate the First Amendment) or merely regulate conduct toward third-party speakers.\n\nDuring oral argument, the justices probed both sides hard. Several justices on both wings of the Court asked whether the platforms' editorial choices were more analogous to a newspaper deciding which letters to print, a phone company that must carry all calls, or a shopping mall that may restrict some leafleting. The lawyers' answers will not directly decide the case; the Court will issue a written opinion in the coming months.\n\nWhatever the ruling, the case is likely to be cited for a generation in disputes over algorithmic ranking, content moderation, and the constitutional status of large private platforms.",
+    "whoActed": "The Supreme Court heard oral arguments.",
+    "whatChanged": "The case moved closer to a decision, but no final ruling has been issued.",
+    "whyItMatters": "The decision could affect the relationship between government power, private platforms, and individual speech online.",
+    "wordsToKnow": [
+      { "term": "Oral argument", "definition": "A court session where lawyers answer judges' questions." },
+      { "term": "First Amendment", "definition": "The part of the U.S. Constitution that protects freedom of speech, religion, press, assembly, and petition." },
+      { "term": "Platform moderation", "definition": "Decisions by online platforms about what content to allow, remove, rank, or label." },
+      { "term": "Precedent", "definition": "A past court decision that influences future cases." }
+    ],
+    "disagreement": "People disagree about whether online platforms should be treated as private speakers, public spaces, neutral carriers, or powerful gatekeepers that need regulation.",
+    "strongestArgumentFor": "Large platforms can shape public debate, limit visibility, and influence what people see. Government may have a role in preventing unfair or discriminatory moderation practices.",
+    "strongestArgumentAgainst": "Private platforms also have speech rights. If the government can force platforms to carry or promote certain speech, that may become government control over private expression.",
+    "valuesInConflict": ["Free speech", "Private property", "Public access", "Safety", "Democratic debate", "Government limits"],
+    "thinkDeeperQuestion": "Are major online platforms more like newspapers, phone companies, shopping malls, or public squares? Why?",
+    "relatedConcepts": ["oral-argument"],
+    "whereToGoNext": [
+      "Concept: First Amendment",
+      "Concept: Precedent",
+      "Concept: Judicial review",
+      "Timeline: How a Supreme Court case moves"
+    ]
+  },
+  {
+    "slug": "agency-ai-hiring-rules",
+    "headline": "Federal Agency Proposes New Rules for AI in Hiring",
+    "institution": "Executive",
+    "branch": "Executive",
+    "status": "Proposed rule",
+    "audienceLevel": "Young Adult",
+    "keyConcept": "Agency rulemaking",
+    "tags": ["Executive Branch", "AI", "Jobs", "Technology", "Regulation"],
+    "issueOrder": 3,
+    "summary30": "A federal agency proposed rules for how companies can use AI tools in hiring. The proposal is not final yet. Agencies often publish proposed rules and ask the public for comments before making them official.",
+    "summary3Min": "Many employers use software to screen resumes, rank candidates, or analyze interviews. Some tools use artificial intelligence or machine learning. Supporters say these tools can make hiring faster and more consistent. Critics worry they can hide bias, reject qualified people unfairly, or make decisions that candidates cannot understand.\n\nCongress writes laws, but federal agencies often fill in details through rules. Before a rule becomes final, agencies may publish a proposal and invite public comments. This is one way ordinary people, companies, advocacy groups, and experts can influence policy.\n\nThis story is useful because it shows that government power is not only about Congress or the Supreme Court. Agencies make many rules that affect everyday life.",
+    "summary10Min": "The Equal Employment Opportunity Commission published a Notice of Proposed Rulemaking that, for the first time, would set explicit federal standards for the use of algorithmic decision tools in hiring, promotion, and termination decisions.\n\nThe proposal would require covered employers (those with 50 or more employees that use a covered algorithmic decision tool) to: conduct an annual bias audit by an independent third party; provide candidates with a plain-language notice when an algorithmic tool is being used; offer an alternative process on request; and retain decision logs for four years.\n\nThe 90-day public comment period opens next month. After the agency considers comments, it may issue a final rule, withdraw the proposal, or issue a substantially revised version. Final rules can be challenged in federal court; in recent years several agency rules have been narrowed or vacated by courts under the major questions doctrine.",
+    "whoActed": "A federal agency in the executive branch.",
+    "whatChanged": "A proposed rule was released for public comment.",
+    "whyItMatters": "AI hiring tools could affect who gets interviews, jobs, and opportunities. The rules could shape how transparent and fair those tools must be.",
+    "wordsToKnow": [
+      { "term": "Agency", "definition": "A government organization that carries out laws and creates detailed rules." },
+      { "term": "Rulemaking", "definition": "The process agencies use to create regulations." },
+      { "term": "Public comment", "definition": "A period when people and organizations can respond to a proposed rule." },
+      { "term": "Algorithmic bias", "definition": "When a computer system produces unfair outcomes, often because of biased data or design." }
+    ],
+    "disagreement": "People disagree about whether strict AI rules protect fairness or slow useful innovation.",
+    "strongestArgumentFor": "Hiring decisions can shape people's futures. If AI tools are used, people deserve transparency, fairness, and a way to challenge mistakes.",
+    "strongestArgumentAgainst": "Overly strict rules could make companies avoid useful tools, increase hiring costs, or slow innovation that might improve consistency.",
+    "valuesInConflict": ["Fairness", "Innovation", "Transparency", "Efficiency", "Opportunity"],
+    "thinkDeeperQuestion": "Should companies be allowed to use AI in hiring if they cannot fully explain how the system made a decision?",
+    "relatedConcepts": ["agency-rulemaking"],
+    "whereToGoNext": [
+      "Concept: Agency rulemaking",
+      "Concept: Public comment",
+      "Timeline: How a proposed rule becomes final",
+      "Quiz: Fact, interpretation, or prediction?"
+    ]
+  },
+  {
+    "slug": "state-school-phone-law",
+    "headline": "State Passes a Law Limiting Phone Use in Schools",
+    "institution": "State Government",
+    "branch": "State",
+    "status": "Signed into law",
+    "audienceLevel": "Middle School",
+    "keyConcept": "State law",
+    "tags": ["States", "Schools", "Technology", "Student Life", "Local Control"],
+    "issueOrder": 4,
+    "summary30": "A state passed a law requiring schools to limit student phone use during the school day. Supporters say it can improve focus and mental health. Critics say schools and families should decide what works locally.",
+    "summary3Min": "Many schools already have phone rules, but a state law can create a statewide requirement. This raises a civic question: when should a decision be made by a state government, and when should it be left to individual schools, districts, or families?\n\nThis issue is also personal for many students. Phones are used for communication, safety, social life, learning, and distraction. The debate is not only about technology but also about who gets to decide what school life should look like.",
+    "summary10Min": "House Bill 412, signed by the governor on Tuesday, makes the state the seventh in the country to enact a statewide restriction on student phone use during the school day. Under the law, public K–12 schools must adopt a written policy that, at minimum, prohibits phone use during instructional time and provides a way for parents to reach students through the school office in emergencies.\n\nThe law leaves the implementation details to local districts: schools may use Yondr pouches, classroom storage caddies, locker check-ins, or other methods. Schools must submit their policies to the state Department of Education by the start of the next school year and report annually on disciplinary actions taken under the policy.\n\nProponents cited research linking heavy phone use during the school day to lower academic performance and higher anxiety. Opponents — including some teachers' unions and parent groups — argued that a statewide mandate strips schools of the flexibility they need and could create equity issues for students who rely on phones for translation, accessibility, or work coordination.",
+    "whoActed": "A state legislature and governor.",
+    "whatChanged": "Schools in that state must follow new limits on student phone use.",
+    "whyItMatters": "This affects daily school life and raises questions about student independence, classroom focus, safety, and state power.",
+    "wordsToKnow": [
+      { "term": "State legislature", "definition": "The lawmaking body for a state." },
+      { "term": "Local control", "definition": "The idea that local schools or communities should make decisions for themselves." },
+      { "term": "Mandate", "definition": "A rule that requires people or organizations to do something." }
+    ],
+    "disagreement": "People disagree about whether phone restrictions should be uniform across the state or decided locally.",
+    "strongestArgumentFor": "Phones can distract students and make school harder for everyone. A statewide rule creates consistency and helps schools enforce boundaries.",
+    "strongestArgumentAgainst": "Different schools and families have different needs. A statewide rule may be too rigid and ignore local situations.",
+    "valuesInConflict": ["Focus", "Safety", "Student independence", "Local control", "Mental health"],
+    "thinkDeeperQuestion": "Should phone rules be decided by students, parents, schools, districts, or state lawmakers?",
+    "relatedConcepts": [],
+    "whereToGoNext": [
+      "Concept: State law",
+      "Concept: Local control",
+      "Quiz: Who has power here?"
+    ]
+  }
+]
