@@ -1,10 +1,9 @@
-using System.ServiceModel.Syndication;
 using System.Text;
 using System.Text.Json;
-using System.Xml;
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Data;
 using Arena.API.Models;
+using Arena.Shared.News;
 
 namespace Arena.API.Services;
 
@@ -14,15 +13,7 @@ public class NewsTopicService
     private readonly IConfiguration _config;
     private readonly ILogger<NewsTopicService> _logger;
     private readonly HttpClient _http;
-
-    // Neutral, no-API-key RSS feeds
-    private static readonly (string Url, string Source)[] RssFeeds =
-    {
-        ("https://feeds.npr.org/1001/rss.xml", "NPR"),
-        ("https://rss.app/feeds/v1.1/tSmBDoO3eVHDGaQl.xml", "AP"),
-        ("https://feeds.bbci.co.uk/news/world/rss.xml", "BBC"),
-        ("https://feeds.bbci.co.uk/news/rss.xml", "BBC"),
-    };
+    private readonly INewsFeed _newsFeed;
 
     private record HeadlineItem(string Title, string Source, DateTime PublishedAt);
     private record TopicWithHeadline(string Question, int HeadlineIndex);
@@ -31,12 +22,14 @@ public class NewsTopicService
         IServiceScopeFactory scopeFactory,
         IConfiguration config,
         ILogger<NewsTopicService> logger,
-        HttpClient http)
+        HttpClient http,
+        INewsFeed newsFeed)
     {
         _scopeFactory = scopeFactory;
         _config = config;
         _logger = logger;
         _http = http;
+        _newsFeed = newsFeed;
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; ArenaBot/1.0)");
     }
 
@@ -112,41 +105,12 @@ public class NewsTopicService
 
     private async Task<List<HeadlineItem>> FetchHeadlinesAsync(CancellationToken ct)
     {
-        var headlines = new List<HeadlineItem>();
-
-        foreach (var (feedUrl, sourceName) in RssFeeds)
-        {
-            try
-            {
-                var response = await _http.GetStringAsync(feedUrl, ct);
-                using var reader = XmlReader.Create(new StringReader(response));
-                var feed = SyndicationFeed.Load(reader);
-
-                foreach (var item in feed.Items.Take(15))
-                {
-                    var title = item.Title?.Text?.Trim();
-                    if (!string.IsNullOrEmpty(title) && title.Length > 15)
-                    {
-                        var publishedAt = item.PublishDate != DateTimeOffset.MinValue
-                            ? item.PublishDate.UtcDateTime
-                            : DateTime.UtcNow;
-
-                        headlines.Add(new HeadlineItem(title, sourceName, publishedAt));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to fetch RSS feed: {Url}", feedUrl);
-            }
-        }
-
-        // Deduplicate by title and shuffle
-        return headlines
-            .GroupBy(h => h.Title, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(30)
+        // Delegates the RSS fetch + dedup to Arena.Shared.INewsFeed so civic
+        // and debate share one implementation. Map back to the local
+        // HeadlineItem shape so the LLM prompt indexing below stays unchanged.
+        var items = await _newsFeed.FetchAsync(maxItems: 30, ct);
+        return items
+            .Select(i => new HeadlineItem(i.Headline, i.Source, i.PublishedAt))
             .ToList();
     }
 

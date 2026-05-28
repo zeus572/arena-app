@@ -24,4 +24,8 @@
     <PackageReference Include="System.ServiceModel.Syndication" Version="10.0.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\shared\Arena.Shared\Arena.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

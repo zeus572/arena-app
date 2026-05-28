@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample News</title>
+    <link>https://example.com/news</link>
+    <description>Test feed</description>
+    <item>
+      <title>Congress advances landmark student data privacy bill</title>
+      <link>https://example.com/news/student-data-privacy</link>
+      <guid>https://example.com/news/student-data-privacy</guid>
+      <pubDate>Mon, 25 May 2026 12:00:00 GMT</pubDate>
+      <description>The House Education Committee voted 28-12 to advance the bill.</description>
+    </item>
+    <item>
+      <title>Supreme Court hears arguments on universal injunctions</title>
+      <link>https://example.com/news/scotus-injunctions</link>
+      <guid>https://example.com/news/scotus-injunctions</guid>
+      <pubDate>Mon, 25 May 2026 09:30:00 GMT</pubDate>
+      <description>Justices grappled with the doctrine for two hours.</description>
+    </item>
+    <item>
+      <title>Short</title>
+      <link>https://example.com/news/short</link>
+      <pubDate>Mon, 25 May 2026 08:00:00 GMT</pubDate>
+      <description>Should be filtered out by min title length.</description>
+    </item>
+  </channel>
+</rss>

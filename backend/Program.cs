@@ -63,10 +63,54 @@ builder.Services.AddAuthorization(options =>
 });
 
 // LLM + Bot services
-builder.Services.AddHttpClient<ILlmService, ClaudeLlmService>();
+// Llm:Provider switches between cloud Claude and a local Ollama-served model
+// (Gemma, Llama, ...). "claude" is the default; "ollama" is dev/eval today and
+// can be flipped on in prod once we trust the local-model quality + ops story.
+var llmProvider = (builder.Configuration["Llm:Provider"] ?? "claude").Trim().ToLowerInvariant();
+switch (llmProvider)
+{
+    case "ollama":
+        builder.Services.AddHttpClient<ILlmService, OllamaLlmService>();
+        break;
+    case "claude":
+        builder.Services.AddHttpClient<ILlmService, ClaudeLlmService>();
+        break;
+    default:
+        throw new InvalidOperationException(
+            $"Unknown Llm:Provider '{llmProvider}'. Expected 'claude' or 'ollama'.");
+}
 builder.Services.AddSingleton<TopicGeneratorService>();
 builder.Services.AddScoped<NewsTopicService>();
 builder.Services.AddScoped<TopicModerationService>();
+
+// Shared news fetch (Arena.Shared.News). Same RSS implementation civic uses,
+// so both backends agree on the source list and dedup logic.
+var newsFeeds = builder.Configuration.GetSection("News:Sources").Get<Dictionary<string, string>>()
+    ?? new Dictionary<string, string>
+    {
+        ["NPR"] = "https://feeds.npr.org/1001/rss.xml",
+        ["AP"] = "https://rss.app/feeds/v1.1/tSmBDoO3eVHDGaQl.xml",
+        ["BBC-World"] = "https://feeds.bbci.co.uk/news/world/rss.xml",
+        ["BBC"] = "https://feeds.bbci.co.uk/news/rss.xml",
+    };
+builder.Services.AddHttpClient("RssNewsSource", c =>
+{
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; ArenaBot/1.0)");
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<Arena.Shared.News.INewsFeed>(sp =>
+{
+    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var sources = newsFeeds
+        .Select(kv => (Arena.Shared.News.INewsSource)new Arena.Shared.News.RssNewsSource(
+            httpFactory.CreateClient("RssNewsSource"),
+            kv.Key,
+            new Uri(kv.Value),
+            logger: loggerFactory.CreateLogger($"RssNewsSource[{kv.Key}]")))
+        .ToList();
+    return new Arena.Shared.News.AggregateNewsFeed(sources, loggerFactory.CreateLogger<Arena.Shared.News.AggregateNewsFeed>());
+});
 builder.Services.AddHostedService<DailyTopicRefreshService>();
 builder.Services.AddSingleton<BudgetService>();
 builder.Services.AddSingleton(new HeartbeatSettings
