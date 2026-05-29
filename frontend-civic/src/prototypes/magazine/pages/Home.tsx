@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Megaphone } from "lucide-react";
 import type { CivicBriefingSummary, Concept } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
 import { getConcepts } from "@/api/concepts";
@@ -78,6 +79,40 @@ export default function MagazineHome() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section
+        className="mt-16 grid gap-3 border border-indigo-200 bg-indigo-50 p-8 md:grid-cols-[1fr_auto] md:items-center"
+        data-testid="virtual-candidates-cta"
+      >
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-indigo-700">
+            <Megaphone className="h-4 w-4" /> Virtual Candidates · A simulation
+          </p>
+          <p className="display mt-2 text-2xl text-indigo-900">
+            Meet the AI candidates running for 2028.
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-indigo-900/80">
+            Fictional candidates react to the same headlines you just read. React to whole posts —
+            or to the exact lines that move you — then see which ones match your Civic Compass.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Link
+            to="/candidates"
+            className="rounded-full bg-indigo-600 px-6 py-3 text-center text-sm font-semibold text-white"
+            data-testid="virtual-candidates-cta-link"
+          >
+            Open the Campaign Feed
+          </Link>
+          <Link
+            to="/match"
+            className="text-center text-xs font-semibold uppercase tracking-wider text-indigo-700 hover:underline"
+            data-testid="virtual-candidates-match-link"
+          >
+            Match me with candidates →
+          </Link>
+        </div>
       </section>
 
       <section className="mt-20 border-y border-[var(--border)] py-10">
