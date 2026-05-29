@@ -87,6 +87,42 @@ public class SeedJsonTests
     }
 
     [Fact]
+    public void VirtualCandidates_EmbeddedResource_DeserializesToExpectedShape()
+    {
+        var items = SeedService.LoadJson<List<VirtualCandidate>>("Seed.virtual-candidates.json");
+
+        items.Should().NotBeNull();
+        items!.Should().HaveCountGreaterOrEqualTo(4);
+        items.Should().OnlyContain(c => !string.IsNullOrWhiteSpace(c.Slug));
+        items.Should().OnlyContain(c => !string.IsNullOrWhiteSpace(c.Name));
+        items.Should().OnlyContain(c => c.Office == CandidateOffice.President);
+        items.Should().OnlyContain(c => c.Bio.Length <= 600);
+        items.Should().OnlyContain(c => c.PlatformPlanks.Count >= 4);
+        items.Should().OnlyContain(c => c.AxisScores.Count >= 5);
+        items.Should().OnlyContain(c => c.Sources.Count >= 1);
+        items.Select(c => c.Slug).Should().OnlyHaveUniqueItems();
+
+        // Ideological diversity across archetypes (PRD safety/bias-balance goal).
+        items.Select(c => c.ArchetypeKey).Distinct().Should().HaveCountGreaterOrEqualTo(4);
+
+        var sofia = items.First(c => c.Slug == "sofia-alvarez");
+        sofia.DefaultTone.Should().Be(CampaignTone.Wonkish);
+        sofia.PlatformPlanks.Should().Contain(p => p.IssueTags.Contains("privacy"));
+        sofia.Sources.Should().Contain(s => s.Kind == SourceKind.PolicyDoc);
+    }
+
+    [Fact]
+    public void ElectionCycles_EmbeddedResource_DeserializesToExpectedShape()
+    {
+        var items = SeedService.LoadJson<List<ElectionCycle>>("Seed.election-cycles.json");
+
+        items.Should().NotBeNull();
+        items!.Should().ContainSingle(c => c.IsCurrent);
+        items.Should().OnlyContain(c => c.ElectionDate != default);
+        items.Should().OnlyContain(c => c.ElectionDate > c.PrimarySeasonStart);
+    }
+
+    [Fact]
     public void LoadJson_UnknownResource_Throws()
     {
         var act = () => SeedService.LoadJson<List<Briefing>>("Seed.does-not-exist.json");

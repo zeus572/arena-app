@@ -22,6 +22,17 @@ public class CivicDbContext : DbContext
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
     public DbSet<BillTimelineStep> BillTimelineSteps => Set<BillTimelineStep>();
     public DbSet<NewsItem> NewsItems => Set<NewsItem>();
+    public DbSet<VirtualCandidate> VirtualCandidates => Set<VirtualCandidate>();
+    public DbSet<CandidateAxisScore> CandidateAxisScores => Set<CandidateAxisScore>();
+    public DbSet<CandidateIssueTone> CandidateIssueTones => Set<CandidateIssueTone>();
+    public DbSet<PlatformPlank> PlatformPlanks => Set<PlatformPlank>();
+    public DbSet<CandidateSource> CandidateSources => Set<CandidateSource>();
+    public DbSet<CampaignPost> CampaignPosts => Set<CampaignPost>();
+    public DbSet<PostFragment> PostFragments => Set<PostFragment>();
+    public DbSet<PostReaction> PostReactions => Set<PostReaction>();
+    public DbSet<ElectionCycle> ElectionCycles => Set<ElectionCycle>();
+    public DbSet<CandidateFollow> CandidateFollows => Set<CandidateFollow>();
+    public DbSet<CandidateMute> CandidateMutes => Set<CandidateMute>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -175,6 +186,118 @@ public class CivicDbContext : DbContext
             {
                 t.ToJson();
             });
+        });
+
+        modelBuilder.Entity<VirtualCandidate>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => c.Slug).IsUnique();
+            e.HasIndex(c => new { c.Office, c.State, c.District });
+            e.Property(c => c.Office).HasConversion<string>().HasMaxLength(20);
+            e.Property(c => c.DefaultTone).HasConversion<string>().HasMaxLength(20);
+            e.HasMany(c => c.AxisScores)
+                .WithOne(s => s.Candidate!)
+                .HasForeignKey(s => s.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.IssueTones)
+                .WithOne(t => t.Candidate!)
+                .HasForeignKey(t => t.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.PlatformPlanks)
+                .WithOne(p => p.Candidate!)
+                .HasForeignKey(p => p.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.Sources)
+                .WithOne(s => s.Candidate!)
+                .HasForeignKey(s => s.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateAxisScore>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => new { s.CandidateId, s.AxisKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<CandidateIssueTone>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => new { t.CandidateId, t.Issue }).IsUnique();
+            e.Property(t => t.Tone).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<PlatformPlank>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.CandidateId);
+        });
+
+        modelBuilder.Entity<CandidateSource>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => new { s.CandidateId, s.Priority });
+            e.Property(s => s.Kind).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CampaignPost>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.CreatedAt).IsDescending();
+            e.HasIndex(p => new { p.CandidateId, p.CreatedAt });
+            e.HasIndex(p => p.TriggerBriefingSlug);
+            e.Property(p => p.Tone).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.Trigger).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(p => p.Candidate)
+                .WithMany()
+                .HasForeignKey(p => p.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(p => p.Fragments)
+                .WithOne(f => f.Post!)
+                .HasForeignKey(f => f.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PostFragment>(e =>
+        {
+            e.HasKey(f => f.Id);
+            e.HasIndex(f => new { f.PostId, f.Order });
+        });
+
+        modelBuilder.Entity<PostReaction>(e =>
+        {
+            e.HasKey(r => r.Id);
+            // Idempotency: one reaction per user per (post, fragment?). Postgres
+            // treats NULLs as distinct in unique indexes, so split into two
+            // filtered indexes — one for the whole-post slot (FragmentId IS NULL)
+            // and one for fragment reactions.
+            e.HasIndex(r => new { r.UserId, r.PostId })
+                .IsUnique()
+                .HasFilter("\"FragmentId\" IS NULL");
+            e.HasIndex(r => new { r.UserId, r.PostId, r.FragmentId })
+                .IsUnique()
+                .HasFilter("\"FragmentId\" IS NOT NULL");
+            e.HasIndex(r => r.PostId);
+            e.HasIndex(r => r.FragmentId);
+            e.Property(r => r.Type).HasConversion<string>().HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<ElectionCycle>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => c.Slug).IsUnique();
+            e.HasIndex(c => c.IsCurrent);
+        });
+
+        modelBuilder.Entity<CandidateFollow>(e =>
+        {
+            e.HasKey(f => f.Id);
+            e.HasIndex(f => new { f.UserId, f.CandidateId }).IsUnique();
+        });
+
+        modelBuilder.Entity<CandidateMute>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.HasIndex(m => new { m.UserId, m.CandidateId }).IsUnique();
         });
     }
 }

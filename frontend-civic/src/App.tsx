@@ -15,6 +15,11 @@ import MagazineQuizzes from "@/prototypes/magazine/pages/Quizzes";
 import MagazineConceptDetail from "@/prototypes/magazine/pages/ConceptDetail";
 import MagazineTeachers from "@/prototypes/magazine/pages/Teachers";
 import MagazineBillTimeline from "@/prototypes/magazine/pages/BillTimeline";
+import MagazineCampaignFeed from "@/prototypes/magazine/pages/CampaignFeed";
+import MagazineCandidateProfile from "@/prototypes/magazine/pages/CandidateProfile";
+import MagazineCandidateSources from "@/prototypes/magazine/pages/CandidateSources";
+import MagazinePostDetail from "@/prototypes/magazine/pages/PostDetail";
+import MagazineMatchMe from "@/prototypes/magazine/pages/MatchMe";
 
 function App() {
   return (
@@ -35,6 +40,11 @@ function App() {
             <Route path="concepts/:slug" element={<MagazineConceptDetail />} />
             <Route path="teachers" element={<MagazineTeachers />} />
             <Route path="timelines/bill" element={<MagazineBillTimeline />} />
+            <Route path="candidates" element={<MagazineCampaignFeed />} />
+            <Route path="candidates/:slug" element={<MagazineCandidateProfile />} />
+            <Route path="candidates/:slug/sources" element={<MagazineCandidateSources />} />
+            <Route path="posts/:id" element={<MagazinePostDetail />} />
+            <Route path="match" element={<MagazineMatchMe />} />
           </Route>
         </Routes>
       </AuthProvider>

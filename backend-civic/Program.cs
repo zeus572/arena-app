@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Civic.API.Data;
 using Civic.API.Services;
+using Civic.API.Services.Campaign;
 using Civic.API.Services.Generation;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,6 +58,14 @@ builder.Services.AddHttpClient("RssNewsSource", c =>
 
 builder.Services.AddHostedService<NewsIngestionService>();
 builder.Services.AddHostedService<CivicContentGenerationService>();
+
+// Virtual Candidates: campaign post generation + reactions + matching.
+builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection("Campaign"));
+builder.Services.AddScoped<ICandidateSelectionService, CandidateSelectionService>();
+builder.Services.AddScoped<ICandidateMatchService, CandidateMatchService>();
+builder.Services.AddScoped<ICampaignReactionService, CampaignReactionService>();
+builder.Services.AddSingleton<CampaignPostGenerationService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CampaignPostGenerationService>());
 
 // HTTP client for proxying premium-initiated debate creation to the debate
 // backend. Base URL defaulted to the local dev port; override in production.

@@ -43,6 +43,13 @@ public class DatabaseFixture : IAsyncLifetime
                 new("Elections"),
                 new("QuizQuestions"),
                 new("BillTimelineSteps"),
+                // Virtual Candidate catalog (seeded once, treated as read-only).
+                new("VirtualCandidates"),
+                new("CandidateAxisScores"),
+                new("CandidateIssueTones"),
+                new("PlatformPlanks"),
+                new("CandidateSources"),
+                new("ElectionCycles"),
                 new("__EFMigrationsHistory"),
             },
         });

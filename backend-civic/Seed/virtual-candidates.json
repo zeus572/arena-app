@@ -1,0 +1,373 @@
+[
+  {
+    "slug": "dana-okonkwo",
+    "name": "Dana Okonkwo",
+    "office": "President",
+    "party": "Common Future",
+    "isIncumbent": false,
+    "bio": "Former mayor who rebuilt a struggling city on public investment. Running on the idea that strong shared systems create opportunity.",
+    "background": "Two-term mayor of a mid-sized industrial city. Built a municipal broadband network and a public apprenticeship program credited with cutting youth unemployment. Daughter of a transit worker and a nurse. Believes government should be a builder, not a bystander.",
+    "archetypeKey": "public-builder",
+    "defaultTone": "Hopeful",
+    "defaultIntensity": 3,
+    "avatarBaseUrl": "okonkwo",
+    "axisScores": [
+      { "axisKey": "govt-role", "score": 0.8 },
+      { "axisKey": "liberty-safety", "score": 0.2 },
+      { "axisKey": "change-speed", "score": 0.4 },
+      { "axisKey": "economic-fairness", "score": 0.7 },
+      { "axisKey": "authority", "score": 0.3 },
+      { "axisKey": "expertise", "score": 0.4 },
+      { "axisKey": "speech", "score": 0.1 },
+      { "axisKey": "risk", "score": 0.0 },
+      { "axisKey": "community", "score": 0.6 },
+      { "axisKey": "time-horizon", "score": 0.4 }
+    ],
+    "issueTones": [
+      { "issue": "healthcare", "tone": "Stern", "intensity": 4 },
+      { "issue": "economy", "tone": "Hopeful", "intensity": 3 }
+    ],
+    "platformPlanks": [
+      {
+        "title": "A Health Care Floor No One Falls Through",
+        "body": "Guarantee a baseline of affordable coverage funded publicly, so a job loss never means losing care. Keep private options on top for those who want them.",
+        "issueTags": ["healthcare", "fairness", "economy"]
+      },
+      {
+        "title": "Public Broadband as Infrastructure",
+        "body": "Treat high-speed internet like roads and water: a public utility every community can reach. Fund municipal networks where markets won't build.",
+        "issueTags": ["infrastructure", "technology", "economy"]
+      },
+      {
+        "title": "Apprenticeships Over Debt",
+        "body": "Fund paid public apprenticeships in trades, care work, and clean energy so young people can build a career without a mountain of loans.",
+        "issueTags": ["education", "economy", "jobs"]
+      },
+      {
+        "title": "Clean Energy, Public Jobs",
+        "body": "Pair a clean-energy buildout with a public jobs guarantee in the regions that powered the last century, so the transition lifts workers instead of leaving them.",
+        "issueTags": ["climate", "jobs", "economy"]
+      }
+    ],
+    "sources": [
+      {
+        "kind": "Speech",
+        "title": "Inauguration as Mayor",
+        "excerpt": "A city is not its skyline. It's whether the bus comes, the clinic is open, and the kid down the block can picture a future here. That's the work.",
+        "issueTags": ["community", "infrastructure", "economy"],
+        "priority": 1
+      },
+      {
+        "kind": "OpEd",
+        "title": "Why I Build",
+        "excerpt": "Markets are brilliant at many things and blind to others. Where they're blind — a rural clinic, a flood wall, a slow neighborhood — the public has to see.",
+        "issueTags": ["govt-role", "fairness", "healthcare"],
+        "priority": 1
+      },
+      {
+        "kind": "PolicyDoc",
+        "title": "The Care Floor Plan",
+        "excerpt": "A funded baseline of coverage, automatic enrollment, and a cap on out-of-pocket costs. Private plans layer on top. No one is left uncovered between jobs.",
+        "issueTags": ["healthcare", "fairness"],
+        "priority": 2
+      }
+    ]
+  },
+  {
+    "slug": "marcus-reed",
+    "name": "Marcus Reed",
+    "office": "President",
+    "party": "Liberty First",
+    "isIncumbent": false,
+    "bio": "Constitutional lawyer and small-business owner who believes the surest protection of ordinary people is a government that stays in its lane.",
+    "background": "Spent fifteen years defending civil-liberties cases, then ran a family hardware chain. Skeptical of concentrated power whether it sits in an agency or a boardroom. Runs on a flatter tax code, hard limits on surveillance, and decisions made closest to the people they affect.",
+    "archetypeKey": "liberty-guardian",
+    "defaultTone": "Stern",
+    "defaultIntensity": 3,
+    "avatarBaseUrl": "reed",
+    "axisScores": [
+      { "axisKey": "govt-role", "score": -0.7 },
+      { "axisKey": "liberty-safety", "score": -0.8 },
+      { "axisKey": "change-speed", "score": -0.1 },
+      { "axisKey": "economic-fairness", "score": -0.4 },
+      { "axisKey": "authority", "score": -0.7 },
+      { "axisKey": "expertise", "score": -0.2 },
+      { "axisKey": "speech", "score": -0.8 },
+      { "axisKey": "risk", "score": 0.4 },
+      { "axisKey": "community", "score": -0.4 },
+      { "axisKey": "time-horizon", "score": 0.0 }
+    ],
+    "issueTones": [
+      { "issue": "privacy", "tone": "Angry", "intensity": 4 },
+      { "issue": "taxes", "tone": "Wonkish", "intensity": 2 }
+    ],
+    "platformPlanks": [
+      {
+        "title": "Your Data Is Yours",
+        "body": "Warrant requirements for digital surveillance, a ban on buying around the Fourth Amendment, and a right to know what the government collects on you.",
+        "issueTags": ["privacy", "speech", "technology"]
+      },
+      {
+        "title": "A Tax Code on a Postcard",
+        "body": "Collapse the brackets, kill the loopholes the connected use, and let most families file in minutes. Simplicity is fairness.",
+        "issueTags": ["taxes", "economy"]
+      },
+      {
+        "title": "Decisions Closest to Home",
+        "body": "Push power down to states and towns wherever the Constitution allows. The people who live with a policy should be the ones who write it.",
+        "issueTags": ["authority", "community", "regulation"]
+      },
+      {
+        "title": "Speech Without a Permission Slip",
+        "body": "Defend open expression against pressure to police lawful speech, online or off. The answer to bad speech is more speech, not a gatekeeper.",
+        "issueTags": ["speech", "privacy"]
+      }
+    ],
+    "sources": [
+      {
+        "kind": "OpEd",
+        "title": "The Quiet Erosion",
+        "excerpt": "Rights are rarely lost in one dramatic vote. They're traded away a convenience at a time, until the warrant is a formality and the dragnet is the default.",
+        "issueTags": ["privacy", "speech"],
+        "priority": 1
+      },
+      {
+        "kind": "Speech",
+        "title": "Closing Argument, Carter v. State",
+        "excerpt": "The state does not get to search everyone to find the few. That is the whole point of the rule. Inconvenience to power is the feature, not the bug.",
+        "issueTags": ["privacy", "liberty-safety"],
+        "priority": 1
+      },
+      {
+        "kind": "PolicyDoc",
+        "title": "The Flat Filing Plan",
+        "excerpt": "Two rates, a generous standard deduction, and the end of carve-outs written for lobbyists. Revenue-neutral, radically simpler, and honest about who pays.",
+        "issueTags": ["taxes", "economy"],
+        "priority": 2
+      }
+    ]
+  },
+  {
+    "slug": "sofia-alvarez",
+    "name": "Sofia Alvarez",
+    "office": "President",
+    "party": "Horizon",
+    "isIncumbent": false,
+    "bio": "Climate engineer turned policymaker who runs on the numbers: invest now in the things that compound — energy, education, and safe technology.",
+    "background": "Trained as an electrical engineer, led a national lab's grid-modernization program, then chaired a state energy commission. Allergic to slogans, fluent in tradeoffs. Believes the job of government is to make the long-term cheaper than the short-term.",
+    "archetypeKey": "future-investor",
+    "defaultTone": "Wonkish",
+    "defaultIntensity": 2,
+    "avatarBaseUrl": "alvarez",
+    "axisScores": [
+      { "axisKey": "govt-role", "score": 0.4 },
+      { "axisKey": "liberty-safety", "score": 0.1 },
+      { "axisKey": "change-speed", "score": 0.5 },
+      { "axisKey": "economic-fairness", "score": 0.3 },
+      { "axisKey": "authority", "score": 0.1 },
+      { "axisKey": "expertise", "score": 0.7 },
+      { "axisKey": "speech", "score": -0.1 },
+      { "axisKey": "risk", "score": 0.2 },
+      { "axisKey": "community", "score": 0.2 },
+      { "axisKey": "time-horizon", "score": 0.8 }
+    ],
+    "issueTones": [
+      { "issue": "climate", "tone": "Hopeful", "intensity": 4 },
+      { "issue": "ai", "tone": "Wonkish", "intensity": 3 },
+      { "issue": "privacy", "tone": "Stern", "intensity": 3 }
+    ],
+    "platformPlanks": [
+      {
+        "title": "Safety Standards for Powerful AI",
+        "body": "Independent testing and disclosure for high-impact AI systems before deployment — the same way we test bridges and medicines. Innovation with guardrails.",
+        "issueTags": ["ai", "technology", "innovation", "safety"]
+      },
+      {
+        "title": "Cheap, Clean, and Built to Last",
+        "body": "Front-load research and grid upgrades so clean power is the cheapest option, not the virtuous one. Make the math do the persuading.",
+        "issueTags": ["climate", "innovation", "infrastructure"]
+      },
+      {
+        "title": "Protect Students' Data",
+        "body": "A federal floor for student-data privacy: clear consent, no selling of children's records, and audits with teeth. Ed-tech should serve kids, not harvest them.",
+        "issueTags": ["privacy", "education", "technology"]
+      },
+      {
+        "title": "STEM Without a Zip-Code Lottery",
+        "body": "Fund labs, broadband, and teacher pipelines in the schools that have the least, so a kid's potential isn't capped by where they were born.",
+        "issueTags": ["education", "fairness", "economy"]
+      }
+    ],
+    "sources": [
+      {
+        "kind": "PolicyDoc",
+        "title": "The AI Assurance Framework",
+        "excerpt": "Tiered oversight by capability: the higher the potential impact, the higher the bar for testing, transparency, and recall. Low-risk tools stay unburdened.",
+        "issueTags": ["ai", "technology", "safety"],
+        "priority": 1
+      },
+      {
+        "kind": "TownHall",
+        "title": "Answering a Student on Jobs",
+        "excerpt": "I won't tell you a robot will never do part of your job. I'll tell you we can decide what we do with the time it frees — and who gets the gains.",
+        "issueTags": ["ai", "economy", "education"],
+        "priority": 1
+      },
+      {
+        "kind": "OpEd",
+        "title": "The Cheapest Future Wins",
+        "excerpt": "Stop arguing about virtue. Make the clean, safe, durable choice the cheap one, and the market will sprint where the speeches couldn't drag it.",
+        "issueTags": ["climate", "innovation"],
+        "priority": 2
+      }
+    ]
+  },
+  {
+    "slug": "hank-whitfield",
+    "name": "Hank Whitfield",
+    "office": "President",
+    "party": "Heartland Union",
+    "isIncumbent": false,
+    "bio": "Third-generation farmer and county commissioner who thinks the country forgot its small towns — and that fixing that is national business.",
+    "background": "Runs a family farm and chaired his county board for a decade. Watched the main street he grew up on hollow out and the broadband never arrive. Folksy, stubborn, and convinced that places — not just people — deserve a fair shot.",
+    "archetypeKey": "local-steward",
+    "defaultTone": "Folksy",
+    "defaultIntensity": 2,
+    "avatarBaseUrl": "whitfield",
+    "axisScores": [
+      { "axisKey": "govt-role", "score": 0.1 },
+      { "axisKey": "liberty-safety", "score": 0.0 },
+      { "axisKey": "change-speed", "score": -0.5 },
+      { "axisKey": "economic-fairness", "score": 0.2 },
+      { "axisKey": "authority", "score": -0.7 },
+      { "axisKey": "expertise", "score": -0.1 },
+      { "axisKey": "speech", "score": -0.3 },
+      { "axisKey": "risk", "score": -0.2 },
+      { "axisKey": "community", "score": 0.8 },
+      { "axisKey": "time-horizon", "score": 0.1 }
+    ],
+    "issueTones": [
+      { "issue": "rural", "tone": "Folksy", "intensity": 3 },
+      { "issue": "infrastructure", "tone": "Stern", "intensity": 3 }
+    ],
+    "platformPlanks": [
+      {
+        "title": "Finish the Rural Broadband Job",
+        "body": "No more maps that pretend a town is covered when it isn't. Wire the last mile, with local co-ops in the driver's seat. A farm needs bandwidth like it needs rain.",
+        "issueTags": ["infrastructure", "rural", "technology"]
+      },
+      {
+        "title": "Main Street, Not Just Wall Street",
+        "body": "Tax and credit rules that favor the local hardware store and the family farm over the absentee chain. Keep the dollar circulating where it was earned.",
+        "issueTags": ["economy", "community", "rural"]
+      },
+      {
+        "title": "Decisions Made on the Porch",
+        "body": "Block one-size-fits-all mandates that treat a county of 4,000 like a city of four million. Trust towns to know their own roads and rivers.",
+        "issueTags": ["authority", "community", "regulation"]
+      },
+      {
+        "title": "Keep the Lights On at the Local Clinic",
+        "body": "Stop rural hospitals from closing with steady funding and telehealth that actually reaches the holler. Care shouldn't be a two-hour drive.",
+        "issueTags": ["healthcare", "rural", "community"]
+      }
+    ],
+    "sources": [
+      {
+        "kind": "Speech",
+        "title": "County Fair Remarks",
+        "excerpt": "Folks in the capital talk about flyover country. Well, we don't fly over our own homes. We live in them. And we're done being an afterthought.",
+        "issueTags": ["community", "rural"],
+        "priority": 1
+      },
+      {
+        "kind": "Interview",
+        "title": "On the Broadband Maps",
+        "excerpt": "They colored my county green on the coverage map. I'd like to see them stream a thing out at my mailbox. Green on paper, dead air in real life.",
+        "issueTags": ["infrastructure", "technology", "rural"],
+        "priority": 1
+      },
+      {
+        "kind": "OpEd",
+        "title": "Places Deserve a Fair Shot",
+        "excerpt": "We spend a lot of breath on equal opportunity for people. I'd argue a town can be born without one too — and we can choose to fix that.",
+        "issueTags": ["community", "economy", "fairness"],
+        "priority": 2
+      }
+    ]
+  },
+  {
+    "slug": "patricia-vance",
+    "name": "Patricia Vance",
+    "office": "President",
+    "party": "Civic Order",
+    "isIncumbent": true,
+    "bio": "Former federal judge running on steady hands: public safety, secure borders with due process, and institutions that work the same for everyone.",
+    "background": "Spent twenty years on the bench after a career as a prosecutor. Believes predictability is a public good and that trust in institutions is the quiet thing holding everything else up. Measured by temperament, firm on order — and insistent that order without fairness is just force.",
+    "archetypeKey": "order-trust-voter",
+    "defaultTone": "Presidential",
+    "defaultIntensity": 3,
+    "avatarBaseUrl": "vance",
+    "axisScores": [
+      { "axisKey": "govt-role", "score": 0.2 },
+      { "axisKey": "liberty-safety", "score": 0.7 },
+      { "axisKey": "change-speed", "score": -0.5 },
+      { "axisKey": "economic-fairness", "score": 0.0 },
+      { "axisKey": "authority", "score": 0.6 },
+      { "axisKey": "expertise", "score": 0.3 },
+      { "axisKey": "speech", "score": 0.2 },
+      { "axisKey": "risk", "score": -0.3 },
+      { "axisKey": "community", "score": 0.4 },
+      { "axisKey": "time-horizon", "score": 0.2 }
+    ],
+    "issueTones": [
+      { "issue": "safety", "tone": "Stern", "intensity": 4 },
+      { "issue": "immigration", "tone": "Presidential", "intensity": 3 }
+    ],
+    "platformPlanks": [
+      {
+        "title": "Safe Streets, Fair Courts",
+        "body": "Fund community policing and the courts that hold it accountable in equal measure. Safety and fairness are not a trade — lose one and you lose both.",
+        "issueTags": ["safety", "fairness", "justice"]
+      },
+      {
+        "title": "Borders With Due Process",
+        "body": "Secure, orderly entry and a real, faster path through the line. A system no one trusts serves no one — not the newcomer, not the neighbor.",
+        "issueTags": ["immigration", "safety", "justice"]
+      },
+      {
+        "title": "Defend the Machinery of Trust",
+        "body": "Protect elections, courts, and the civil service from capture by any party or person. The referee can't wear a jersey.",
+        "issueTags": ["institutions", "justice", "safety"]
+      },
+      {
+        "title": "Lock the Digital Doors",
+        "body": "Treat cyberattacks on hospitals, grids, and schools as the threats they are. Fund defense, share warnings, and stop pretending it's someone else's problem.",
+        "issueTags": ["safety", "technology", "privacy"]
+      }
+    ],
+    "sources": [
+      {
+        "kind": "Speech",
+        "title": "Investiture Address",
+        "excerpt": "A courtroom works because everyone, the powerful most of all, believes the rules will hold tomorrow. Guard that belief and you guard the republic.",
+        "issueTags": ["institutions", "justice"],
+        "priority": 1
+      },
+      {
+        "kind": "OpEd",
+        "title": "Order Without Fairness Is Just Force",
+        "excerpt": "I have signed warrants and overturned them. The lesson of both is the same: authority earns its weight only when it answers to a rule it cannot bend.",
+        "issueTags": ["safety", "justice", "fairness"],
+        "priority": 1
+      },
+      {
+        "kind": "PolicyDoc",
+        "title": "The Civic Resilience Plan",
+        "excerpt": "Hardened election systems, protected inspectors general, and a cyber-defense corps for critical services. The unglamorous work of keeping trust intact.",
+        "issueTags": ["institutions", "technology", "safety"],
+        "priority": 2
+      }
+    ]
+  }
+]

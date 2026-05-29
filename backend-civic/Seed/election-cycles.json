@@ -1,0 +1,10 @@
+[
+  {
+    "slug": "2028-general",
+    "name": "2028 General Election",
+    "electionDate": "2028-11-07T00:00:00Z",
+    "primarySeasonStart": "2028-02-01T00:00:00Z",
+    "generalSeasonStart": "2028-08-01T00:00:00Z",
+    "isCurrent": true
+  }
+]

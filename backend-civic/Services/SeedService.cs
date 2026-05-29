@@ -33,6 +33,58 @@ public class SeedService : ISeedService
         await SeedElectionsAsync(ct);
         await SeedQuizQuestionsAsync(ct);
         await SeedBillTimelineAsync(ct);
+        await SeedElectionCyclesAsync(ct);
+        await SeedVirtualCandidatesAsync(ct);
+    }
+
+    private async Task SeedElectionCyclesAsync(CancellationToken ct)
+    {
+        var items = LoadJson<List<ElectionCycle>>("Seed.election-cycles.json");
+        if (items is null) return;
+
+        var existingSlugs = await _db.ElectionCycles.Select(c => c.Slug).ToListAsync(ct);
+        var toAdd = items.Where(c => !existingSlugs.Contains(c.Slug)).ToList();
+        foreach (var c in toAdd)
+        {
+            c.Id = Guid.NewGuid();
+            c.ElectionDate = DateTime.SpecifyKind(c.ElectionDate, DateTimeKind.Utc);
+            c.PrimarySeasonStart = DateTime.SpecifyKind(c.PrimarySeasonStart, DateTimeKind.Utc);
+            c.GeneralSeasonStart = DateTime.SpecifyKind(c.GeneralSeasonStart, DateTimeKind.Utc);
+            c.CreatedAt = DateTime.UtcNow;
+        }
+
+        if (toAdd.Count > 0)
+        {
+            _db.ElectionCycles.AddRange(toAdd);
+            await _db.SaveChangesAsync(ct);
+            _log.LogInformation("Seeded {Count} election cycles", toAdd.Count);
+        }
+    }
+
+    private async Task SeedVirtualCandidatesAsync(CancellationToken ct)
+    {
+        var items = LoadJson<List<VirtualCandidate>>("Seed.virtual-candidates.json");
+        if (items is null) return;
+
+        var existingSlugs = await _db.VirtualCandidates.Select(c => c.Slug).ToListAsync(ct);
+        var toAdd = items.Where(c => !existingSlugs.Contains(c.Slug)).ToList();
+
+        foreach (var c in toAdd)
+        {
+            c.Id = Guid.NewGuid();
+            c.CreatedAt = DateTime.UtcNow;
+            foreach (var s in c.AxisScores) { s.Id = Guid.NewGuid(); s.CandidateId = c.Id; }
+            foreach (var t in c.IssueTones) { t.Id = Guid.NewGuid(); t.CandidateId = c.Id; }
+            foreach (var p in c.PlatformPlanks) { p.Id = Guid.NewGuid(); p.CandidateId = c.Id; }
+            foreach (var src in c.Sources) { src.Id = Guid.NewGuid(); src.CandidateId = c.Id; }
+        }
+
+        if (toAdd.Count > 0)
+        {
+            _db.VirtualCandidates.AddRange(toAdd);
+            await _db.SaveChangesAsync(ct);
+            _log.LogInformation("Seeded {Count} virtual candidates", toAdd.Count);
+        }
     }
 
     private async Task SeedBriefingsAsync(CancellationToken ct)

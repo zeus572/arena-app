@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, GraduationCap, Compass, User } from "lucide-react";
+import { Home, GraduationCap, Compass, User, Megaphone } from "lucide-react";
 
 type Tab = {
   to: string;
@@ -11,6 +11,7 @@ type Tab = {
 
 const tabs: Tab[] = [
   { to: "/", label: "Home", icon: Home, end: true, testId: "tab-home" },
+  { to: "/candidates", label: "Campaign", icon: Megaphone, testId: "tab-campaign" },
   { to: "/quizzes", label: "Quizzes", icon: GraduationCap, testId: "tab-quizzes" },
   { to: "/onboarding", label: "Compass", icon: Compass, testId: "tab-compass" },
   { to: "/profile", label: "You", icon: User, testId: "tab-you" },
