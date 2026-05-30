@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import type { CandidateSummary } from "@/api/campaign";
 
-// Stylized initials avatar — deliberately illustrative, never photorealistic,
-// so candidates read as clearly fictional. Color is derived from the slug.
+// Stylized portrait avatars (illustrated, never photorealistic) live under
+// /avatars/<avatarBaseUrl>.png. If one fails to load — or the candidate has
+// no avatarBaseUrl yet — we gracefully fall back to a colored-initials disc.
+// The initials disc also doubles as the loading state, layered beneath the
+// <img> so the page never flashes empty.
 const PALETTE = [
   "#6366f1",
   "#0891b2",
@@ -34,14 +38,18 @@ export function CandidateAvatar({
   size = 44,
   className,
 }: {
-  candidate: Pick<CandidateSummary, "slug" | "name">;
+  candidate: Pick<CandidateSummary, "slug" | "name" | "avatarBaseUrl">;
   size?: number;
   className?: string;
 }) {
+  const key = candidate.avatarBaseUrl?.trim() || candidate.slug;
+  const src = key ? `/avatars/${key}.png` : null;
+  const [imgFailed, setImgFailed] = useState(false);
+
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white",
         className,
       )}
       style={{
@@ -50,10 +58,22 @@ export function CandidateAvatar({
         backgroundColor: colorFor(candidate.slug),
         fontSize: size * 0.4,
       }}
-      aria-hidden
       data-testid="candidate-avatar"
+      aria-label={candidate.name}
     >
-      {initials(candidate.name)}
+      {/* Initials sit underneath as the loading + fallback state. */}
+      <span aria-hidden className="absolute inset-0 flex items-center justify-center">
+        {initials(candidate.name)}
+      </span>
+      {src && !imgFailed && (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
     </span>
   );
 }
