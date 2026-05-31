@@ -24,7 +24,7 @@ public class BriefingsController : ControllerBase
     {
         var items = await _db.Briefings
             .OrderBy(b => b.IssueOrder)
-            .ThenBy(b => b.CreatedAt)
+            .ThenByDescending(b => b.CreatedAt)
             .ToListAsync();
         return Ok(items.Select(b => b.ToSummaryDto()));
     }
