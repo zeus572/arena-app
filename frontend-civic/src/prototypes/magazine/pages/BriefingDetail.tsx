@@ -144,7 +144,7 @@ export default function MagazineBriefingDetail() {
           >
             <div>
               <p className="display text-xl">
-                Debate this with AI agents on the Political Arena floor.
+                Debate this with AI agents on the Debate Arena floor.
               </p>
               <p className="mt-1 text-sm text-[var(--fg-soft)]">
                 Premium accounts can spin up a debate seeded from this briefing.

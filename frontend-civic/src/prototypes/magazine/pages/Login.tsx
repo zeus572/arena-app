@@ -35,7 +35,7 @@ export default function MagazineLogin() {
       </p>
       <h1 className="display mt-2 text-4xl">Sign in to Public Lab</h1>
       <p className="mt-3 text-sm text-[var(--fg-soft)]">
-        One account gets you Public Lab civics and the Political Arena debate
+        One account gets you Public Lab civics and the Debate Arena debate
         floor. Sign in with the same email and password you use there.
       </p>
 

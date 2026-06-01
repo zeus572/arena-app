@@ -5,6 +5,8 @@ type CountdownTimerProps = {
   scope: ElectionScope;
   region?: string;
   testId?: string;
+  /// Override the default vertical margin (e.g. when composed in a grid).
+  className?: string;
 };
 
 type Parts = {
@@ -38,7 +40,8 @@ function dateLabel(iso: string): string {
   });
 }
 
-export function CountdownTimer({ scope, region, testId }: CountdownTimerProps) {
+export function CountdownTimer({ scope, region, testId, className }: CountdownTimerProps) {
+  const containerClass = className ?? "my-10";
   const [election, setElection] = useState<Election | null | undefined>(undefined);
   const [now, setNow] = useState<Date>(() => new Date());
 
@@ -60,7 +63,7 @@ export function CountdownTimer({ scope, region, testId }: CountdownTimerProps) {
   if (election === undefined) {
     return (
       <section
-        className="my-10 border border-[var(--border)] bg-[var(--bg-elev)] p-6"
+        className={`${containerClass} border border-[var(--border)] bg-[var(--bg-elev)] p-6`}
         data-testid={testId ?? `countdown-${scope.toLowerCase()}`}
       >
         <p className="text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
@@ -74,7 +77,7 @@ export function CountdownTimer({ scope, region, testId }: CountdownTimerProps) {
   if (election === null) {
     return (
       <section
-        className="my-10 border border-[var(--border)] bg-[var(--bg-elev)] p-6"
+        className={`${containerClass} border border-[var(--border)] bg-[var(--bg-elev)] p-6`}
         data-testid={testId ?? `countdown-${scope.toLowerCase()}`}
       >
         <p className="text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
@@ -92,7 +95,7 @@ export function CountdownTimer({ scope, region, testId }: CountdownTimerProps) {
 
   return (
     <section
-      className="my-10 border border-[var(--border)] bg-[var(--bg-elev)] p-6"
+      className={`${containerClass} border border-[var(--border)] bg-[var(--bg-elev)] p-6`}
       data-testid={testId ?? `countdown-${scope.toLowerCase()}`}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">

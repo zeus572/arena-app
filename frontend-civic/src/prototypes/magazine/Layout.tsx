@@ -1,7 +1,53 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
 import "./theme.css";
+
+const NAV_LINKS = [
+  { to: "/", label: "Home", end: true },
+  { to: "/candidates", label: "Feed" },
+  { to: "/campaigns", label: "Campaign" },
+  { to: "/quizzes", label: "Quizzes" },
+];
+
+function TopNav() {
+  return (
+    <nav
+      className="hidden items-center gap-6 md:flex"
+      data-testid="top-nav"
+      aria-label="Primary"
+    >
+      {NAV_LINKS.map((l) => (
+        <NavLink
+          key={l.to}
+          to={l.to}
+          end={l.end}
+          data-testid={`top-nav-${l.label.toLowerCase()}`}
+          className={({ isActive }) =>
+            [
+              "text-xs font-semibold uppercase tracking-wider transition",
+              isActive
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)] hover:text-[var(--fg)]",
+            ].join(" ")
+          }
+        >
+          {l.label}
+        </NavLink>
+      ))}
+      <a
+        href={DEBATE_ARENA_URL}
+        target="_blank"
+        rel="noreferrer"
+        data-testid="top-nav-debate-arena"
+        className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] transition hover:text-[var(--fg)]"
+      >
+        Debate Arena ↗
+      </a>
+    </nav>
+  );
+}
 
 function AuthStrip() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -70,7 +116,7 @@ export default function MagazineLayout() {
         data-testid="magazine-header"
       >
         <div className="mx-auto max-w-5xl px-4 py-3 md:px-8 md:py-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <Link
               to="/"
               className="display text-lg tracking-tight text-[var(--accent)] md:hidden"
@@ -78,9 +124,7 @@ export default function MagazineLayout() {
             >
               Public Lab
             </Link>
-            <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)] md:inline">
-              Issue · This week
-            </span>
+            <TopNav />
             <AuthStrip />
           </div>
           <Link

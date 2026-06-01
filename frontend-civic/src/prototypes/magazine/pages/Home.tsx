@@ -5,6 +5,7 @@ import type { CivicBriefingSummary, Concept } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
 import { getConcepts } from "@/api/concepts";
 import { useAuth } from "@/auth/AuthContext";
+import { DEBATE_ARENA_URL } from "@/lib/links";
 import { CoverStory } from "../components/CoverStory";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PullQuote } from "../components/PullQuote";
@@ -39,7 +40,28 @@ export default function MagazineHome() {
           This issue is still being assembled. Check back soon.
         </p>
       )}
-      <CountdownTimer scope="National" testId="countdown-national" />
+      <div className="my-10 grid items-stretch gap-4 md:grid-cols-2">
+        <CountdownTimer scope="National" testId="countdown-national" className="h-full" />
+        <Link
+          to="/campaigns"
+          data-testid="campaign-cta"
+          className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
+        >
+          <div>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+              <Megaphone className="h-4 w-4" /> Campaign Manager
+            </p>
+            <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
+              Take the reins for a candidate, respond to the real headlines, and try to win the race
+              before the clock runs out.
+            </p>
+          </div>
+          <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+            Manage a campaign →
+          </span>
+        </Link>
+      </div>
 
       {cover && <CoverStory briefing={cover} />}
 
@@ -235,7 +257,7 @@ export default function MagazineHome() {
               Welcome back, {user.displayName ?? user.email}.
             </p>
             <p className="mt-1 text-sm text-[var(--fg-soft)]">
-              Your Civic Compass and Political Arena profile are in sync. Pick
+              Your Civic Compass and Debate Arena profile are in sync. Pick
               up where you left off.
             </p>
           </div>
@@ -274,22 +296,24 @@ export default function MagazineHome() {
         <div>
           <p className="display text-2xl">
             {isAuthenticated
-              ? "Your account works in Political Arena too."
+              ? "Your account works in Debate Arena too."
               : "One account, two arenas."}
           </p>
           <p className="mt-1 text-sm text-[var(--fg-soft)]">
             {isAuthenticated
-              ? "Jump into a debate on the Political Arena floor with the same login."
-              : "Create a Public Lab account and use the same login on the Political Arena debate floor — your civic profile follows you."}
+              ? "Jump into a debate on the Debate Arena floor with the same login."
+              : "Create a Public Lab account and use the same login on the Debate Arena debate floor — your civic profile follows you."}
           </p>
         </div>
         {isAuthenticated ? (
           <a
-            href="http://localhost:5173"
+            href={DEBATE_ARENA_URL}
+            target="_blank"
+            rel="noreferrer"
             className="rounded-full border border-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-[var(--accent)]"
             data-testid="signup-cta-debate-link"
           >
-            Open Political Arena
+            Open Debate Arena
           </a>
         ) : (
           <Link

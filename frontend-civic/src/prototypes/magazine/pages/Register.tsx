@@ -37,7 +37,7 @@ export default function MagazineRegister() {
       </p>
       <h1 className="display mt-2 text-4xl">Create your Public Lab account</h1>
       <p className="mt-3 text-sm text-[var(--fg-soft)]">
-        Your account works in both Public Lab and the Political Arena debate
+        Your account works in both Public Lab and the Debate Arena debate
         floor. Your civic profile, election timers, and saved progress travel
         with you.
       </p>
