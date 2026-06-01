@@ -107,9 +107,12 @@ public class CandidatesController : ControllerBase
         var candidate = await _db.VirtualCandidates.FirstOrDefaultAsync(c => c.Slug == slug);
         if (candidate is null) return NotFound();
 
+        // Feed tailoring: public/system posts plus the caller's own campaign responses.
+        var userId = _user.GetCurrentUserId();
         var query = _db.CampaignPosts
             .Include(p => p.Fragments)
-            .Where(p => p.CandidateId == candidate.Id);
+            .Where(p => p.CandidateId == candidate.Id)
+            .Where(p => p.OwnerUserId == null || p.OwnerUserId == userId);
 
         if (FeedCursor.TryDecode(cursor, out var before))
         {

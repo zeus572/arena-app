@@ -3,6 +3,7 @@ using System;
 using Civic.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Civic.API.Migrations
 {
     [DbContext(typeof(CivicDbContext))]
-    partial class CivicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260601181439_AddCampaignManager")]
+    partial class AddCampaignManager
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -249,11 +252,8 @@ namespace Civic.API.Migrations
 
                     b.Property<string>("Body")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("CampaignId")
-                        .HasColumnType("uuid");
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
 
                     b.Property<Guid>("CandidateId")
                         .HasColumnType("uuid");
@@ -274,10 +274,6 @@ namespace Civic.API.Migrations
                     b.Property<string[]>("IssueTags")
                         .IsRequired()
                         .HasColumnType("text[]");
-
-                    b.Property<string>("OwnerUserId")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
 
                     b.Property<string>("Tone")
                         .IsRequired()
@@ -307,8 +303,6 @@ namespace Civic.API.Migrations
                     b.HasIndex("TriggerBriefingSlug");
 
                     b.HasIndex("CandidateId", "CreatedAt");
-
-                    b.HasIndex("OwnerUserId", "CandidateId", "CreatedAt");
 
                     b.ToTable("CampaignPosts");
                 });

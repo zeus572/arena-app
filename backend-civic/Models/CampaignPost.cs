@@ -32,7 +32,9 @@ public class CampaignPost
     public Guid CandidateId { get; set; }
     public VirtualCandidate? Candidate { get; set; }
 
-    [Required, MaxLength(160)]
+    // Bot posts self-limit to ~160 chars; Campaign Manager news responses are longer (see
+    // CivicCampaignOptions.ResponseMaxChars). The column is widened to hold both.
+    [Required, MaxLength(2000)]
     public string Body { get; set; } = "";
 
     public CampaignTone Tone { get; set; }
@@ -54,6 +56,17 @@ public class CampaignPost
     /// <summary>Plank or source title cited by the body (source transparency).</summary>
     [MaxLength(200)]
     public string? CitedReference { get; set; }
+
+    /// <summary>
+    /// Owner of this post for feed tailoring. Null = a public/system (bot-generated) post visible
+    /// to everyone. Non-null = a Campaign Manager response published by that user; it appears woven
+    /// into the candidate feed only for that user, not for other people.
+    /// </summary>
+    [MaxLength(120)]
+    public string? OwnerUserId { get; set; }
+
+    /// <summary>The campaign that produced this post, when it's a Campaign Manager response.</summary>
+    public Guid? CampaignId { get; set; }
 
     // Aggregate whole-post reaction counters, updated atomically on each write.
     public int UpCount { get; set; }

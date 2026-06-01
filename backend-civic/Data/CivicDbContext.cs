@@ -34,6 +34,13 @@ public class CivicDbContext : DbContext
     public DbSet<CandidateFollow> CandidateFollows => Set<CandidateFollow>();
     public DbSet<CandidateMute> CandidateMutes => Set<CandidateMute>();
 
+    // Campaign Manager game mode.
+    public DbSet<CivicCampaign> CivicCampaigns => Set<CivicCampaign>();
+    public DbSet<CivicCampaignStanding> CivicCampaignStandings => Set<CivicCampaignStanding>();
+    public DbSet<CivicCampaignWeek> CivicCampaignWeeks => Set<CivicCampaignWeek>();
+    public DbSet<CivicCampaignAction> CivicCampaignActions => Set<CivicCampaignAction>();
+    public DbSet<CandidateNewsResponse> CandidateNewsResponses => Set<CandidateNewsResponse>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Petition>(e =>
@@ -245,6 +252,8 @@ public class CivicDbContext : DbContext
             e.HasIndex(p => p.CreatedAt).IsDescending();
             e.HasIndex(p => new { p.CandidateId, p.CreatedAt });
             e.HasIndex(p => p.TriggerBriefingSlug);
+            // Feed tailoring: public posts (null owner) + a single user's own responses.
+            e.HasIndex(p => new { p.OwnerUserId, p.CandidateId, p.CreatedAt });
             e.Property(p => p.Tone).HasConversion<string>().HasMaxLength(20);
             e.Property(p => p.Trigger).HasConversion<string>().HasMaxLength(20);
             e.HasOne(p => p.Candidate)
@@ -298,6 +307,76 @@ public class CivicDbContext : DbContext
         {
             e.HasKey(m => m.Id);
             e.HasIndex(m => new { m.UserId, m.CandidateId }).IsUnique();
+        });
+
+        modelBuilder.Entity<CivicCampaign>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => c.UserId);
+            e.HasIndex(c => new { c.UserId, c.Status });
+            e.Property(c => c.Difficulty).HasConversion<string>().HasMaxLength(20);
+            e.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(c => c.Candidate)
+                .WithMany()
+                .HasForeignKey(c => c.CandidateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(c => c.Election)
+                .WithMany()
+                .HasForeignKey(c => c.ElectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasMany(c => c.Standings)
+                .WithOne(s => s.Campaign!)
+                .HasForeignKey(s => s.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(c => c.Weeks)
+                .WithOne(w => w.Campaign!)
+                .HasForeignKey(w => w.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(c => c.Actions)
+                .WithOne(a => a.Campaign!)
+                .HasForeignKey(a => a.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CivicCampaignStanding>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => new { s.CampaignId, s.CandidateId }).IsUnique();
+
+            e.HasOne(s => s.Candidate)
+                .WithMany()
+                .HasForeignKey(s => s.CandidateId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CivicCampaignWeek>(e =>
+        {
+            e.HasKey(w => w.Id);
+            e.HasIndex(w => new { w.CampaignId, w.DayNumber }).IsUnique();
+        });
+
+        modelBuilder.Entity<CivicCampaignAction>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => new { a.CampaignId, a.DayNumber });
+            e.Property(a => a.ActionType).HasConversion<string>().HasMaxLength(30);
+            e.Property(a => a.Tone).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CandidateNewsResponse>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.CandidateId, r.BriefingSlug }).IsUnique();
+
+            e.HasOne(r => r.Candidate)
+                .WithMany()
+                .HasForeignKey(r => r.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

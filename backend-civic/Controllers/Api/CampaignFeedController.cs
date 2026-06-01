@@ -5,6 +5,7 @@ using Civic.API.Data;
 using Civic.API.Mapping;
 using Civic.API.Models;
 using Civic.API.Models.DTOs;
+using Civic.API.Services;
 using Civic.API.Services.Campaign;
 
 namespace Civic.API.Controllers.Api;
@@ -15,8 +16,13 @@ namespace Civic.API.Controllers.Api;
 public class CampaignFeedController : ControllerBase
 {
     private readonly CivicDbContext _db;
+    private readonly ICurrentUserService _user;
 
-    public CampaignFeedController(CivicDbContext db) => _db = db;
+    public CampaignFeedController(CivicDbContext db, ICurrentUserService user)
+    {
+        _db = db;
+        _user = user;
+    }
 
     // GET /api/campaign/feed?office=&party=&state=&district=&tone=&minIntensity=&issue=&sort=recent|top|controversial|trending&cursor=&limit=
     [HttpGet("feed")]
@@ -34,10 +40,12 @@ public class CampaignFeedController : ControllerBase
     {
         if (limit is < 1 or > 100) limit = 20;
 
+        // Feed tailoring: public/system posts (no owner) plus the caller's own campaign responses.
+        var userId = _user.GetCurrentUserId();
         var query = _db.CampaignPosts
             .Include(p => p.Fragments)
             .Include(p => p.Candidate)
-            .AsQueryable();
+            .Where(p => p.OwnerUserId == null || p.OwnerUserId == userId);
 
         if (TryParseEnum<CandidateOffice>(office, out var off))
             query = query.Where(p => p.Candidate!.Office == off);
