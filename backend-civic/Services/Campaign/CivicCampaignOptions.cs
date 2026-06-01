@@ -19,6 +19,10 @@ public class CivicCampaignOptions
     // How many response options to generate per (candidate, briefing).
     public int ResponseOptionsPerItem { get; set; } = 3;
 
+    // Max length (chars) of a news-response post body. Longer than a tweet so responses can be
+    // more substantive and pointed; campaign responses are not bound by the bot posts' 160 limit.
+    public int ResponseMaxChars { get; set; } = 600;
+
     // Base magnitude (in support points) of a single well-aimed action before modifiers.
     public double BaseActionPoints { get; set; } = 3.0;
 

@@ -544,10 +544,11 @@ public class CivicCampaignService
         VirtualCandidate candidate, Briefing briefing, CancellationToken ct)
     {
         var count = Math.Clamp(_opts.ResponseOptionsPerItem, 2, 3);
+        var maxChars = _opts.ResponseMaxChars;
         try
         {
-            var (sys, user) = NewsResponsePrompts.Build(candidate, briefing, count);
-            var dto = await _llm.GenerateStructuredAsync<GeneratedNewsResponsesDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 700, ct: ct);
+            var (sys, user) = NewsResponsePrompts.Build(candidate, briefing, count, maxChars);
+            var dto = await _llm.GenerateStructuredAsync<GeneratedNewsResponsesDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 1500, ct: ct);
             var options = dto.Options
                 .Where(o => !string.IsNullOrWhiteSpace(o.Body))
                 .Take(count)
@@ -557,7 +558,7 @@ public class CivicCampaignService
                     Label = string.IsNullOrWhiteSpace(o.Label) ? $"Option {i + 1}" : o.Label.Trim(),
                     Angle = o.Angle?.Trim() ?? "",
                     Tone = ParseTone(o.Tone)?.ToString() ?? candidate.DefaultTone.ToString(),
-                    Body = Truncate(o.Body.Trim(), 160),
+                    Body = Truncate(o.Body.Trim(), maxChars),
                 })
                 .ToList();
             if (options.Count >= 2) return (options, true);
@@ -572,17 +573,24 @@ public class CivicCampaignService
             _log.LogWarning(ex, "News-response generation failed; using templated fallback.");
         }
 
-        return (TemplatedResponseOptions(candidate, briefing, count), false);
+        return (TemplatedResponseOptions(candidate, briefing, count, maxChars), false);
     }
 
-    /// <summary>Deterministic, offline response options derived from the candidate's planks + the briefing.</summary>
-    private static List<NewsResponseOption> TemplatedResponseOptions(VirtualCandidate candidate, Briefing briefing, int count)
+    /// <summary>
+    /// Deterministic, offline response options derived from the candidate's planks + the briefing.
+    /// Multi-sentence and pointed (used when no LLM key is configured); capped at maxChars.
+    /// </summary>
+    private static List<NewsResponseOption> TemplatedResponseOptions(
+        VirtualCandidate candidate, Briefing briefing, int count, int maxChars)
     {
+        var first = candidate.Name.Split(' ').FirstOrDefault() ?? candidate.Name;
         var plank = candidate.PlatformPlanks.FirstOrDefault();
+        var plankTitle = plank?.Title ?? "real reform";
         var topic = briefing.Tags.FirstOrDefault()
             ?? briefing.ValuesInConflict.FirstOrDefault()
             ?? "this issue";
         var value = briefing.ValuesInConflict.FirstOrDefault() ?? topic;
+        var headline = briefing.Headline;
 
         var templates = new List<NewsResponseOption>
         {
@@ -590,25 +598,34 @@ public class CivicCampaignService
             {
                 Id = "opt1",
                 Label = "Go on offense",
-                Angle = "Seize the moment and press the candidate's strongest contrast.",
-                Tone = CampaignTone.Stern.ToString(),
-                Body = Truncate($"On {topic}, {candidate.Name} won't back down: {plank?.Title ?? "real action, now"}.", 160),
+                Angle = "Hit hard and draw the sharpest contrast on the candidate's terms.",
+                Tone = CampaignTone.Angry.ToString(),
+                Body = Truncate(
+                    $"Let's be blunt about \"{headline}\": the people in charge have failed you on {topic}, and they're hoping you won't notice. {first} will. " +
+                    $"That's exactly why I'm fighting for {plankTitle} — not someday, now. The status quo isn't neutral; it's a choice, and it's the wrong one.",
+                    maxChars),
             },
             new()
             {
                 Id = "opt2",
                 Label = "Stay disciplined",
-                Angle = "Acknowledge the news but pivot back to the core message.",
+                Angle = "Acknowledge the story, then drive relentlessly back to the core message.",
                 Tone = CampaignTone.Presidential.ToString(),
-                Body = Truncate($"The headlines change; our priorities don't. {candidate.Name} stays focused on {topic}.", 160),
+                Body = Truncate(
+                    $"The headlines will keep changing. Our priorities won't. {first} is in this race to deliver {plankTitle} and protect {value} for the families who are counting on it. " +
+                    $"I won't be distracted by the noise — I'll be judged by results. That's the promise, and I intend to keep it.",
+                    maxChars),
             },
             new()
             {
                 Id = "opt3",
                 Label = "Find common ground",
-                Angle = "Strike a unifying tone around the value in conflict.",
+                Angle = "Reframe the fight as a shared problem and offer a way forward.",
                 Tone = CampaignTone.Hopeful.ToString(),
-                Body = Truncate($"We can protect {value} and move forward together. That's the {candidate.Name} way.", 160),
+                Body = Truncate(
+                    $"Here's what \"{headline}\" really shows: we agree on more than the shouting suggests. Almost everyone wants to protect {value} — we just argue about how. " +
+                    $"{first}'s answer is {plankTitle}, and I'll work with anyone serious about getting it done. Let's stop scoring points and start solving this.",
+                    maxChars),
             },
         };
         return templates.Take(Math.Clamp(count, 2, 3)).ToList();
@@ -619,7 +636,7 @@ public class CivicCampaignService
     private async Task<CampaignPost> CreatePostFromBodyAsync(
         CivicCampaign campaign, VirtualCandidate candidate, string body, CampaignTone tone, Briefing briefing, CancellationToken ct)
     {
-        var clean = Truncate(string.IsNullOrWhiteSpace(body) ? $"{candidate.Name} responds." : body.Trim(), 160);
+        var clean = Truncate(string.IsNullOrWhiteSpace(body) ? $"{candidate.Name} responds." : body.Trim(), _opts.ResponseMaxChars);
         var post = new CampaignPost
         {
             Id = Guid.NewGuid(),

@@ -10,7 +10,7 @@ public class NewsResponseOption
     public string Label { get; set; } = "";
     public string Angle { get; set; } = "";
     public string Tone { get; set; } = "";
-    /// <summary>Ready-to-publish post body (≤160 chars).</summary>
+    /// <summary>Ready-to-publish post body (a few sentences; see CivicCampaignOptions.ResponseMaxChars).</summary>
     public string Body { get; set; } = "";
 }
 
@@ -31,7 +31,7 @@ public class GeneratedNewsResponseItem
 /// <summary>Prompt builder for generating a candidate's response options to a news briefing.</summary>
 public static class NewsResponsePrompts
 {
-    public static (string System, string User) Build(VirtualCandidate candidate, Briefing briefing, int optionCount)
+    public static (string System, string User) Build(VirtualCandidate candidate, Briefing briefing, int optionCount, int maxChars)
     {
         var office = candidate.Office switch
         {
@@ -49,14 +49,25 @@ public static class NewsResponsePrompts
             Background: {{candidate.Background}}
 
             Produce exactly {{optionCount}} DISTINCT response options that a campaign manager could
-            choose between. Each option is a different strategic stance (e.g. go on offense, stay
-            disciplined/on-message, pivot to a strength, find common ground). Each must stay in
-            character and on the candidate's platform.
+            choose between. Each is a genuinely different strategic stance — e.g. go on the attack,
+            stay disciplined and on-message, pivot to a signature strength, or stake out common
+            ground. Make them feel like real, sharply-worded campaign statements with a clear point
+            of view: punchy, opinionated, and willing to be provocative or take a controversial
+            angle. They should read like something that would actually make news — not bland,
+            hedged, or interchangeable.
+
+            Length & style:
+            - Each "body" is a SUBSTANTIVE statement of roughly 2-4 sentences, up to {{maxChars}}
+              characters. Do NOT write a one-line tweet. Use the space to make an argument: a hook,
+              the candidate's position, and a sharp closing line.
+            - Distinct voice per option — the tones and angles should clearly differ.
 
             Hard rules (non-negotiable):
             - FICTIONAL candidate — never claim to be a real person.
-            - Each "body" MUST be 160 characters or fewer. Plain text. No markdown.
-            - No slurs, no naming/targeting real individuals, no endorsement of violence, no real-election voting instructions.
+            - Plain text. No markdown, no hashtags spam.
+            - Controversial/provocative is welcome, but: no slurs, no hate, no naming or targeting of
+              real individuals, no endorsement of violence, and no real-election voting instructions.
+            - Stay in character and consistent with the candidate's platform.
             - The options must be genuinely different stances, not rewordings.
             - Respond with ONLY a single JSON object, no prose or fences.
 
@@ -67,7 +78,7 @@ public static class NewsResponsePrompts
                   "label": "<2-4 word strategic label, e.g. 'Go on offense'>",
                   "angle": "<one sentence describing the strategy>",
                   "tone": "<one of: Stern, Angry, Casual, Hopeful, Sarcastic, Presidential, Folksy, Wonkish>",
-                  "body": "<the post, <= 160 chars>"
+                  "body": "<the statement, 2-4 sentences, up to {{maxChars}} chars>"
                 }
               ]
             }

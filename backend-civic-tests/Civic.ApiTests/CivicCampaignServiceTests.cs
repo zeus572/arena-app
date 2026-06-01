@@ -319,6 +319,20 @@ public class CivicCampaignServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task NewsResponseOptions_AreLongerThanATweet()
+    {
+        var created = await WithServiceAsync(s => s.CreateAsync("user-long", CreateReq()));
+        var slug = await FirstNewsSlugAsync(created);
+
+        var page = await WithServiceAsync(s => s.GetNewsResponsePageAsync("user-long", created.Id, slug));
+
+        // Responses are multi-sentence now — at least one option exceeds the old 160-char tweet cap,
+        // and all stay within the configured max.
+        page.Options.Should().Contain(o => o.Body.Length > 160);
+        page.Options.Should().OnlyContain(o => o.Body.Length <= 600);
+    }
+
+    [Fact]
     public async Task NewsResponsePage_AfterResponding_FlagsAlreadyResponded()
     {
         var created = await WithServiceAsync(s => s.CreateAsync("user-page2", CreateReq()));
