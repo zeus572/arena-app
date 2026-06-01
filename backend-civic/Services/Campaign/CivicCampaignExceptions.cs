@@ -17,3 +17,10 @@ public class CivicCampaignConflictException : Exception
 {
     public CivicCampaignConflictException(string message) : base(message) { }
 }
+
+/// <summary>Thrown when a signed-in user is required but the request is anonymous (→ 401).</summary>
+public class CivicCampaignAuthRequiredException : Exception
+{
+    public CivicCampaignAuthRequiredException(string message = "Sign in to manage a campaign.")
+        : base(message) { }
+}

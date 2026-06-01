@@ -401,6 +401,47 @@ public class CivicCampaignServiceTests : IAsyncLifetime
         post.TriggerBriefingSlug.Should().Be(slug);
     }
 
+    // ---- Auth gating (HTTP level) ----
+
+    [Fact]
+    public async Task Http_AnonymousCreateCampaign_Returns401()
+    {
+        var client = _fx.Factory.CreateClient(); // no auth header
+        var resp = await client.PostAsJsonAsync("/api/campaign-manager/campaigns",
+            new { candidateSlug = "sofia-alvarez", difficulty = "Normal" });
+        resp.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Http_AnonymousListCampaigns_Returns401()
+    {
+        var client = _fx.Factory.CreateClient();
+        var resp = await client.GetAsync("/api/campaign-manager/campaigns");
+        resp.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Http_RacesTeaser_IsOpenToAnonymous()
+    {
+        var client = _fx.Factory.CreateClient(); // no auth header — the teaser must stay public
+        var races = await client.GetFromJsonAsync<List<CivicRaceDto>>("/api/campaign-manager/races");
+        races.Should().NotBeNull();
+        races!.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Http_AuthenticatedCreateCampaign_Succeeds()
+    {
+        var client = _fx.Factory.CreateClient();
+        var token = JwtTestHelper.MintAccessToken(Guid.NewGuid());
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var resp = await client.PostAsJsonAsync("/api/campaign-manager/campaigns",
+            new { candidateSlug = "sofia-alvarez", difficulty = "Normal" });
+        resp.StatusCode.Should().Be(System.Net.HttpStatusCode.Created);
+    }
+
     [Fact]
     public async Task List_ReturnsOnlyCallersCampaigns()
     {

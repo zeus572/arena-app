@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { getRaces, createCampaign, type CivicRace, type CivicCampaignDifficulty } from "@/api/campaignManager";
 import { getCandidate, type CandidateSummary, type CandidateDetail } from "@/api/campaign";
+import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
+import { SignInPrompt } from "../components/SignInPrompt";
 
 const DIFFICULTIES: { key: CivicCampaignDifficulty; label: string; blurb: string }[] = [
   { key: "Easy", label: "Easy", blurb: "Opponents campaign gently." },
@@ -13,6 +15,7 @@ const DIFFICULTIES: { key: CivicCampaignDifficulty; label: string; blurb: string
 
 export default function CampaignCreate() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [races, setRaces] = useState<CivicRace[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<CandidateSummary | null>(null);
@@ -117,19 +120,28 @@ export default function CampaignCreate() {
               </p>
             )}
 
-            <button
-              type="button"
-              data-testid="start-campaign"
-              disabled={!selected || submitting}
-              onClick={start}
-              className="mt-6 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {submitting
-                ? "Starting…"
-                : selected
-                  ? `Manage ${selected.name}`
-                  : "Select a candidate"}
-            </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                data-testid="start-campaign"
+                disabled={!selected || submitting}
+                onClick={start}
+                className="mt-6 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {submitting
+                  ? "Starting…"
+                  : selected
+                    ? `Manage ${selected.name}`
+                    : "Select a candidate"}
+              </button>
+            ) : (
+              <div className="mt-6">
+                <SignInPrompt
+                  title={selected ? `Sign in to manage ${selected.name}` : "Sign in to start your campaign"}
+                  message="Browse the candidates all you like — when you're ready to run a campaign, sign in and your progress saves to your account."
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

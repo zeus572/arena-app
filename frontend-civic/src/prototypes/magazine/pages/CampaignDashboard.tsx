@@ -11,9 +11,12 @@ import {
   type CivicActionOption,
   type CivicCampaignActionType,
 } from "@/api/campaignManager";
+import { useAuth } from "@/auth/AuthContext";
+import { SignInPrompt } from "../components/SignInPrompt";
 
 export default function CampaignDashboard() {
   const { id } = useParams();
+  const { isAuthenticated, isLoading } = useAuth();
   const [campaign, setCampaign] = useState<CivicCampaignDetail | null>(null);
   const [results, setResults] = useState<CivicCampaignResults | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -21,18 +24,22 @@ export default function CampaignDashboard() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!id) return;
+    if (!id || !isAuthenticated) return;
     const detail = await getCampaign(id);
     setCampaign(detail ?? null);
     if (detail?.status === "Completed") {
       setResults(await getCampaignResults(id));
     }
-  }, [id]);
+  }, [id, isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoaded(true);
+      return;
+    }
     setLoaded(false);
     void refresh().finally(() => setLoaded(true));
-  }, [refresh]);
+  }, [refresh, isAuthenticated]);
 
   async function onSecondaryAction(option: CivicActionOption) {
     if (!id || busy) return;
@@ -65,6 +72,25 @@ export default function CampaignDashboard() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!isLoading && !isAuthenticated) {
+    return (
+      <section data-testid="campaign-dashboard">
+        <Link
+          to="/campaigns"
+          className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--fg)]"
+        >
+          ← Campaigns
+        </Link>
+        <div className="mt-6">
+          <SignInPrompt
+            title="Sign in to manage your campaign"
+            message="Your campaigns are saved to your account. Sign in to pick up where you left off."
+          />
+        </div>
+      </section>
+    );
   }
 
   if (!loaded) {

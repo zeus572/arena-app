@@ -2,16 +2,23 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Megaphone, Trophy } from "lucide-react";
 import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
+import { useAuth } from "@/auth/AuthContext";
+import { SignInPrompt } from "../components/SignInPrompt";
 
 export default function Campaigns() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<CivicCampaignSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoaded(true);
+      return;
+    }
     void listCampaigns()
       .then(setCampaigns)
       .finally(() => setLoaded(true));
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <section data-testid="campaigns-page">
@@ -26,17 +33,32 @@ export default function Campaigns() {
             shape the message, and win the race by election day.
           </p>
         </div>
-        <Link
-          to="/campaigns/new"
-          data-testid="new-campaign"
-          className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-        >
-          <Megaphone className="h-4 w-4" />
-          New campaign
-        </Link>
+        {isAuthenticated && (
+          <Link
+            to="/campaigns/new"
+            data-testid="new-campaign"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
+          >
+            <Megaphone className="h-4 w-4" />
+            New campaign
+          </Link>
+        )}
       </header>
 
-      {!loaded ? (
+      {!isLoading && !isAuthenticated ? (
+        <div className="mt-8 space-y-6">
+          <SignInPrompt
+            title="Sign in to run a campaign"
+            message="Manage a candidate week by week, respond to the news, and try to win the race. Your campaign saves to your account."
+          />
+          <p className="text-sm text-[var(--muted)]">
+            Curious who you could manage?{" "}
+            <Link to="/campaigns/new" className="font-semibold text-[var(--accent)]">
+              Browse the candidates →
+            </Link>
+          </p>
+        </div>
+      ) : !loaded ? (
         <p className="py-12 text-sm text-[var(--muted)]" data-testid="loading">
           Loading…
         </p>

@@ -7,7 +7,9 @@ import {
   type NewsResponsePage,
   type CandidateValue,
 } from "@/api/campaignManager";
+import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
+import { SignInPrompt } from "../components/SignInPrompt";
 
 function ValueBar({ value }: { value: CandidateValue }) {
   const pct = ((value.score + 1) / 2) * 100;
@@ -31,25 +33,30 @@ function ValueBar({ value }: { value: CandidateValue }) {
 export default function CampaignNewsResponse() {
   const { id, slug } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
   const [page, setPage] = useState<NewsResponsePage | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!id || !slug) return;
+    if (!id || !slug || !isAuthenticated) return;
     try {
       const data = await getNewsResponsePage(id, slug);
       setPage(data);
     } catch (err) {
       setError(errorMessage(err));
     }
-  }, [id, slug]);
+  }, [id, slug, isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoaded(true);
+      return;
+    }
     setLoaded(false);
     void load().finally(() => setLoaded(true));
-  }, [load]);
+  }, [load, isAuthenticated]);
 
   async function choose(optionId: string) {
     if (!id || !slug || submitting) return;
@@ -67,6 +74,25 @@ export default function CampaignNewsResponse() {
       setError(errorMessage(err));
       setSubmitting(null);
     }
+  }
+
+  if (!isLoading && !isAuthenticated) {
+    return (
+      <section data-testid="news-response-page">
+        <Link
+          to={`/campaigns/${id}`}
+          className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--fg)]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to campaign
+        </Link>
+        <div className="mt-6">
+          <SignInPrompt
+            title="Sign in to respond"
+            message="Sign in to draft your candidate's response and post it to their campaign feed."
+          />
+        </div>
+      </section>
+    );
   }
 
   if (!loaded) {
