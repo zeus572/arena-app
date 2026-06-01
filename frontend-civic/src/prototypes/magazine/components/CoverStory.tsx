@@ -9,13 +9,13 @@ export function CoverStory({ briefing }: { briefing: CivicBriefingSummary }) {
       className="group block overflow-hidden border border-[var(--border)]"
     >
       <div
-        className="relative flex h-[320px] items-end p-6 text-white md:h-[420px] md:p-10"
+        className="relative flex h-[360px] items-end p-8 text-white md:h-[460px] md:p-16"
         style={{
           background:
             "linear-gradient(135deg, oklch(0.42 0.18 30) 0%, oklch(0.22 0.12 280) 100%)",
         }}
       >
-        <div className="absolute right-4 top-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] md:right-8 md:top-8">
+        <div className="absolute right-6 top-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] md:right-10 md:top-10">
           Cover story
           <ArrowUpRight className="h-4 w-4 transition group-hover:rotate-45" />
         </div>
