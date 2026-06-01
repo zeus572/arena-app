@@ -252,6 +252,8 @@ public class CivicDbContext : DbContext
             e.HasIndex(p => p.CreatedAt).IsDescending();
             e.HasIndex(p => new { p.CandidateId, p.CreatedAt });
             e.HasIndex(p => p.TriggerBriefingSlug);
+            // Feed tailoring: public posts (null owner) + a single user's own responses.
+            e.HasIndex(p => new { p.OwnerUserId, p.CandidateId, p.CreatedAt });
             e.Property(p => p.Tone).HasConversion<string>().HasMaxLength(20);
             e.Property(p => p.Trigger).HasConversion<string>().HasMaxLength(20);
             e.HasOne(p => p.Candidate)

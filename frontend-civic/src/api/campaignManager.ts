@@ -83,6 +83,45 @@ export type NewsResponseOption = {
   tone: string;
 };
 
+export type NewsResponseOptionDetail = NewsResponseOption & {
+  body: string;
+};
+
+export type CandidateValue = {
+  axisKey: string;
+  axisName: string;
+  lowLabel: string;
+  highLabel: string;
+  order: number;
+  score: number;
+};
+
+export type PlatformPlank = {
+  id: string;
+  title: string;
+  body: string;
+  issueTags: string[];
+};
+
+export type NewsResponsePage = {
+  campaignId: string;
+  candidateSlug: string;
+  candidateName: string;
+  party: string;
+  candidateBio: string;
+  avatarBaseUrl: string;
+  values: CandidateValue[];
+  platform: PlatformPlank[];
+  briefingSlug: string;
+  headline: string;
+  summary: string;
+  valuesInConflict: string[];
+  tags: string[];
+  alreadyResponded: boolean;
+  actionsRemaining: number;
+  options: NewsResponseOptionDetail[];
+};
+
 export type CampaignNewsItem = {
   briefingSlug: string;
   headline: string;
@@ -206,5 +245,15 @@ export async function advanceDay(id: string): Promise<AdvanceDayResult> {
 
 export async function getCampaignResults(id: string): Promise<CivicCampaignResults> {
   const { data } = await civicApi.get<CivicCampaignResults>(`${BASE}/campaigns/${id}/results`);
+  return data;
+}
+
+export async function getNewsResponsePage(
+  id: string,
+  briefingSlug: string,
+): Promise<NewsResponsePage> {
+  const { data } = await civicApi.get<NewsResponsePage>(
+    `${BASE}/campaigns/${id}/news/${briefingSlug}`,
+  );
   return data;
 }

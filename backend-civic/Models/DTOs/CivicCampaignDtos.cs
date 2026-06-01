@@ -120,6 +120,43 @@ public class CampaignNewsItemDto
     public List<NewsResponseOptionDto> Options { get; set; } = new();
 }
 
+/// <summary>A response option including the full ready-to-publish post body (for the response page).</summary>
+public class NewsResponseOptionDetailDto
+{
+    public string Id { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string Angle { get; set; } = "";
+    public string Tone { get; set; } = "";
+    /// <summary>The actual post the candidate would publish if this option is chosen.</summary>
+    public string Body { get; set; } = "";
+}
+
+/// <summary>
+/// Everything the response page needs: a summary of the candidate's profile + values, the news
+/// item being responded to, and each response option's full post text.
+/// </summary>
+public class NewsResponsePageDto
+{
+    public Guid CampaignId { get; set; }
+    public string CandidateSlug { get; set; } = "";
+    public string CandidateName { get; set; } = "";
+    public string Party { get; set; } = "";
+    public string CandidateBio { get; set; } = "";
+    public string AvatarBaseUrl { get; set; } = "";
+    public List<CandidateValueDto> Values { get; set; } = new();
+    public List<PlatformPlankDto> Platform { get; set; } = new();
+
+    public string BriefingSlug { get; set; } = "";
+    public string Headline { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public List<string> ValuesInConflict { get; set; } = new();
+    public List<string> Tags { get; set; } = new();
+
+    public bool AlreadyResponded { get; set; }
+    public int ActionsRemaining { get; set; }
+    public List<NewsResponseOptionDetailDto> Options { get; set; } = new();
+}
+
 public class CivicCampaignDetailDto
 {
     public Guid Id { get; set; }

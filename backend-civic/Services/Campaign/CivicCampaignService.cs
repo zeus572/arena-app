@@ -25,6 +25,7 @@ public class CivicCampaignService
     private readonly CivicDbContext _db;
     private readonly CampaignPostGenerationService _postGenerator;
     private readonly ILlmClient _llm;
+    private readonly ICivicCatalog _catalog;
     private readonly CivicCampaignOptions _opts;
     private readonly ILogger<CivicCampaignService> _log;
     private readonly Random _random = new();
@@ -35,12 +36,14 @@ public class CivicCampaignService
         CivicDbContext db,
         CampaignPostGenerationService postGenerator,
         ILlmClient llm,
+        ICivicCatalog catalog,
         IOptions<CivicCampaignOptions> opts,
         ILogger<CivicCampaignService> log)
     {
         _db = db;
         _postGenerator = postGenerator;
         _llm = llm;
+        _catalog = catalog;
         _opts = opts.Value;
         _log = log;
     }
@@ -180,6 +183,58 @@ public class CivicCampaignService
         return await BuildDetailAsync(campaign, candidate, salient, todayActions, ct);
     }
 
+    // ---------------------------------------------------------------- News response page
+
+    /// <summary>
+    /// Data for the dedicated response page: the candidate's profile + values, the chosen news item,
+    /// and each response option's full post text (so the manager reads exactly what would be said).
+    /// </summary>
+    public async Task<NewsResponsePageDto> GetNewsResponsePageAsync(
+        string userId, Guid id, string briefingSlug, CancellationToken ct = default)
+    {
+        var campaign = await LoadOwnedAsync(userId, id, ct);
+        var candidate = await _db.VirtualCandidates
+            .Include(c => c.PlatformPlanks)
+            .Include(c => c.Sources)
+            .Include(c => c.AxisScores)
+            .FirstOrDefaultAsync(c => c.Id == campaign.CandidateId, ct)
+            ?? throw new CivicCampaignNotFoundException("Managed candidate no longer exists.");
+
+        var briefing = await _db.Briefings.FirstOrDefaultAsync(b => b.Slug == briefingSlug, ct)
+            ?? throw new CivicCampaignValidationException($"Unknown news item '{briefingSlug}'.");
+
+        var options = await GetOrCreateResponseOptionsAsync(candidate, briefing, ct);
+        var alreadyResponded = campaign.Actions.Any(a =>
+            a.ActionType == CivicCampaignActionType.RespondToNews && a.RespondedBriefingSlug == briefing.Slug);
+
+        return new NewsResponsePageDto
+        {
+            CampaignId = campaign.Id,
+            CandidateSlug = candidate.Slug,
+            CandidateName = candidate.Name,
+            Party = candidate.Party,
+            CandidateBio = candidate.Bio,
+            AvatarBaseUrl = candidate.AvatarBaseUrl,
+            Values = candidate.AxisScores.ToValueDtos(_catalog),
+            Platform = candidate.PlatformPlanks.Select(p => p.ToDto()).ToList(),
+            BriefingSlug = briefing.Slug,
+            Headline = briefing.Headline,
+            Summary = briefing.Summary30,
+            ValuesInConflict = briefing.ValuesInConflict.ToList(),
+            Tags = briefing.Tags.ToList(),
+            AlreadyResponded = alreadyResponded,
+            ActionsRemaining = campaign.ActionsRemaining,
+            Options = options.Select(o => new NewsResponseOptionDetailDto
+            {
+                Id = o.Id,
+                Label = o.Label,
+                Angle = o.Angle,
+                Tone = o.Tone,
+                Body = o.Body,
+            }).ToList(),
+        };
+    }
+
     // ---------------------------------------------------------------- Take action
 
     public async Task<TakeActionResult> TakeActionAsync(string userId, Guid id, TakeActionRequest req, CancellationToken ct = default)
@@ -256,7 +311,7 @@ public class CivicCampaignService
             CivicCampaignActionType.RespondToNews, fit, salienceWeight, playerStanding.Momentum, _opts);
 
         var tone = ParseTone(chosen.Tone) ?? req.Tone ?? candidate.DefaultTone;
-        var post = await CreatePostFromBodyAsync(candidate, chosen.Body, tone, briefing, ct);
+        var post = await CreatePostFromBodyAsync(campaign, candidate, chosen.Body, tone, briefing, ct);
 
         var action = new CivicCampaignAction
         {
@@ -562,7 +617,7 @@ public class CivicCampaignService
     // ---------------------------------------------------------------- Post creation
 
     private async Task<CampaignPost> CreatePostFromBodyAsync(
-        VirtualCandidate candidate, string body, CampaignTone tone, Briefing briefing, CancellationToken ct)
+        CivicCampaign campaign, VirtualCandidate candidate, string body, CampaignTone tone, Briefing briefing, CancellationToken ct)
     {
         var clean = Truncate(string.IsNullOrWhiteSpace(body) ? $"{candidate.Name} responds." : body.Trim(), 160);
         var post = new CampaignPost
@@ -576,6 +631,9 @@ public class CivicCampaignService
             Trigger = PostTrigger.Briefing,
             TriggerBriefingSlug = briefing.Slug,
             CitedReference = candidate.PlatformPlanks.FirstOrDefault()?.Title,
+            // Attribute to the manager so it shows only in THEIR tailored candidate feed.
+            OwnerUserId = campaign.UserId,
+            CampaignId = campaign.Id,
             CreatedAt = DateTime.UtcNow,
         };
         _db.CampaignPosts.Add(post);

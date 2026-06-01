@@ -56,7 +56,9 @@ public class MeCandidatesController : ControllerBase
         var query = _db.CampaignPosts
             .Include(p => p.Fragments)
             .Include(p => p.Candidate)
-            .Where(p => !muted.Contains(p.CandidateId));
+            .Where(p => !muted.Contains(p.CandidateId))
+            // Feed tailoring: public/system posts plus the caller's own campaign responses.
+            .Where(p => p.OwnerUserId == null || p.OwnerUserId == userId);
 
         if (FeedCursor.TryDecode(cursor, out var before))
         {

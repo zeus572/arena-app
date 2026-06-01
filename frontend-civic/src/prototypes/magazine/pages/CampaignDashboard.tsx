@@ -9,8 +9,6 @@ import {
   type CivicCampaignDetail,
   type CivicCampaignResults,
   type CivicActionOption,
-  type CampaignNewsItem,
-  type NewsResponseOption,
   type CivicCampaignActionType,
 } from "@/api/campaignManager";
 
@@ -35,25 +33,6 @@ export default function CampaignDashboard() {
     setLoaded(false);
     void refresh().finally(() => setLoaded(true));
   }, [refresh]);
-
-  async function respondToNews(item: CampaignNewsItem, option: NewsResponseOption) {
-    if (!id || busy) return;
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await takeAction(id, {
-        actionType: "RespondToNews",
-        briefingSlug: item.briefingSlug,
-        optionId: option.id,
-      });
-      setNotice(res.action.summary);
-      await refresh();
-    } catch (err) {
-      setNotice(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function onSecondaryAction(option: CivicActionOption) {
     if (!id || busy) return;
@@ -211,35 +190,22 @@ export default function CampaignDashboard() {
                 ) : (
                   <ul className="mt-2 space-y-3" data-testid="news-items">
                     {campaign.newsItems.map((item) => (
-                      <li
-                        key={item.briefingSlug}
-                        className="border border-[var(--border)] bg-[var(--bg-elev)] p-3"
-                        data-testid="news-item"
-                      >
-                        <p className="font-semibold text-[var(--fg)]">{item.headline}</p>
-                        <p className="mt-1 text-sm text-[var(--fg-soft)]">{item.summary}</p>
-                        {item.valuesInConflict.length > 0 && (
-                          <p className="mt-1 text-xs uppercase tracking-wide text-[var(--muted)]">
-                            {item.valuesInConflict.join(" · ")}
+                      <li key={item.briefingSlug} data-testid="news-item">
+                        <Link
+                          to={`/campaigns/${campaign.id}/news/${item.briefingSlug}`}
+                          className="block border border-[var(--border)] bg-[var(--bg-elev)] p-3 transition hover:border-[var(--accent)]"
+                        >
+                          <p className="font-semibold text-[var(--fg)]">{item.headline}</p>
+                          <p className="mt-1 text-sm text-[var(--fg-soft)]">{item.summary}</p>
+                          {item.valuesInConflict.length > 0 && (
+                            <p className="mt-1 text-xs uppercase tracking-wide text-[var(--muted)]">
+                              {item.valuesInConflict.join(" · ")}
+                            </p>
+                          )}
+                          <p className="mt-2 text-sm font-semibold text-[var(--accent)]">
+                            Draft a response →
                           </p>
-                        )}
-                        <div className="mt-2 space-y-1.5">
-                          {item.options.map((opt) => (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              data-testid="news-response-option"
-                              disabled={busy}
-                              onClick={() => respondToNews(item, opt)}
-                              className="block w-full border border-[var(--border)] p-2 text-left text-sm transition hover:border-[var(--accent)] disabled:opacity-50"
-                            >
-                              <span className="font-semibold text-[var(--fg)]">{opt.label}</span>
-                              {opt.angle && (
-                                <span className="ml-1 text-[var(--fg-soft)]">— {opt.angle}</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                        </Link>
                       </li>
                     ))}
                   </ul>

@@ -54,6 +54,15 @@ public class CampaignManagerController : ControllerBase
         catch (CivicCampaignNotFoundException ex) { return NotFound(new { error = ex.Message }); }
     }
 
+    // GET /api/campaign-manager/campaigns/{id}/news/{briefingSlug} — response page data.
+    [HttpGet("campaigns/{id:guid}/news/{briefingSlug}")]
+    public async Task<IActionResult> NewsResponsePage(Guid id, string briefingSlug, CancellationToken ct)
+    {
+        try { return Ok(await _campaigns.GetNewsResponsePageAsync(_user.GetCurrentUserId(), id, briefingSlug, ct)); }
+        catch (CivicCampaignNotFoundException ex) { return NotFound(new { error = ex.Message }); }
+        catch (CivicCampaignValidationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
     // POST /api/campaign-manager/campaigns/{id}/actions
     [HttpPost("campaigns/{id:guid}/actions")]
     public async Task<IActionResult> TakeAction(Guid id, [FromBody] TakeActionRequest request, CancellationToken ct)

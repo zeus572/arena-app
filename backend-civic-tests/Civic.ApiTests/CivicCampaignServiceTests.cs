@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Arena.Shared.Llm;
 using Civic.API.Data;
 using Civic.API.Models;
@@ -35,10 +36,12 @@ public class CivicCampaignServiceTests : IAsyncLifetime
         using var scope = _fx.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
         var postGen = scope.ServiceProvider.GetRequiredService<CampaignPostGenerationService>();
+        var catalog = scope.ServiceProvider.GetRequiredService<Civic.API.Services.ICivicCatalog>();
         var svc = new CivicCampaignService(
             db,
             postGen,
             new StubLlmClient(), // no responses registered → forces templated fallback
+            catalog,
             Options.Create(new CivicCampaignOptions { OpponentVariance = 0, MaxCampaignDays = maxDays }),
             NullLogger<CivicCampaignService>.Instance);
         return await body(svc);
@@ -296,6 +299,92 @@ public class CivicCampaignServiceTests : IAsyncLifetime
             await act.Should().ThrowAsync<CivicCampaignValidationException>();
             return true;
         });
+    }
+
+    [Fact]
+    public async Task NewsResponsePage_ReturnsProfileValuesAndOptionBodies()
+    {
+        var created = await WithServiceAsync(s => s.CreateAsync("user-page", CreateReq()));
+        var slug = await FirstNewsSlugAsync(created);
+
+        var page = await WithServiceAsync(s => s.GetNewsResponsePageAsync("user-page", created.Id, slug));
+
+        page.CandidateName.Should().NotBeNullOrWhiteSpace();
+        page.CandidateBio.Should().NotBeNullOrWhiteSpace();
+        page.Values.Should().NotBeEmpty("the response page shows the candidate's value axes");
+        page.Headline.Should().NotBeNullOrWhiteSpace();
+        page.Options.Should().HaveCountGreaterThanOrEqualTo(2);
+        page.Options.Should().OnlyContain(o => !string.IsNullOrWhiteSpace(o.Body), "each option shows its full post text");
+        page.AlreadyResponded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewsResponsePage_AfterResponding_FlagsAlreadyResponded()
+    {
+        var created = await WithServiceAsync(s => s.CreateAsync("user-page2", CreateReq()));
+        var slug = await FirstNewsSlugAsync(created);
+        var optionId = created.NewsItems[0].Options[0].Id;
+
+        await WithServiceAsync(s => s.TakeActionAsync("user-page2", created.Id, new TakeActionRequest
+        {
+            ActionType = CivicCampaignActionType.RespondToNews,
+            BriefingSlug = slug,
+            OptionId = optionId,
+        }));
+
+        var page = await WithServiceAsync(s => s.GetNewsResponsePageAsync("user-page2", created.Id, slug));
+        page.AlreadyResponded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TailoredFeed_OwnerSeesResponse_OtherUserDoesNot()
+    {
+        var created = await WithServiceAsync(s => s.CreateAsync("feed-owner", CreateReq()));
+        var slug = await FirstNewsSlugAsync(created);
+        var optionId = created.NewsItems[0].Options[0].Id;
+        var candidateSlug = created.CandidateSlug;
+
+        var res = await WithServiceAsync(s => s.TakeActionAsync("feed-owner", created.Id, new TakeActionRequest
+        {
+            ActionType = CivicCampaignActionType.RespondToNews,
+            BriefingSlug = slug,
+            OptionId = optionId,
+        }));
+        var postId = res.Action.GeneratedPostId!.Value.ToString();
+
+        // The owner sees their published response in the candidate feed...
+        var ownerClient = _fx.Factory.CreateClient();
+        ownerClient.DefaultRequestHeaders.Add("X-User-Id", "feed-owner");
+        var ownerFeed = await ownerClient.GetFromJsonAsync<CampaignFeedDto>($"/api/candidates/{candidateSlug}/posts?limit=100");
+        ownerFeed!.Items.Should().Contain(p => p.Id.ToString() == postId);
+
+        // ...a different user does not.
+        var otherClient = _fx.Factory.CreateClient();
+        otherClient.DefaultRequestHeaders.Add("X-User-Id", "feed-stranger");
+        var otherFeed = await otherClient.GetFromJsonAsync<CampaignFeedDto>($"/api/candidates/{candidateSlug}/posts?limit=100");
+        otherFeed!.Items.Should().NotContain(p => p.Id.ToString() == postId);
+    }
+
+    [Fact]
+    public async Task PublishedResponse_IsAttributedToTheOwningUser()
+    {
+        var created = await WithServiceAsync(s => s.CreateAsync("owner-feed", CreateReq()));
+        var slug = await FirstNewsSlugAsync(created);
+        var optionId = created.NewsItems[0].Options[0].Id;
+
+        var res = await WithServiceAsync(s => s.TakeActionAsync("owner-feed", created.Id, new TakeActionRequest
+        {
+            ActionType = CivicCampaignActionType.RespondToNews,
+            BriefingSlug = slug,
+            OptionId = optionId,
+        }));
+
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var post = await db.CampaignPosts.FirstAsync(p => p.Id == res.Action.GeneratedPostId);
+        post.OwnerUserId.Should().Be("owner-feed");
+        post.CampaignId.Should().Be(created.Id);
+        post.TriggerBriefingSlug.Should().Be(slug);
     }
 
     [Fact]

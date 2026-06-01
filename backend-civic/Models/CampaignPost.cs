@@ -55,6 +55,17 @@ public class CampaignPost
     [MaxLength(200)]
     public string? CitedReference { get; set; }
 
+    /// <summary>
+    /// Owner of this post for feed tailoring. Null = a public/system (bot-generated) post visible
+    /// to everyone. Non-null = a Campaign Manager response published by that user; it appears woven
+    /// into the candidate feed only for that user, not for other people.
+    /// </summary>
+    [MaxLength(120)]
+    public string? OwnerUserId { get; set; }
+
+    /// <summary>The campaign that produced this post, when it's a Campaign Manager response.</summary>
+    public Guid? CampaignId { get; set; }
+
     // Aggregate whole-post reaction counters, updated atomically on each write.
     public int UpCount { get; set; }
     public int DownCount { get; set; }
