@@ -20,6 +20,9 @@ import MagazineCandidateProfile from "@/prototypes/magazine/pages/CandidateProfi
 import MagazineCandidateSources from "@/prototypes/magazine/pages/CandidateSources";
 import MagazinePostDetail from "@/prototypes/magazine/pages/PostDetail";
 import MagazineMatchMe from "@/prototypes/magazine/pages/MatchMe";
+import MagazineCampaigns from "@/prototypes/magazine/pages/Campaigns";
+import MagazineCampaignCreate from "@/prototypes/magazine/pages/CampaignCreate";
+import MagazineCampaignDashboard from "@/prototypes/magazine/pages/CampaignDashboard";
 
 function App() {
   return (
@@ -45,6 +48,9 @@ function App() {
             <Route path="candidates/:slug/sources" element={<MagazineCandidateSources />} />
             <Route path="posts/:id" element={<MagazinePostDetail />} />
             <Route path="match" element={<MagazineMatchMe />} />
+            <Route path="campaigns" element={<MagazineCampaigns />} />
+            <Route path="campaigns/new" element={<MagazineCampaignCreate />} />
+            <Route path="campaigns/:id" element={<MagazineCampaignDashboard />} />
           </Route>
         </Routes>
       </AuthProvider>

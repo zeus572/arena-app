@@ -67,6 +67,10 @@ builder.Services.AddScoped<ICampaignReactionService, CampaignReactionService>();
 builder.Services.AddSingleton<CampaignPostGenerationService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CampaignPostGenerationService>());
 
+// Campaign Manager game mode: manage an existing candidate to win their race.
+builder.Services.Configure<CivicCampaignOptions>(builder.Configuration.GetSection("CivicCampaign"));
+builder.Services.AddScoped<CivicCampaignService>();
+
 // HTTP client for proxying premium-initiated debate creation to the debate
 // backend. Base URL defaulted to the local dev port; override in production.
 builder.Services.AddHttpClient("DebateApi", c =>
