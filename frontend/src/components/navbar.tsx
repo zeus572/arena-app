@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LayoutList, PlusCircle, Menu, X, Landmark, Users, Zap, MessageSquarePlus, LogIn, User, LogOut, Crown, AlertCircle, ShieldCheck, Newspaper, Trophy, Settings as SettingsIcon, Boxes } from "lucide-react";
+import { LayoutList, PlusCircle, Menu, X, Landmark, Users, Zap, MessageSquarePlus, LogIn, User, LogOut, Crown, AlertCircle, ShieldCheck, Newspaper, Trophy, Settings as SettingsIcon, Boxes, Megaphone } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { forceTick, forceNewsSync, fetchHeartbeatStatus } from "@/api/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const NAV_LINKS = [
   { href: "/", label: "Feed", icon: LayoutList },
   { href: "/arenas", label: "Arenas", icon: Boxes },
+  { href: "/campaigns", label: "Campaign", icon: Megaphone },
   { href: "/topics", label: "Topics", icon: MessageSquarePlus },
   { href: "/start", label: "Start Debate", icon: PlusCircle },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },

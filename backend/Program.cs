@@ -26,6 +26,8 @@ builder.Services.AddTransient<IFactProvider, BudgetDataProvider>();
 builder.Services.AddTransient<FactCheckService>();
 builder.Services.AddScoped<TaggingService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.Configure<CampaignTuningOptions>(builder.Configuration.GetSection("CampaignTuning"));
+builder.Services.AddScoped<CampaignService>();
 builder.Services.AddSingleton<FormatSampleSeederService>();
 
 // Authentication

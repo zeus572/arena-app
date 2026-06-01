@@ -17,6 +17,9 @@ import AgentProfile from "@/pages/AgentProfile";
 import Settings from "@/pages/Settings";
 import Arenas from "@/pages/Arenas";
 import ArenaDetail from "@/pages/ArenaDetail";
+import Campaigns from "@/pages/Campaigns";
+import CampaignCreate from "@/pages/CampaignCreate";
+import CampaignDashboard from "@/pages/CampaignDashboard";
 
 function App() {
   return (
@@ -33,6 +36,9 @@ function App() {
           <Route path="/topics" element={<Topics />} />
           <Route path="/arenas" element={<Arenas />} />
           <Route path="/arenas/:slug" element={<ArenaDetail />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/campaigns/new" element={<CampaignCreate />} />
+          <Route path="/campaigns/:id" element={<CampaignDashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

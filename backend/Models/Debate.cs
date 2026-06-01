@@ -34,6 +34,10 @@ public class Debate
     public Debate? ForkedFromDebate { get; set; }
     /// <summary>Optional notes the forker attached — "what changed" in this fork.</summary>
     public string? ForkNote { get; set; }
+    /// <summary>If this debate is part of a Campaign Manager run, the owning campaign's Id.</summary>
+    public Guid? CampaignId { get; set; }
+    /// <summary>The campaign week this debate milestone belongs to (1-based).</summary>
+    public int? CampaignWeek { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

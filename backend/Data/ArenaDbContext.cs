@@ -25,6 +25,10 @@ public class ArenaDbContext : DbContext
     public DbSet<AgentSource> AgentSources => Set<AgentSource>();
     public DbSet<DebateParticipant> DebateParticipants => Set<DebateParticipant>();
     public DbSet<DebateArena> Arenas => Set<DebateArena>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<CampaignResources> CampaignResources => Set<CampaignResources>();
+    public DbSet<CampaignWeek> CampaignWeeks => Set<CampaignWeek>();
+    public DbSet<CampaignEvent> CampaignEvents => Set<CampaignEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +73,7 @@ public class ArenaDbContext : DbContext
 
             e.HasIndex(d => d.ArenaId);
             e.HasIndex(d => d.ForkedFromDebateId);
+            e.HasIndex(d => d.CampaignId);
         });
 
         modelBuilder.Entity<DebateArena>(e =>
@@ -130,6 +135,45 @@ public class ArenaDbContext : DbContext
             e.HasOne(dt => dt.Tag)
                 .WithMany(t => t.DebateTags)
                 .HasForeignKey(dt => dt.TagId);
+        });
+
+        modelBuilder.Entity<Campaign>(e =>
+        {
+            e.Property(c => c.Status).HasConversion<string>();
+            e.Property(c => c.Difficulty).HasConversion<string>();
+
+            e.HasIndex(c => c.UserId);
+
+            e.HasOne(c => c.Resources)
+                .WithOne(r => r.Campaign)
+                .HasForeignKey<CampaignResources>(r => r.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(c => c.Weeks)
+                .WithOne(w => w.Campaign)
+                .HasForeignKey(w => w.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(c => c.Events)
+                .WithOne(ev => ev.Campaign)
+                .HasForeignKey(ev => ev.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CampaignResources>(e =>
+        {
+            e.HasIndex(r => r.CampaignId).IsUnique();
+        });
+
+        modelBuilder.Entity<CampaignWeek>(e =>
+        {
+            e.HasIndex(w => new { w.CampaignId, w.WeekNumber }).IsUnique();
+        });
+
+        modelBuilder.Entity<CampaignEvent>(e =>
+        {
+            e.Property(ev => ev.Type).HasConversion<string>();
+            e.HasIndex(ev => new { ev.CampaignId, ev.WeekNumber });
         });
     }
 }

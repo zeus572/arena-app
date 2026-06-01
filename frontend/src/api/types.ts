@@ -328,3 +328,160 @@ export interface DebateFormatInfo {
   hasTools: boolean;
   hasBudgetTable: boolean;
 }
+
+/* ─────────────────── Campaign Manager ─────────────────── */
+
+export type CampaignDifficulty = "Easy" | "Normal" | "Hard";
+export type CampaignStatus = "Active" | "Completed" | "Abandoned";
+export type CampaignEventTypeValue = "Opportunity" | "Crisis" | "Neutral";
+export type CampaignActivityType =
+  | "Advertising"
+  | "TownHall"
+  | "Fundraising"
+  | "OppResearch"
+  | "DebatePrep"
+  | "Polling";
+
+export interface Persona {
+  key: string;
+  name: string;
+  persona: string;
+  theme: string;
+  opponentName: string;
+  opponentPersona: string;
+}
+
+export interface CampaignSummary {
+  id: string;
+  candidateName: string;
+  personaId: string;
+  opponentName: string;
+  theme: string;
+  currentWeek: number;
+  totalWeeks: number;
+  difficulty: string;
+  status: string;
+  approval: number;
+  won?: boolean | null;
+  finalApproval?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+}
+
+export interface CampaignResources {
+  budget: number;
+  timeUnits: number;
+  staffCount: number;
+  momentum: number;
+}
+
+export interface CampaignWeek {
+  weekNumber: number;
+  approvalRating: number;
+  decisionsJson: string;
+  resourceChangesJson: string;
+  debateId?: string | null;
+  summary: string;
+  createdAt: string;
+}
+
+export interface CampaignEventOption {
+  id: string;
+  label: string;
+}
+
+export interface CampaignEvent {
+  id: string;
+  weekNumber: number;
+  type: string;
+  eventKey: string;
+  title: string;
+  description: string;
+  options: CampaignEventOption[];
+  resolved: boolean;
+  responseChosen?: string | null;
+}
+
+export interface CampaignDetail {
+  campaign: CampaignSummary;
+  resources: CampaignResources;
+  currentApproval: number;
+  weeks: CampaignWeek[];
+  pendingEvents: CampaignEvent[];
+  debateMilestoneDue: boolean;
+  activeDebateId?: string | null;
+}
+
+export interface AdvanceWeekResult {
+  detail: CampaignDetail;
+  weekSummary: CampaignWeek;
+  completed: boolean;
+  debateMilestoneDue: boolean;
+}
+
+export interface DebateMilestoneResult {
+  debateId?: string | null;
+  skipped: boolean;
+  won?: boolean | null;
+  signedEffect: number;
+  summary: string;
+  detail: CampaignDetail;
+}
+
+export interface AllocationLineItem {
+  type: string;
+  budgetCost: number;
+  timeCost: number;
+  note?: string | null;
+}
+
+export interface AllocationPreviewResult {
+  affordable: boolean;
+  projectedBudget: number;
+  projectedTimeUnits: number;
+  projectedStaff: number;
+  issues: string[];
+  lineItems: AllocationLineItem[];
+}
+
+export interface CampaignResults {
+  candidateName: string;
+  won: boolean;
+  finalApproval: number;
+  totalWeeks: number;
+  debatesPlayed: number;
+  debatesWon: number;
+  approvalTrend: number[];
+  outcome: string;
+}
+
+export interface ActivityAllocation {
+  type: CampaignActivityType;
+  budget?: number | null;
+  timeUnits?: number | null;
+  staffCount?: number | null;
+  count?: number | null;
+}
+
+export interface CreateCampaignRequest {
+  candidateName: string;
+  personaId: string;
+  difficulty: CampaignDifficulty;
+  totalWeeks?: number;
+  theme?: string;
+  platform?: Record<string, string>;
+}
+
+export interface AdvanceWeekRequest {
+  activities: ActivityAllocation[];
+}
+
+export interface RespondEventRequest {
+  optionId: string;
+}
+
+export interface RunDebateRequest {
+  skip: boolean;
+  topic?: string;
+}

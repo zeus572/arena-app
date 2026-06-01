@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo, ArenaSummary, ArenaDetail, ArenaFeedResponse, ForkDebateRequest, ForkSummary } from "./types";
+import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo, ArenaSummary, ArenaDetail, ArenaFeedResponse, ForkDebateRequest, ForkSummary, Persona, CampaignSummary, CampaignDetail, CreateCampaignRequest, AdvanceWeekRequest, AdvanceWeekResult, AllocationPreviewResult, DebateMilestoneResult, RunDebateRequest, CampaignResults } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -275,6 +275,52 @@ export async function forkDebate(debateId: string, req: ForkDebateRequest) {
 
 export async function fetchForks(debateId: string) {
   const res = await api.get<ForkSummary[]>(`/debates/${debateId}/forks`);
+  return res.data;
+}
+
+// Campaign Manager
+export async function getCampaignPersonas() {
+  const res = await api.get<Persona[]>("/campaigns/personas");
+  return res.data;
+}
+
+export async function listCampaigns() {
+  const res = await api.get<CampaignSummary[]>("/campaigns");
+  return res.data;
+}
+
+export async function getCampaign(id: string) {
+  const res = await api.get<CampaignDetail>(`/campaigns/${id}`);
+  return res.data;
+}
+
+export async function createCampaign(body: CreateCampaignRequest) {
+  const res = await api.post<CampaignDetail>("/campaigns", body);
+  return res.data;
+}
+
+export async function advanceWeek(id: string, body: AdvanceWeekRequest) {
+  const res = await api.post<AdvanceWeekResult>(`/campaigns/${id}/advance`, body);
+  return res.data;
+}
+
+export async function previewAllocation(id: string, body: AdvanceWeekRequest) {
+  const res = await api.post<AllocationPreviewResult>(`/campaigns/${id}/allocate`, body);
+  return res.data;
+}
+
+export async function respondToEvent(id: string, eventId: string, optionId: string) {
+  const res = await api.post<CampaignDetail>(`/campaigns/${id}/events/${eventId}/respond`, { optionId });
+  return res.data;
+}
+
+export async function runDebate(id: string, body: RunDebateRequest) {
+  const res = await api.post<DebateMilestoneResult>(`/campaigns/${id}/debate`, body);
+  return res.data;
+}
+
+export async function getCampaignResults(id: string) {
+  const res = await api.get<CampaignResults>(`/campaigns/${id}/results`);
   return res.data;
 }
 
