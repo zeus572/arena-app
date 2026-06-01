@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Megaphone, Trophy } from "lucide-react";
-import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
+import { listCampaigns, getRaces, type CivicCampaignSummary, type CivicRace } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
 
 export default function Campaigns() {
   const { isAuthenticated, isLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<CivicCampaignSummary[]>([]);
+  const [races, setRaces] = useState<CivicRace[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setLoaded(true);
+      // Signed-out: load the public races teaser so we can show the candidates first.
+      void getRaces()
+        .then(setRaces)
+        .catch(() => setRaces([]))
+        .finally(() => setLoaded(true));
       return;
     }
     void listCampaigns()
@@ -46,18 +52,48 @@ export default function Campaigns() {
       </header>
 
       {!isLoading && !isAuthenticated ? (
-        <div className="mt-8 space-y-6">
-          <SignInPrompt
-            title="Sign in to run a campaign"
-            message="Manage a candidate week by week, respond to the news, and try to win the race. Your campaign saves to your account."
-          />
-          <p className="text-sm text-[var(--muted)]">
-            Curious who you could manage?{" "}
-            <Link to="/campaigns/new" className="font-semibold text-[var(--accent)]">
-              Browse the candidates →
-            </Link>
+        !loaded ? (
+          <p className="py-12 text-sm text-[var(--muted)]" data-testid="loading">
+            Loading…
           </p>
-        </div>
+        ) : (
+          <div className="mt-8 space-y-8" data-testid="signed-out-teaser">
+            {/* Candidates first — show what's on offer to entice sign-in. */}
+            {races.map((race) => (
+              <div key={race.raceKey}>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--accent)]">
+                  {race.label}
+                </h2>
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {race.candidates.map((c) => (
+                    <li
+                      key={c.slug}
+                      className="flex items-center gap-3 border border-[var(--border)] bg-[var(--bg-elev)] p-4"
+                      data-testid="teaser-candidate"
+                    >
+                      <CandidateAvatar candidate={c} size={48} />
+                      <span className="min-w-0">
+                        <span className="block font-semibold text-[var(--fg)]">{c.name}</span>
+                        <span className="block text-sm text-[var(--fg-soft)]">{c.party}</span>
+                        {c.isIncumbent && (
+                          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
+                            Incumbent
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+
+            {/* Sign-in wall below the enticing roster. */}
+            <SignInPrompt
+              title="Sign in to manage one of these candidates"
+              message="Pick a candidate, run their campaign week by week, respond to the news, and try to win the race. Your progress saves to your account."
+            />
+          </div>
+        )
       ) : !loaded ? (
         <p className="py-12 text-sm text-[var(--muted)]" data-testid="loading">
           Loading…
