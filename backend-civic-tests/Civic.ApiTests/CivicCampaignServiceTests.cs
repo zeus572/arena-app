@@ -372,6 +372,12 @@ public class CivicCampaignServiceTests : IAsyncLifetime
         var ownerFeed = await ownerClient.GetFromJsonAsync<CampaignFeedDto>($"/api/candidates/{candidateSlug}/posts?limit=100");
         ownerFeed!.Items.Should().Contain(p => p.Id.ToString() == postId);
 
+        // ...and that response carries the briefing snippet for the retweet-style preview.
+        var ownPost = ownerFeed.Items.First(p => p.Id.ToString() == postId);
+        ownPost.TriggerBriefingSlug.Should().Be(slug);
+        ownPost.TriggerBriefingHeadline.Should().NotBeNullOrWhiteSpace();
+        ownPost.TriggerBriefingSummary.Should().NotBeNullOrWhiteSpace();
+
         // ...a different user does not.
         var otherClient = _fx.Factory.CreateClient();
         otherClient.DefaultRequestHeaders.Add("X-User-Id", "feed-stranger");

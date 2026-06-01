@@ -86,20 +86,24 @@ public class CampaignFeedController : ControllerBase
         var hasMore = posts.Count > limit;
         if (hasMore) posts = posts.Take(limit).ToList();
 
-        // Resolve briefing headlines for posts that quote one.
+        // Resolve briefing headline + snippet for posts that quote one (retweet-style preview).
         var slugs = posts.Where(p => p.TriggerBriefingSlug != null)
             .Select(p => p.TriggerBriefingSlug!).Distinct().ToList();
-        var headlines = slugs.Count == 0
-            ? new Dictionary<string, string>()
+        var briefings = slugs.Count == 0
+            ? new Dictionary<string, (string Headline, string Summary)>()
             : await _db.Briefings.Where(b => slugs.Contains(b.Slug))
-                .ToDictionaryAsync(b => b.Slug, b => b.Headline);
+                .ToDictionaryAsync(b => b.Slug, b => new ValueTuple<string, string>(b.Headline, b.Summary30));
 
         return Ok(new CampaignFeedDto
         {
-            Items = posts.Select(p => p.ToDto(
-                p.Candidate,
-                p.TriggerBriefingSlug != null && headlines.TryGetValue(p.TriggerBriefingSlug, out var h) ? h : null))
-                .ToList(),
+            Items = posts.Select(p =>
+            {
+                (string Headline, string Summary)? b = p.TriggerBriefingSlug != null
+                    && briefings.TryGetValue(p.TriggerBriefingSlug, out var found)
+                    ? found
+                    : null;
+                return p.ToDto(p.Candidate, b?.Headline, b?.Summary);
+            }).ToList(),
             NextCursor = isRecent && hasMore ? FeedCursor.Encode(posts[^1].CreatedAt) : null,
         });
     }

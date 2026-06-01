@@ -209,12 +209,25 @@ export function CampaignPostCard({
       {post.triggerBriefingSlug && (
         <Link
           to={`/briefings/${post.triggerBriefingSlug}`}
-          className="mt-4 flex items-start gap-2 border-l-2 border-[var(--border)] pl-3 text-sm text-[var(--muted)] hover:text-[var(--fg)]"
+          className="mt-4 block rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 transition hover:border-[var(--accent)]"
           data-testid="post-trigger-briefing"
         >
-          <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            Reacting to: {post.triggerBriefingHeadline ?? post.triggerBriefingSlug}
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <Quote className="h-3 w-3 shrink-0" /> Responding to
+          </span>
+          <span className="mt-1 block font-semibold text-[var(--fg)]">
+            {post.triggerBriefingHeadline ?? post.triggerBriefingSlug}
+          </span>
+          {post.triggerBriefingSummary && (
+            <span
+              className="mt-1 block text-sm leading-relaxed text-[var(--fg-soft)]"
+              data-testid="post-trigger-briefing-snippet"
+            >
+              {post.triggerBriefingSummary}
+            </span>
+          )}
+          <span className="mt-1.5 block text-xs font-semibold text-[var(--accent)]">
+            Read the briefing →
           </span>
         </Link>
       )}

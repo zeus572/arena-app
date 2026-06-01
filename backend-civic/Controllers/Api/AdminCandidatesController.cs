@@ -45,7 +45,7 @@ public class AdminCandidatesController : ControllerBase
             return Conflict(new { error = "Generation skipped — candidate is on cooldown or over daily budget. Pass force=true to override." });
         }
 
-        return Ok(post.ToDto(candidate, briefing?.Headline));
+        return Ok(post.ToDto(candidate, briefing?.Headline, briefing?.Summary30));
     }
 
     // GET /api/admin/budget — per-candidate post counts (proxy for LLM spend).

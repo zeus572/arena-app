@@ -73,9 +73,21 @@ public class MeCandidatesController : ControllerBase
         var hasMore = posts.Count > limit;
         if (hasMore) posts = posts.Take(limit).ToList();
 
+        var slugs = posts.Where(p => p.TriggerBriefingSlug != null)
+            .Select(p => p.TriggerBriefingSlug!).Distinct().ToList();
+        var briefings = slugs.Count == 0
+            ? new Dictionary<string, (string Headline, string Summary)>()
+            : await _db.Briefings.Where(b => slugs.Contains(b.Slug))
+                .ToDictionaryAsync(b => b.Slug, b => new ValueTuple<string, string>(b.Headline, b.Summary30));
+
         return Ok(new CampaignFeedDto
         {
-            Items = posts.Select(p => p.ToDto(p.Candidate)).ToList(),
+            Items = posts.Select(p =>
+            {
+                (string Headline, string Summary)? b = p.TriggerBriefingSlug != null
+                    && briefings.TryGetValue(p.TriggerBriefingSlug, out var found) ? found : null;
+                return p.ToDto(p.Candidate, b?.Headline, b?.Summary);
+            }).ToList(),
             NextCursor = hasMore ? FeedCursor.Encode(posts[^1].CreatedAt) : null,
         });
     }

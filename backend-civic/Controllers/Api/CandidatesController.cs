@@ -127,12 +127,32 @@ public class CandidatesController : ControllerBase
         var hasMore = posts.Count > limit;
         if (hasMore) posts = posts.Take(limit).ToList();
 
+        var briefings = await ResolveBriefingPreviewsAsync(posts);
+
         return Ok(new CampaignFeedDto
         {
-            Items = posts.Select(p => p.ToDto(candidate)).ToList(),
+            Items = posts.Select(p =>
+            {
+                var b = LookupBriefing(briefings, p.TriggerBriefingSlug);
+                return p.ToDto(candidate, b?.Headline, b?.Summary);
+            }).ToList(),
             NextCursor = hasMore ? FeedCursor.Encode(posts[^1].CreatedAt) : null,
         });
     }
+
+    private async Task<Dictionary<string, (string Headline, string Summary)>> ResolveBriefingPreviewsAsync(
+        IEnumerable<CampaignPost> posts)
+    {
+        var slugs = posts.Where(p => p.TriggerBriefingSlug != null)
+            .Select(p => p.TriggerBriefingSlug!).Distinct().ToList();
+        if (slugs.Count == 0) return new();
+        return await _db.Briefings.Where(b => slugs.Contains(b.Slug))
+            .ToDictionaryAsync(b => b.Slug, b => new ValueTuple<string, string>(b.Headline, b.Summary30));
+    }
+
+    private static (string Headline, string Summary)? LookupBriefing(
+        Dictionary<string, (string Headline, string Summary)> map, string? slug)
+        => slug != null && map.TryGetValue(slug, out var b) ? b : null;
 
     [HttpPost("{slug}/follow")]
     public Task<ActionResult> Follow(string slug) => SetEngagement(slug, follow: true, on: true);

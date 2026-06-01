@@ -46,8 +46,8 @@ public class BriefingsController : ControllerBase
     {
         if (take is < 1 or > 50) take = 10;
 
-        var exists = await _db.Briefings.AnyAsync(b => b.Slug == slug);
-        if (!exists) return NotFound();
+        var briefing = await _db.Briefings.FirstOrDefaultAsync(b => b.Slug == slug);
+        if (briefing is null) return NotFound();
 
         var posts = await _db.CampaignPosts
             .Include(p => p.Fragments)
@@ -58,6 +58,6 @@ public class BriefingsController : ControllerBase
             .Take(take)
             .ToListAsync();
 
-        return Ok(posts.Select(p => p.ToDto(p.Candidate)));
+        return Ok(posts.Select(p => p.ToDto(p.Candidate, briefing.Headline, briefing.Summary30)));
     }
 }

@@ -110,7 +110,8 @@ public static class CampaignMappings
     public static CampaignPostDto ToDto(
         this CampaignPost p,
         VirtualCandidate? candidate = null,
-        string? briefingHeadline = null)
+        string? briefingHeadline = null,
+        string? briefingSummary = null)
     {
         return new CampaignPostDto
         {
@@ -124,6 +125,7 @@ public static class CampaignMappings
             Trigger = p.Trigger.ToString(),
             TriggerBriefingSlug = p.TriggerBriefingSlug,
             TriggerBriefingHeadline = briefingHeadline,
+            TriggerBriefingSummary = briefingSummary,
             TriggerPostId = p.TriggerPostId,
             CitedReference = p.CitedReference,
             Up = p.UpCount,

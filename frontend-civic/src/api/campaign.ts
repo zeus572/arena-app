@@ -91,6 +91,7 @@ export type CampaignPost = {
   trigger: string;
   triggerBriefingSlug: string | null;
   triggerBriefingHeadline: string | null;
+  triggerBriefingSummary: string | null;
   triggerPostId: string | null;
   citedReference: string | null;
   up: number;

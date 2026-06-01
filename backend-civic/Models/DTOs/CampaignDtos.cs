@@ -88,6 +88,8 @@ public class CampaignPostDto
     public string Trigger { get; set; } = "";
     public string? TriggerBriefingSlug { get; set; }
     public string? TriggerBriefingHeadline { get; set; }
+    /// <summary>Short snippet of the briefing being responded to, for a quoted-source preview.</summary>
+    public string? TriggerBriefingSummary { get; set; }
     public Guid? TriggerPostId { get; set; }
     public string? CitedReference { get; set; }
     public int Up { get; set; }
