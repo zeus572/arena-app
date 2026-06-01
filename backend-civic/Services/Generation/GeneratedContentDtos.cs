@@ -80,3 +80,10 @@ public class ContentJudgeDto
     public bool ShouldGenerateQuiz { get; set; }
     public string? QuizHint { get; set; }
 }
+
+/// <summary>Cheap relevance gate: is this story civic/government-related enough to brief?</summary>
+public class RelevanceJudgeDto
+{
+    public bool IsCivic { get; set; }
+    public string? Reason { get; set; }
+}

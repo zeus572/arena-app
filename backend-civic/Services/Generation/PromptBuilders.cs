@@ -92,6 +92,40 @@ public static class CivicPrompts
         """
     );
 
+    /// <summary>
+    /// Cheap relevance gate run BEFORE briefing generation: keep only stories about government,
+    /// politics, policy, law, courts, elections, or civic institutions. Reject general news
+    /// (sports, celebrity, consumer/pet/health guides, weather, business, lifestyle).
+    /// </summary>
+    public static (string System, string User) RelevanceGate(NewsItem n) =>
+    (
+        """
+        You are the gatekeeper for a CIVICS news platform. Decide whether a story is about
+        government, politics, public policy, law, courts, elections, legislation, regulation, or
+        civic institutions — the kind of story a civics educator would actually use.
+
+        Return isCivic=true ONLY for genuine civic/government/policy stories.
+        Return isCivic=false for general news with no civic substance: sports, celebrity and
+        entertainment, consumer or product guides, pet/animal care, personal health and wellness
+        tips, weather, lifestyle, business/markets, science with no policy angle, crime blotter with
+        no policy dimension. When in doubt, return false.
+
+        Respond with ONLY this JSON shape:
+        {
+          "isCivic": <bool>,
+          "reason": "<one short clause explaining the call>"
+        }
+        """,
+        $$"""
+        Story:
+        - Headline: {{n.Headline}}
+        - Source: {{n.Source}}
+        - Description: {{n.Summary ?? "(none)"}}
+
+        Judge.
+        """
+    );
+
     public static (string System, string User) ContentJudge(NewsItem n, GeneratedBriefingDto briefing) =>
     (
         $$"""

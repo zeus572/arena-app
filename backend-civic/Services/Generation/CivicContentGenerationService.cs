@@ -98,13 +98,24 @@ public class CivicContentGenerationService : BackgroundService
                 item.AttemptCount++;
                 await db.SaveChangesAsync(ct);
 
-                await GenerateForItemAsync(db, llm, item, ct);
+                var produced = await GenerateForItemAsync(db, llm, item, ct);
 
-                item.Status = NewsItemStatus.Generated;
-                item.ProcessedAt = DateTime.UtcNow;
-                item.LastError = null;
-                await db.SaveChangesAsync(ct);
-                generated++;
+                if (produced)
+                {
+                    item.Status = NewsItemStatus.Generated;
+                    item.ProcessedAt = DateTime.UtcNow;
+                    item.LastError = null;
+                    await db.SaveChangesAsync(ct);
+                    generated++;
+                }
+                else
+                {
+                    // Off-topic for a civics platform — skip without generating a briefing.
+                    item.Status = NewsItemStatus.Skipped;
+                    item.ProcessedAt = DateTime.UtcNow;
+                    item.LastError = null;
+                    await db.SaveChangesAsync(ct);
+                }
             }
             catch (Exception ex)
             {
@@ -119,7 +130,11 @@ public class CivicContentGenerationService : BackgroundService
         return generated;
     }
 
-    private async Task GenerateForItemAsync(
+    /// <summary>
+    /// Generates civic content for one news item. Returns false (and generates nothing) when the
+    /// story isn't civic/government-relevant, so the caller can mark it Skipped.
+    /// </summary>
+    private async Task<bool> GenerateForItemAsync(
         CivicDbContext db,
         ILlmClient llm,
         NewsItem item,
@@ -127,6 +142,16 @@ public class CivicContentGenerationService : BackgroundService
     {
         var wire = new WireNewsItem(
             item.ExternalId, item.Headline, item.Source, item.Url, item.Summary, item.PublishedAt);
+
+        // 0. Relevance gate (cheap Haiku call) — skip non-civic stories before any Sonnet work.
+        var (rSys, rUser) = CivicPrompts.RelevanceGate(wire);
+        var relevance = await llm.GenerateStructuredAsync<RelevanceJudgeDto>(rSys, rUser, LlmModelTier.Haiku, maxTokens: 128, ct: ct);
+        if (!relevance.IsCivic)
+        {
+            _log.LogInformation("Skipping non-civic NewsItem {Id} ({Headline}): {Reason}",
+                item.Id, item.Headline, relevance.Reason);
+            return false;
+        }
 
         // 1. Briefing
         var (bSys, bUser) = CivicPrompts.Briefing(wire);
@@ -160,6 +185,7 @@ public class CivicContentGenerationService : BackgroundService
         }
 
         await db.SaveChangesAsync(ct);
+        return true;
     }
 
     // ---- mappers ----

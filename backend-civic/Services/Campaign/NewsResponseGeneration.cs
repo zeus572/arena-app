@@ -31,6 +31,12 @@ public class GeneratedNewsResponseItem
 /// <summary>Prompt builder for generating a candidate's response options to a news briefing.</summary>
 public static class NewsResponsePrompts
 {
+    /// <summary>
+    /// Bump this whenever the prompt or option shape changes meaningfully. Cached options with an
+    /// older version are regenerated on next view, so improvements roll out without a manual wipe.
+    /// </summary>
+    public const int Version = 2;
+
     public static (string System, string User) Build(VirtualCandidate candidate, Briefing briefing, int optionCount, int maxChars)
     {
         var office = candidate.Office switch
@@ -56,11 +62,15 @@ public static class NewsResponsePrompts
             angle. They should read like something that would actually make news — not bland,
             hedged, or interchangeable.
 
-            Length & style:
-            - Each "body" is a SUBSTANTIVE statement of roughly 2-4 sentences, up to {{maxChars}}
-              characters. Do NOT write a one-line tweet. Use the space to make an argument: a hook,
-              the candidate's position, and a sharp closing line.
-            - Distinct voice per option — the tones and angles should clearly differ.
+            Length & substance (IMPORTANT — most drafts are too short and shallow; go deeper):
+            - Each "body" MUST be a meaty statement of FOUR TO SIX full sentences, between 350 and
+              {{maxChars}} characters. Anything under ~300 characters is too thin — reject your own
+              draft and expand it. This is a speech-style statement, NOT a tweet or a slogan.
+            - Build a real argument: (1) a hook that reacts to the specific story, (2) a concrete
+              claim with a specific reason or example, (3) the candidate's position tied to a named
+              policy plank, and (4) a sharp, memorable closing line. Name specifics from the story
+              and the candidate's platform — avoid generic filler that could apply to any issue.
+            - Distinct voice per option — the tones, arguments, and angles should clearly differ.
 
             Hard rules (non-negotiable):
             - FICTIONAL candidate — never claim to be a real person.
@@ -78,7 +88,7 @@ public static class NewsResponsePrompts
                   "label": "<2-4 word strategic label, e.g. 'Go on offense'>",
                   "angle": "<one sentence describing the strategy>",
                   "tone": "<one of: Stern, Angry, Casual, Hopeful, Sarcastic, Presidential, Folksy, Wonkish>",
-                  "body": "<the statement, 2-4 sentences, up to {{maxChars}} chars>"
+                  "body": "<the statement, 4-6 full sentences, 350-{{maxChars}} chars>"
                 }
               ]
             }

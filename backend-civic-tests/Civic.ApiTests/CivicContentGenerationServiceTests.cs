@@ -85,6 +85,7 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
     public async Task GenerateBatch_HappyPath_WritesBriefingAndThinkDeeper()
     {
         var llm = new StubLlmClient()
+            .WithJson("RelevanceJudgeDto", "{\"isCivic\":true,\"reason\":\"agency rulemaking\"}")
             .WithJson("GeneratedBriefingDto", BriefingJson())
             .WithJson("GeneratedThinkDeeperDto", ThinkDeeperJson())
             .WithJson("ContentJudgeDto", "{\"shouldGenerateConcept\":false,\"shouldGenerateQuiz\":false}");
@@ -107,6 +108,7 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
     public async Task GenerateBatch_HaikuApprovesConceptAndQuiz_WritesBoth()
     {
         var llm = new StubLlmClient()
+            .WithJson("RelevanceJudgeDto", "{\"isCivic\":true,\"reason\":\"agency rulemaking\"}")
             .WithJson("GeneratedBriefingDto", BriefingJson())
             .WithJson("GeneratedThinkDeeperDto", ThinkDeeperJson())
             .WithJson("ContentJudgeDto", "{\"shouldGenerateConcept\":true,\"conceptHint\":\"agency-rulemaking-news\",\"shouldGenerateQuiz\":true,\"quizHint\":\"Which branch acted?\"}")
@@ -120,6 +122,27 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
         (await db.Concepts.AnyAsync(c => c.SourceNewsItemId == _newsItemId)).Should().BeTrue();
         (await db.QuizQuestions.AnyAsync(q => q.SourceNewsItemId == _newsItemId)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GenerateBatch_NonCivicStory_IsSkippedWithoutBriefing()
+    {
+        // Relevance gate says not civic — no briefing/thinkdeeper should be written.
+        var llm = new StubLlmClient()
+            .WithJson("RelevanceJudgeDto", "{\"isCivic\":false,\"reason\":\"pet-care health guide\"}");
+        await SeedIngestedAsync();
+
+        var done = await BuildSvc(llm).GenerateBatchAsync();
+
+        done.Should().Be(0);
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        (await db.Briefings.AnyAsync(b => b.SourceNewsItemId == _newsItemId)).Should().BeFalse();
+        (await db.NewsItems.SingleAsync(n => n.Id == _newsItemId))
+            .Status.Should().Be(NewsItemStatus.Skipped);
+        // Only the cheap relevance call should have run — no Sonnet briefing call.
+        llm.Calls.Should().ContainSingle(c => c.Type == "RelevanceJudgeDto");
+        llm.Calls.Should().NotContain(c => c.Type == "GeneratedBriefingDto");
     }
 
     [Fact]

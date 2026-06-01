@@ -221,5 +221,12 @@ public class CandidateNewsResponse
     /// <summary>True when the options were produced by the LLM (vs. the templated fallback).</summary>
     public bool LlmGenerated { get; set; }
 
+    /// <summary>
+    /// The prompt/generation version these options were produced with. When the current version is
+    /// newer, cached options are regenerated — so prompt improvements take effect without a manual
+    /// cache wipe.
+    /// </summary>
+    public int PromptVersion { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

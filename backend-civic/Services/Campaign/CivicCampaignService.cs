@@ -501,7 +501,10 @@ public class CivicCampaignService
         if (existing is not null)
         {
             var cached = SafeDeserializeOptions(existing.OptionsJson);
-            if (cached.Count > 0) return cached;
+            // Reuse only if non-empty AND produced by the current prompt version — otherwise
+            // regenerate so prompt improvements take effect without a manual cache wipe.
+            if (cached.Count > 0 && existing.PromptVersion >= NewsResponsePrompts.Version)
+                return cached;
         }
 
         var (options, llmGenerated) = await GenerateResponseOptionsAsync(candidate, briefing, ct);
@@ -518,6 +521,7 @@ public class CivicCampaignService
                     BriefingSlug = briefing.Slug,
                     OptionsJson = JsonSerializer.Serialize(options, Json),
                     LlmGenerated = llmGenerated,
+                    PromptVersion = NewsResponsePrompts.Version,
                 });
                 await _db.SaveChangesAsync(ct);
             }
@@ -525,6 +529,7 @@ public class CivicCampaignService
             {
                 existing.OptionsJson = JsonSerializer.Serialize(options, Json);
                 existing.LlmGenerated = llmGenerated;
+                existing.PromptVersion = NewsResponsePrompts.Version;
                 await _db.SaveChangesAsync(ct);
             }
         }
