@@ -13,8 +13,7 @@ public class CreateCivicCampaignRequest
 
     public CivicCampaignDifficulty Difficulty { get; set; } = CivicCampaignDifficulty.Normal;
 
-    /// <summary>Campaign length in weeks. Falls back to the configured default when null.</summary>
-    public int? TotalWeeks { get; set; }
+    // Campaign duration is no longer chosen — it snaps to the live election date.
 }
 
 public class TakeActionRequest
@@ -22,10 +21,16 @@ public class TakeActionRequest
     [Required]
     public CivicCampaignActionType ActionType { get; set; }
 
-    /// <summary>Issue tag / plank title / axis key the action targets (depends on ActionType).</summary>
+    /// <summary>For RespondToNews: the briefing slug to respond to.</summary>
+    public string? BriefingSlug { get; set; }
+
+    /// <summary>For RespondToNews: the chosen response option id.</summary>
+    public string? OptionId { get; set; }
+
+    /// <summary>Issue tag / plank title / axis key the action targets (for secondary actions).</summary>
     public string? Target { get; set; }
 
-    /// <summary>Tone to use for a PublishPost action; defaults to the candidate's default tone.</summary>
+    /// <summary>Tone to use for the post; defaults to the candidate's default tone.</summary>
     public CampaignTone? Tone { get; set; }
 }
 
@@ -40,8 +45,11 @@ public class CivicCampaignSummaryDto
     public string RaceLabel { get; set; } = "";
     public string Difficulty { get; set; } = "";
     public string Status { get; set; } = "";
-    public int CurrentWeek { get; set; }
-    public int TotalWeeks { get; set; }
+    public int CurrentDay { get; set; }
+    public int TotalDays { get; set; }
+    public int DaysRemaining { get; set; }
+    public string ElectionName { get; set; } = "";
+    public DateTime ElectionDate { get; set; }
     public double PlayerSupport { get; set; }
     public bool IsLeading { get; set; }
     public bool? Won { get; set; }
@@ -62,7 +70,7 @@ public class CivicCampaignStandingDto
 
 public class CivicCampaignWeekDto
 {
-    public int WeekNumber { get; set; }
+    public int DayNumber { get; set; }
     public double PlayerSupportAfter { get; set; }
     public List<string> SalientIssues { get; set; } = new();
     public string Summary { get; set; } = "";
@@ -71,9 +79,10 @@ public class CivicCampaignWeekDto
 
 public class CivicCampaignActionDto
 {
-    public int WeekNumber { get; set; }
+    public int DayNumber { get; set; }
     public string ActionType { get; set; } = "";
     public string? Target { get; set; }
+    public string? RespondedBriefingSlug { get; set; }
     public string? Tone { get; set; }
     public double SupportDelta { get; set; }
     public Guid? GeneratedPostId { get; set; }
@@ -81,7 +90,7 @@ public class CivicCampaignActionDto
     public DateTime CreatedAt { get; set; }
 }
 
-/// <summary>An action option offered to the player for the current week.</summary>
+/// <summary>An action option offered to the player for the current day.</summary>
 public class CivicActionOptionDto
 {
     public string ActionType { get; set; } = "";
@@ -89,6 +98,26 @@ public class CivicActionOptionDto
     public string Description { get; set; } = "";
     /// <summary>Suggested target (issue/axis) for this option, when applicable.</summary>
     public string? SuggestedTarget { get; set; }
+}
+
+/// <summary>A single way the candidate could respond to a news item.</summary>
+public class NewsResponseOptionDto
+{
+    public string Id { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string Angle { get; set; } = "";
+    public string Tone { get; set; } = "";
+}
+
+/// <summary>A news item (briefing) the manager can choose to respond to, with ready options.</summary>
+public class CampaignNewsItemDto
+{
+    public string BriefingSlug { get; set; } = "";
+    public string Headline { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public List<string> ValuesInConflict { get; set; } = new();
+    public List<string> Tags { get; set; } = new();
+    public List<NewsResponseOptionDto> Options { get; set; } = new();
 }
 
 public class CivicCampaignDetailDto
@@ -103,8 +132,13 @@ public class CivicCampaignDetailDto
     public string RaceLabel { get; set; } = "";
     public string Difficulty { get; set; } = "";
     public string Status { get; set; } = "";
-    public int CurrentWeek { get; set; }
-    public int TotalWeeks { get; set; }
+
+    public string ElectionName { get; set; } = "";
+    public DateTime ElectionDate { get; set; }
+    public int DaysRemaining { get; set; }
+    public int CurrentDay { get; set; }
+    public int TotalDays { get; set; }
+
     public int ActionsRemaining { get; set; }
     public bool? Won { get; set; }
     public double? FinalSupport { get; set; }
@@ -114,8 +148,13 @@ public class CivicCampaignDetailDto
 
     public List<CivicCampaignStandingDto> Standings { get; set; } = new();
     public List<string> SalientIssues { get; set; } = new();
+
+    /// <summary>The primary mechanic: news items the manager can respond to, with ready options.</summary>
+    public List<CampaignNewsItemDto> NewsItems { get; set; } = new();
+
+    /// <summary>Secondary "budgeting tools" (Target Issue / Shore Up a Weakness).</summary>
     public List<CivicActionOptionDto> AvailableActions { get; set; } = new();
-    public List<CivicCampaignActionDto> ThisWeekActions { get; set; } = new();
+    public List<CivicCampaignActionDto> TodayActions { get; set; } = new();
     public List<CivicCampaignWeekDto> History { get; set; } = new();
 }
 
@@ -128,9 +167,9 @@ public class TakeActionResult
     public CivicCampaignDetailDto Campaign { get; set; } = new();
 }
 
-public class AdvanceWeekResult
+public class AdvanceDayResult
 {
-    public int CompletedWeek { get; set; }
+    public int CompletedDay { get; set; }
     public double PlayerSupportAfter { get; set; }
     public bool IsLeading { get; set; }
     public List<CivicCampaignStandingDto> Standings { get; set; } = new();

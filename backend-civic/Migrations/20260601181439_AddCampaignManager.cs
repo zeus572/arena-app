@@ -12,18 +12,42 @@ namespace Civic.API.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "CandidateNewsResponses",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CandidateId = table.Column<Guid>(type: "uuid", nullable: false),
+                    BriefingSlug = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    OptionsJson = table.Column<string>(type: "text", nullable: false),
+                    LlmGenerated = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CandidateNewsResponses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CandidateNewsResponses_VirtualCandidates_CandidateId",
+                        column: x => x.CandidateId,
+                        principalTable: "VirtualCandidates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CivicCampaigns",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
                     CandidateId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ElectionCycleId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ElectionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ElectionName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    ElectionDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     RaceKey = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: false),
                     RaceLabel = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
                     Difficulty = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    TotalWeeks = table.Column<int>(type: "integer", nullable: false),
-                    CurrentWeek = table.Column<int>(type: "integer", nullable: false),
+                    TotalDays = table.Column<int>(type: "integer", nullable: false),
+                    CurrentDay = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Won = table.Column<bool>(type: "boolean", nullable: true),
                     FinalSupport = table.Column<double>(type: "double precision", nullable: true),
@@ -37,9 +61,9 @@ namespace Civic.API.Migrations
                 {
                     table.PrimaryKey("PK_CivicCampaigns", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CivicCampaigns_ElectionCycles_ElectionCycleId",
-                        column: x => x.ElectionCycleId,
-                        principalTable: "ElectionCycles",
+                        name: "FK_CivicCampaigns_Elections_ElectionId",
+                        column: x => x.ElectionId,
+                        principalTable: "Elections",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -56,9 +80,10 @@ namespace Civic.API.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     CampaignId = table.Column<Guid>(type: "uuid", nullable: false),
-                    WeekNumber = table.Column<int>(type: "integer", nullable: false),
+                    DayNumber = table.Column<int>(type: "integer", nullable: false),
                     ActionType = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     Target = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: true),
+                    RespondedBriefingSlug = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true),
                     Tone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     SupportDelta = table.Column<double>(type: "double precision", nullable: false),
                     GeneratedPostId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -111,7 +136,7 @@ namespace Civic.API.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     CampaignId = table.Column<Guid>(type: "uuid", nullable: false),
-                    WeekNumber = table.Column<int>(type: "integer", nullable: false),
+                    DayNumber = table.Column<int>(type: "integer", nullable: false),
                     PlayerSupportAfter = table.Column<double>(type: "double precision", nullable: false),
                     SalientIssuesJson = table.Column<string>(type: "text", nullable: false),
                     StandingsJson = table.Column<string>(type: "text", nullable: false),
@@ -131,9 +156,15 @@ namespace Civic.API.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_CivicCampaignActions_CampaignId_WeekNumber",
+                name: "IX_CandidateNewsResponses_CandidateId_BriefingSlug",
+                table: "CandidateNewsResponses",
+                columns: new[] { "CandidateId", "BriefingSlug" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CivicCampaignActions_CampaignId_DayNumber",
                 table: "CivicCampaignActions",
-                columns: new[] { "CampaignId", "WeekNumber" });
+                columns: new[] { "CampaignId", "DayNumber" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_CivicCampaignStandings_CampaignId_CandidateId",
@@ -147,9 +178,9 @@ namespace Civic.API.Migrations
                 column: "CandidateId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CivicCampaignWeeks_CampaignId_WeekNumber",
+                name: "IX_CivicCampaignWeeks_CampaignId_DayNumber",
                 table: "CivicCampaignWeeks",
-                columns: new[] { "CampaignId", "WeekNumber" },
+                columns: new[] { "CampaignId", "DayNumber" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -158,9 +189,9 @@ namespace Civic.API.Migrations
                 column: "CandidateId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CivicCampaigns_ElectionCycleId",
+                name: "IX_CivicCampaigns_ElectionId",
                 table: "CivicCampaigns",
-                column: "ElectionCycleId");
+                column: "ElectionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CivicCampaigns_UserId",
@@ -176,6 +207,9 @@ namespace Civic.API.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "CandidateNewsResponses");
+
             migrationBuilder.DropTable(
                 name: "CivicCampaignActions");
 

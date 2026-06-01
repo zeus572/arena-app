@@ -12,15 +12,19 @@ namespace Civic.API.Services.Campaign;
 /// <summary>
 /// Scoped orchestrator for the Campaign Manager game mode. The player manages an existing
 /// <see cref="VirtualCandidate"/> and tries to make them finish first in their race by election
-/// day. Owns all DB persistence and drives the pure <see cref="CivicSupportModel"/> formulas.
-/// Support simulation is local to the campaign and never mutates the global candidate catalog.
-/// Post generation reuses <see cref="CampaignPostGenerationService"/> and is LLM-guarded (a
-/// templated fallback is used when no Anthropic key is configured, so dev/tests never hit the net).
+/// day. The campaign is tied to the live national <see cref="Election"/> (the one the home-page
+/// countdown shows) and runs in DAILY turns; the primary mechanic is responding to real incoming
+/// news (synthesized <see cref="Briefing"/>s) with pre-generated, candidate-specific options.
+///
+/// All support simulation is local to the campaign and never mutates the global candidate catalog.
+/// LLM use is guarded (<see cref="ILlmClient"/> throws when no key is configured) — every generation
+/// path has a deterministic templated fallback, so dev/tests never hit the network.
 /// </summary>
 public class CivicCampaignService
 {
     private readonly CivicDbContext _db;
     private readonly CampaignPostGenerationService _postGenerator;
+    private readonly ILlmClient _llm;
     private readonly CivicCampaignOptions _opts;
     private readonly ILogger<CivicCampaignService> _log;
     private readonly Random _random = new();
@@ -30,11 +34,13 @@ public class CivicCampaignService
     public CivicCampaignService(
         CivicDbContext db,
         CampaignPostGenerationService postGenerator,
+        ILlmClient llm,
         IOptions<CivicCampaignOptions> opts,
         ILogger<CivicCampaignService> log)
     {
         _db = db;
         _postGenerator = postGenerator;
+        _llm = llm;
         _opts = opts.Value;
         _log = log;
     }
@@ -76,14 +82,12 @@ public class CivicCampaignService
             .FirstOrDefaultAsync(c => c.Slug == req.CandidateSlug, ct)
             ?? throw new CivicCampaignValidationException($"Unknown candidate '{req.CandidateSlug}'.");
 
-        var cycle = await _db.ElectionCycles
-            .Where(c => c.IsCurrent)
-            .OrderByDescending(c => c.ElectionDate)
-            .FirstOrDefaultAsync(ct)
-            ?? throw new CivicCampaignValidationException("There is no current election cycle.");
+        // Snap to the next upcoming national election — the one the home-page countdown shows.
+        var election = await NextElectionAsync(ct)
+            ?? throw new CivicCampaignValidationException("There is no upcoming election to campaign for.");
 
-        var totalWeeks = req.TotalWeeks ?? _opts.DefaultTotalWeeks;
-        totalWeeks = (int)CivicSupportModel.Clamp(totalWeeks, _opts.MinTotalWeeks, _opts.MaxTotalWeeks);
+        var electionDate = DateTime.SpecifyKind(election.ScheduledAt, DateTimeKind.Utc);
+        var totalDays = ComputeTotalDays(DateTime.UtcNow, electionDate, _opts.MaxCampaignDays);
 
         var raceKey = RaceKeyFor(candidate);
         var raceCandidates = await RaceCandidatesAsync(candidate, ct);
@@ -93,14 +97,16 @@ public class CivicCampaignService
             Id = Guid.NewGuid(),
             UserId = userId,
             CandidateId = candidate.Id,
-            ElectionCycleId = cycle.Id,
+            ElectionId = election.Id,
+            ElectionName = election.Name,
+            ElectionDate = electionDate,
             RaceKey = raceKey,
             RaceLabel = RaceLabel(candidate.Office, candidate.State, candidate.District),
             Difficulty = req.Difficulty,
-            TotalWeeks = totalWeeks,
-            CurrentWeek = 1,
+            TotalDays = totalDays,
+            CurrentDay = 1,
             Status = CivicCampaignStatus.Active,
-            ActionsRemaining = _opts.ActionsPerWeek,
+            ActionsRemaining = _opts.ActionsPerDay,
         };
         _db.CivicCampaigns.Add(campaign);
 
@@ -151,8 +157,11 @@ public class CivicCampaignService
                 RaceLabel = c.RaceLabel,
                 Difficulty = c.Difficulty.ToString(),
                 Status = c.Status.ToString(),
-                CurrentWeek = c.CurrentWeek,
-                TotalWeeks = c.TotalWeeks,
+                CurrentDay = c.CurrentDay,
+                TotalDays = c.TotalDays,
+                DaysRemaining = DaysRemaining(c.ElectionDate),
+                ElectionName = c.ElectionName,
+                ElectionDate = c.ElectionDate,
                 PlayerSupport = Math.Round(player?.SupportShare ?? 0, 1),
                 IsLeading = player is not null && player.SupportShare >= leadShare - 0.001,
                 Won = c.Won,
@@ -166,10 +175,9 @@ public class CivicCampaignService
     {
         var campaign = await LoadOwnedAsync(userId, id, ct);
         var candidate = await LoadCandidateAsync(campaign.CandidateId, ct);
-        var salient = await SalientIssuesForCurrentWeekAsync(campaign, ct);
-        var thisWeekActions = campaign.Actions.Where(a => a.WeekNumber == campaign.CurrentWeek).ToList();
-
-        return await BuildDetailAsync(campaign, candidate, salient, thisWeekActions, ct);
+        var salient = await SalientIssuesForCurrentDayAsync(campaign, ct);
+        var todayActions = campaign.Actions.Where(a => a.DayNumber == campaign.CurrentDay).ToList();
+        return await BuildDetailAsync(campaign, candidate, salient, todayActions, ct);
     }
 
     // ---------------------------------------------------------------- Take action
@@ -180,55 +188,32 @@ public class CivicCampaignService
         if (campaign.Status != CivicCampaignStatus.Active)
             throw new CivicCampaignConflictException("This campaign is no longer active.");
         if (campaign.ActionsRemaining <= 0)
-            throw new CivicCampaignConflictException("No action points left this week. Advance to the next week.");
+            throw new CivicCampaignConflictException("No actions left today. Advance to the next day.");
 
         var candidate = await LoadCandidateAsync(campaign.CandidateId, ct);
-        var salient = await SalientIssuesForCurrentWeekAsync(campaign, ct);
+        var salient = await SalientIssuesForCurrentDayAsync(campaign, ct);
         var playerStanding = campaign.Standings.First(s => s.IsPlayer);
 
-        // Resolve the target issue for this action.
-        var target = ResolveTarget(req, candidate, salient);
-        var fit = CivicCampaignFit.IssueFit(candidate, target);
-        var salienceWeight = CivicSalience.Weight(salient, target);
-
-        var delta = CivicSupportModel.ActionPoints(req.ActionType, fit, salienceWeight, playerStanding.Momentum, _opts);
-
-        // Optionally generate a real campaign post for PublishPost / RapidResponse actions.
-        Guid? generatedPostId = null;
+        CivicCampaignAction action;
         string? generatedBody = null;
-        if (req.ActionType is CivicCampaignActionType.PublishPost or CivicCampaignActionType.RapidResponse)
+
+        if (req.ActionType == CivicCampaignActionType.RespondToNews)
         {
-            var tone = req.Tone ?? candidate.DefaultTone;
-            var post = await TryGeneratePostAsync(candidate, target, tone, req.ActionType, ct);
-            if (post is not null)
-            {
-                generatedPostId = post.Id;
-                generatedBody = post.Body;
-            }
+            (action, generatedBody) = await HandleNewsResponseAsync(campaign, candidate, playerStanding, salient, req, ct);
+        }
+        else
+        {
+            action = HandleSecondaryAction(campaign, candidate, playerStanding, salient, req);
         }
 
-        var action = new CivicCampaignAction
-        {
-            Id = Guid.NewGuid(),
-            CampaignId = campaign.Id,
-            WeekNumber = campaign.CurrentWeek,
-            ActionType = req.ActionType,
-            Target = target,
-            Tone = req.Tone,
-            SupportDelta = Math.Round(delta, 3),
-            GeneratedPostId = generatedPostId,
-            Summary = DescribeAction(req.ActionType, target, delta),
-        };
         _db.CivicCampaignActions.Add(action);
-
         campaign.ActionsRemaining -= 1;
         campaign.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        // Reload for an up-to-date detail (incl. the new action).
         campaign = await LoadOwnedAsync(userId, id, ct);
-        var thisWeekActions = campaign.Actions.Where(a => a.WeekNumber == campaign.CurrentWeek).ToList();
-        var detail = await BuildDetailAsync(campaign, candidate, salient, thisWeekActions, ct);
+        var todayActions = campaign.Actions.Where(a => a.DayNumber == campaign.CurrentDay).ToList();
+        var detail = await BuildDetailAsync(campaign, candidate, salient, todayActions, ct);
 
         return new TakeActionResult
         {
@@ -240,29 +225,100 @@ public class CivicCampaignService
         };
     }
 
-    // ---------------------------------------------------------------- Advance week
+    private async Task<(CivicCampaignAction, string?)> HandleNewsResponseAsync(
+        CivicCampaign campaign, VirtualCandidate candidate, CivicCampaignStanding playerStanding,
+        IReadOnlyList<string> salient, TakeActionRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.BriefingSlug))
+            throw new CivicCampaignValidationException("A news item must be chosen to respond to.");
+        if (string.IsNullOrWhiteSpace(req.OptionId))
+            throw new CivicCampaignValidationException("A response option must be chosen.");
 
-    public async Task<AdvanceWeekResult> AdvanceWeekAsync(string userId, Guid id, CancellationToken ct = default)
+        var briefing = await _db.Briefings.FirstOrDefaultAsync(b => b.Slug == req.BriefingSlug, ct)
+            ?? throw new CivicCampaignValidationException($"Unknown news item '{req.BriefingSlug}'.");
+
+        var alreadyResponded = campaign.Actions.Any(a =>
+            a.ActionType == CivicCampaignActionType.RespondToNews && a.RespondedBriefingSlug == briefing.Slug);
+        if (alreadyResponded)
+            throw new CivicCampaignConflictException("You've already responded to this news item.");
+
+        var options = await GetOrCreateResponseOptionsAsync(candidate, briefing, ct);
+        var chosen = options.FirstOrDefault(o => o.Id == req.OptionId)
+            ?? throw new CivicCampaignValidationException("That response option is no longer available.");
+
+        // Support delta: fit of the briefing's issues × salience × momentum × news multiplier.
+        var briefingIssues = briefing.Tags.Concat(briefing.ValuesInConflict).ToList();
+        var fit = CivicCampaignFit.AverageFit(candidate, briefingIssues);
+        var salienceWeight = briefingIssues.Count == 0
+            ? 0.6
+            : briefingIssues.Max(i => CivicSalience.Weight(salient, i));
+        var delta = CivicSupportModel.ActionPoints(
+            CivicCampaignActionType.RespondToNews, fit, salienceWeight, playerStanding.Momentum, _opts);
+
+        var tone = ParseTone(chosen.Tone) ?? req.Tone ?? candidate.DefaultTone;
+        var post = await CreatePostFromBodyAsync(candidate, chosen.Body, tone, briefing, ct);
+
+        var action = new CivicCampaignAction
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            DayNumber = campaign.CurrentDay,
+            ActionType = CivicCampaignActionType.RespondToNews,
+            Target = briefingIssues.FirstOrDefault(),
+            RespondedBriefingSlug = briefing.Slug,
+            Tone = tone,
+            SupportDelta = Math.Round(delta, 3),
+            GeneratedPostId = post.Id,
+            Summary = $"Responded to \"{Truncate(briefing.Headline, 80)}\" — {chosen.Label} ({Sign(delta)}{delta:0.0} pts).",
+        };
+        return (action, post.Body);
+    }
+
+    private CivicCampaignAction HandleSecondaryAction(
+        CivicCampaign campaign, VirtualCandidate candidate, CivicCampaignStanding playerStanding,
+        IReadOnlyList<string> salient, TakeActionRequest req)
+    {
+        // Only the secondary "budgeting tools" are allowed via this path.
+        if (req.ActionType is not (CivicCampaignActionType.TargetIssue or CivicCampaignActionType.ShoreUpAxis))
+            throw new CivicCampaignValidationException("Unsupported action. Respond to a news item, or use a budgeting tool.");
+
+        var target = ResolveTarget(req, candidate, salient);
+        var fit = CivicCampaignFit.IssueFit(candidate, target);
+        var salienceWeight = CivicSalience.Weight(salient, target);
+        var delta = CivicSupportModel.ActionPoints(req.ActionType, fit, salienceWeight, playerStanding.Momentum, _opts);
+
+        return new CivicCampaignAction
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            DayNumber = campaign.CurrentDay,
+            ActionType = req.ActionType,
+            Target = target,
+            Tone = req.Tone,
+            SupportDelta = Math.Round(delta, 3),
+            Summary = DescribeAction(req.ActionType, target, delta),
+        };
+    }
+
+    // ---------------------------------------------------------------- Advance day
+
+    public async Task<AdvanceDayResult> AdvanceDayAsync(string userId, Guid id, CancellationToken ct = default)
     {
         var campaign = await LoadOwnedAsync(userId, id, ct);
         if (campaign.Status != CivicCampaignStatus.Active)
             throw new CivicCampaignConflictException("This campaign is no longer active.");
 
         var raceCandidates = await RaceCandidatesByIdAsync(campaign, ct);
-        var salient = await SalientIssuesForCurrentWeekAsync(campaign, ct);
-        var weekActions = campaign.Actions.Where(a => a.WeekNumber == campaign.CurrentWeek).ToList();
+        var salient = await SalientIssuesForCurrentDayAsync(campaign, ct);
+        var dayActions = campaign.Actions.Where(a => a.DayNumber == campaign.CurrentDay).ToList();
 
-        // Index-aligned arrays over the race's candidates.
         var standingsByCandidate = campaign.Standings.ToDictionary(s => s.CandidateId);
         var ordered = raceCandidates.Where(c => standingsByCandidate.ContainsKey(c.Id)).ToList();
         var current = ordered.Select(c => standingsByCandidate[c.Id].SupportShare).ToArray();
         var deltas = new double[ordered.Count];
 
-        // Player's delta is the sum of this week's action deltas.
-        var playerDelta = weekActions.Sum(a => a.SupportDelta);
-
-        // Did the player play any defense (ShoreUpAxis) this week?
-        var defended = weekActions.Any(a => a.ActionType == CivicCampaignActionType.ShoreUpAxis);
+        var playerDelta = dayActions.Sum(a => a.SupportDelta);
+        var defended = dayActions.Any(a => a.ActionType == CivicCampaignActionType.ShoreUpAxis);
         var defenseFactor = defended ? _opts.ShoreUpAxisDefense : 1.0;
 
         for (var i = 0; i < ordered.Count; i++)
@@ -284,13 +340,13 @@ public class CivicCampaignService
 
         var newShares = CivicSupportModel.ApplyAndNormalize(current, deltas);
 
-        // Persist new shares + momentum.
         for (var i = 0; i < ordered.Count; i++)
         {
             var standing = standingsByCandidate[ordered[i].Id];
             standing.SupportShare = Math.Round(newShares[i], 3);
             var gain = standing.IsPlayer ? Math.Max(0, playerDelta) : Math.Max(0, deltas[i]);
-            standing.Momentum = Math.Round(CivicSupportModel.UpdateMomentum(standing.Momentum, gain * _opts.MomentumGainPerPoint / _opts.BaseActionPoints, _opts), 2);
+            standing.Momentum = Math.Round(
+                CivicSupportModel.UpdateMomentum(standing.Momentum, gain * _opts.MomentumGainPerPoint / _opts.BaseActionPoints, _opts), 2);
             standing.UpdatedAt = DateTime.UtcNow;
         }
 
@@ -298,49 +354,48 @@ public class CivicCampaignService
         var leadShare = newShares.Max();
         var isLeading = playerStanding.SupportShare >= leadShare - 0.001;
 
-        // Snapshot the completed week.
         var standingsSnapshot = ordered.Select(c =>
         {
             var s = standingsByCandidate[c.Id];
             return new { c.Id, c.Name, c.Party, s.IsPlayer, Support = Math.Round(s.SupportShare, 2) };
         }).ToList();
 
-        var summary = BuildWeekSummary(campaign.CurrentWeek, weekActions, playerStanding.SupportShare, isLeading);
-        var week = new CivicCampaignWeek
+        var summary = BuildDaySummary(campaign.CurrentDay, dayActions, playerStanding.SupportShare, isLeading);
+        var day = new CivicCampaignWeek
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
-            WeekNumber = campaign.CurrentWeek,
+            DayNumber = campaign.CurrentDay,
             PlayerSupportAfter = Math.Round(playerStanding.SupportShare, 2),
             SalientIssuesJson = JsonSerializer.Serialize(salient, Json),
             StandingsJson = JsonSerializer.Serialize(standingsSnapshot, Json),
             DeltaBreakdownJson = JsonSerializer.Serialize(new { playerDelta = Math.Round(playerDelta, 3), defended }, Json),
             Summary = summary,
         };
-        _db.CivicCampaignWeeks.Add(week);
+        _db.CivicCampaignWeeks.Add(day);
 
-        var completed = campaign.CurrentWeek >= campaign.TotalWeeks;
+        var completed = campaign.CurrentDay >= campaign.TotalDays;
         if (completed)
         {
             FinalizeCampaign(campaign, ordered, standingsByCandidate);
         }
         else
         {
-            campaign.CurrentWeek += 1;
-            campaign.ActionsRemaining = _opts.ActionsPerWeek;
+            campaign.CurrentDay += 1;
+            campaign.ActionsRemaining = _opts.ActionsPerDay;
         }
         campaign.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
         var reloaded = await LoadOwnedAsync(userId, id, ct);
         var candidate = await LoadCandidateAsync(campaign.CandidateId, ct);
-        var nextSalient = await SalientIssuesForCurrentWeekAsync(reloaded, ct);
-        var thisWeekActions = reloaded.Actions.Where(a => a.WeekNumber == reloaded.CurrentWeek).ToList();
-        var detail = await BuildDetailAsync(reloaded, candidate, nextSalient, thisWeekActions, ct);
+        var nextSalient = await SalientIssuesForCurrentDayAsync(reloaded, ct);
+        var todayActions = reloaded.Actions.Where(a => a.DayNumber == reloaded.CurrentDay).ToList();
+        var detail = await BuildDetailAsync(reloaded, candidate, nextSalient, todayActions, ct);
 
-        return new AdvanceWeekResult
+        return new AdvanceDayResult
         {
-            CompletedWeek = week.WeekNumber,
+            CompletedDay = day.DayNumber,
             PlayerSupportAfter = Math.Round(playerStanding.SupportShare, 1),
             IsLeading = isLeading,
             Standings = detail.Standings,
@@ -363,10 +418,7 @@ public class CivicCampaignService
         var player = standings.First(s => s.IsPlayer);
         var rank = standings.OrderByDescending(s => s.SupportShare).ToList().FindIndex(s => s.IsPlayer) + 1;
 
-        var trend = campaign.Weeks
-            .OrderBy(w => w.WeekNumber)
-            .Select(ToWeekDto)
-            .ToList();
+        var trend = campaign.Weeks.OrderBy(w => w.DayNumber).Select(ToWeekDto).ToList();
 
         return new CivicCampaignResultsDto
         {
@@ -377,11 +429,158 @@ public class CivicCampaignService
             FinalSupport = Math.Round(campaign.FinalSupport ?? player.SupportShare, 1),
             FinalRank = rank,
             FieldSize = standings.Count,
-            TotalWeeks = campaign.TotalWeeks,
+            TotalWeeks = campaign.TotalDays,
             Outcome = campaign.Outcome ?? "",
             FinalStandings = standings.OrderByDescending(s => s.SupportShare).ToList(),
             SupportTrend = trend,
         };
+    }
+
+    // ---------------------------------------------------------------- News options (lazy + cached)
+
+    private async Task<List<NewsResponseOption>> GetOrCreateResponseOptionsAsync(
+        VirtualCandidate candidate, Briefing briefing, CancellationToken ct)
+    {
+        var existing = await _db.CandidateNewsResponses
+            .FirstOrDefaultAsync(r => r.CandidateId == candidate.Id && r.BriefingSlug == briefing.Slug, ct);
+        if (existing is not null)
+        {
+            var cached = SafeDeserializeOptions(existing.OptionsJson);
+            if (cached.Count > 0) return cached;
+        }
+
+        var (options, llmGenerated) = await GenerateResponseOptionsAsync(candidate, briefing, ct);
+
+        // Cache for reuse across views/players. Tolerate a race on the unique index.
+        try
+        {
+            if (existing is null)
+            {
+                _db.CandidateNewsResponses.Add(new CandidateNewsResponse
+                {
+                    Id = Guid.NewGuid(),
+                    CandidateId = candidate.Id,
+                    BriefingSlug = briefing.Slug,
+                    OptionsJson = JsonSerializer.Serialize(options, Json),
+                    LlmGenerated = llmGenerated,
+                });
+                await _db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                existing.OptionsJson = JsonSerializer.Serialize(options, Json);
+                existing.LlmGenerated = llmGenerated;
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+        catch (DbUpdateException)
+        {
+            // Another request cached it first; load theirs.
+            _db.ChangeTracker.Clear();
+            var winner = await _db.CandidateNewsResponses
+                .FirstOrDefaultAsync(r => r.CandidateId == candidate.Id && r.BriefingSlug == briefing.Slug, ct);
+            if (winner is not null) return SafeDeserializeOptions(winner.OptionsJson);
+        }
+
+        return options;
+    }
+
+    private async Task<(List<NewsResponseOption>, bool)> GenerateResponseOptionsAsync(
+        VirtualCandidate candidate, Briefing briefing, CancellationToken ct)
+    {
+        var count = Math.Clamp(_opts.ResponseOptionsPerItem, 2, 3);
+        try
+        {
+            var (sys, user) = NewsResponsePrompts.Build(candidate, briefing, count);
+            var dto = await _llm.GenerateStructuredAsync<GeneratedNewsResponsesDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 700, ct: ct);
+            var options = dto.Options
+                .Where(o => !string.IsNullOrWhiteSpace(o.Body))
+                .Take(count)
+                .Select((o, i) => new NewsResponseOption
+                {
+                    Id = $"opt{i + 1}",
+                    Label = string.IsNullOrWhiteSpace(o.Label) ? $"Option {i + 1}" : o.Label.Trim(),
+                    Angle = o.Angle?.Trim() ?? "",
+                    Tone = ParseTone(o.Tone)?.ToString() ?? candidate.DefaultTone.ToString(),
+                    Body = Truncate(o.Body.Trim(), 160),
+                })
+                .ToList();
+            if (options.Count >= 2) return (options, true);
+            _log.LogInformation("LLM returned too few response options; using templated fallback.");
+        }
+        catch (LlmException ex)
+        {
+            _log.LogInformation("LLM unavailable ({Message}); using templated news-response fallback.", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "News-response generation failed; using templated fallback.");
+        }
+
+        return (TemplatedResponseOptions(candidate, briefing, count), false);
+    }
+
+    /// <summary>Deterministic, offline response options derived from the candidate's planks + the briefing.</summary>
+    private static List<NewsResponseOption> TemplatedResponseOptions(VirtualCandidate candidate, Briefing briefing, int count)
+    {
+        var plank = candidate.PlatformPlanks.FirstOrDefault();
+        var topic = briefing.Tags.FirstOrDefault()
+            ?? briefing.ValuesInConflict.FirstOrDefault()
+            ?? "this issue";
+        var value = briefing.ValuesInConflict.FirstOrDefault() ?? topic;
+
+        var templates = new List<NewsResponseOption>
+        {
+            new()
+            {
+                Id = "opt1",
+                Label = "Go on offense",
+                Angle = "Seize the moment and press the candidate's strongest contrast.",
+                Tone = CampaignTone.Stern.ToString(),
+                Body = Truncate($"On {topic}, {candidate.Name} won't back down: {plank?.Title ?? "real action, now"}.", 160),
+            },
+            new()
+            {
+                Id = "opt2",
+                Label = "Stay disciplined",
+                Angle = "Acknowledge the news but pivot back to the core message.",
+                Tone = CampaignTone.Presidential.ToString(),
+                Body = Truncate($"The headlines change; our priorities don't. {candidate.Name} stays focused on {topic}.", 160),
+            },
+            new()
+            {
+                Id = "opt3",
+                Label = "Find common ground",
+                Angle = "Strike a unifying tone around the value in conflict.",
+                Tone = CampaignTone.Hopeful.ToString(),
+                Body = Truncate($"We can protect {value} and move forward together. That's the {candidate.Name} way.", 160),
+            },
+        };
+        return templates.Take(Math.Clamp(count, 2, 3)).ToList();
+    }
+
+    // ---------------------------------------------------------------- Post creation
+
+    private async Task<CampaignPost> CreatePostFromBodyAsync(
+        VirtualCandidate candidate, string body, CampaignTone tone, Briefing briefing, CancellationToken ct)
+    {
+        var clean = Truncate(string.IsNullOrWhiteSpace(body) ? $"{candidate.Name} responds." : body.Trim(), 160);
+        var post = new CampaignPost
+        {
+            Id = Guid.NewGuid(),
+            CandidateId = candidate.Id,
+            Body = clean,
+            Tone = tone,
+            Intensity = candidate.DefaultIntensity,
+            IssueTags = briefing.Tags.Take(3).ToArray(),
+            Trigger = PostTrigger.Briefing,
+            TriggerBriefingSlug = briefing.Slug,
+            CitedReference = candidate.PlatformPlanks.FirstOrDefault()?.Title,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.CampaignPosts.Add(post);
+        await _db.SaveChangesAsync(ct);
+        return post;
     }
 
     // ---------------------------------------------------------------- Internals
@@ -412,76 +611,21 @@ public class CivicCampaignService
             : $"Finished #{rank} of {ordered.Count} with {player.SupportShare:0.0}% support — the winner took {shares[winnerIdx]:0.0}%.";
     }
 
-    private async Task<CampaignPost?> TryGeneratePostAsync(
-        VirtualCandidate candidate, string issue, CampaignTone tone, CivicCampaignActionType actionType, CancellationToken ct)
-    {
-        // Reuse the real generation pipeline when possible; it throws LlmException with no API key.
-        try
-        {
-            var trigger = actionType == CivicCampaignActionType.RapidResponse ? PostTrigger.Briefing : PostTrigger.Platform;
-            var post = await _postGenerator.GenerateForCandidateAsync(candidate.Id, null, trigger, force: true, ct);
-            if (post is not null) return post;
-        }
-        catch (LlmException ex)
-        {
-            _log.LogInformation("LLM unavailable ({Message}); using templated campaign post fallback.", ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _log.LogWarning(ex, "Campaign post generation failed; using templated fallback.");
-        }
-
-        // Deterministic templated fallback so the game is fully playable offline.
-        return await CreateTemplatedPostAsync(candidate, issue, tone, actionType, ct);
-    }
-
-    private async Task<CampaignPost> CreateTemplatedPostAsync(
-        VirtualCandidate candidate, string issue, CampaignTone tone, CivicCampaignActionType actionType, CancellationToken ct)
-    {
-        var plank = candidate.PlatformPlanks
-            .FirstOrDefault(p => p.IssueTags.Any(t => string.Equals(t, issue, StringComparison.OrdinalIgnoreCase)))
-            ?? candidate.PlatformPlanks.FirstOrDefault();
-
-        var issueText = string.IsNullOrWhiteSpace(issue) ? "what matters most" : issue;
-        var body = plank is not null
-            ? $"On {issueText}: {Truncate(plank.Title, 120)}."
-            : $"{candidate.Name} is fighting for {issueText}.";
-        body = Truncate(body, 160);
-
-        var post = new CampaignPost
-        {
-            Id = Guid.NewGuid(),
-            CandidateId = candidate.Id,
-            Body = body,
-            Tone = tone,
-            Intensity = candidate.DefaultIntensity,
-            IssueTags = string.IsNullOrWhiteSpace(issue) ? Array.Empty<string>() : new[] { issue },
-            Trigger = actionType == CivicCampaignActionType.RapidResponse ? PostTrigger.Briefing : PostTrigger.Platform,
-            CitedReference = plank?.Title,
-            CreatedAt = DateTime.UtcNow,
-        };
-        _db.CampaignPosts.Add(post);
-        await _db.SaveChangesAsync(ct);
-        return post;
-    }
-
     private static string ResolveTarget(TakeActionRequest req, VirtualCandidate candidate, IReadOnlyList<string> salient)
     {
         if (!string.IsNullOrWhiteSpace(req.Target)) return req.Target!.Trim();
-        // Default to the top salient issue the candidate is strongest on, else their first plank tag.
-        var best = salient
-            .OrderByDescending(i => CivicCampaignFit.IssueFit(candidate, i))
-            .FirstOrDefault();
+        var best = salient.OrderByDescending(i => CivicCampaignFit.IssueFit(candidate, i)).FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(best)) return best!;
         return CivicCampaignFit.CandidateIssues(candidate).FirstOrDefault() ?? "";
     }
 
     private async Task<CivicCampaignDetailDto> BuildDetailAsync(
         CivicCampaign campaign, VirtualCandidate candidate, List<string> salient,
-        List<CivicCampaignAction> thisWeekActions, CancellationToken ct)
+        List<CivicCampaignAction> todayActions, CancellationToken ct)
     {
         var standings = await BuildStandingsAsync(campaign, ct);
-        var history = campaign.Weeks.OrderBy(w => w.WeekNumber).Select(ToWeekDto).ToList();
+        var history = campaign.Weeks.OrderBy(w => w.DayNumber).Select(ToWeekDto).ToList();
+        var newsItems = await BuildNewsItemsAsync(campaign, candidate, ct);
 
         return new CivicCampaignDetailDto
         {
@@ -495,8 +639,11 @@ public class CivicCampaignService
             RaceLabel = campaign.RaceLabel,
             Difficulty = campaign.Difficulty.ToString(),
             Status = campaign.Status.ToString(),
-            CurrentWeek = campaign.CurrentWeek,
-            TotalWeeks = campaign.TotalWeeks,
+            ElectionName = campaign.ElectionName,
+            ElectionDate = campaign.ElectionDate,
+            DaysRemaining = DaysRemaining(campaign.ElectionDate),
+            CurrentDay = campaign.CurrentDay,
+            TotalDays = campaign.TotalDays,
             ActionsRemaining = campaign.ActionsRemaining,
             Won = campaign.Won,
             FinalSupport = campaign.FinalSupport,
@@ -505,10 +652,60 @@ public class CivicCampaignService
             UpdatedAt = campaign.UpdatedAt,
             Standings = standings.OrderByDescending(s => s.SupportShare).ToList(),
             SalientIssues = salient,
+            NewsItems = newsItems,
             AvailableActions = BuildActionOptions(campaign, candidate, salient),
-            ThisWeekActions = thisWeekActions.OrderBy(a => a.CreatedAt).Select(ToActionDto).ToList(),
+            TodayActions = todayActions.OrderBy(a => a.CreatedAt).Select(ToActionDto).ToList(),
             History = history,
         };
+    }
+
+    /// <summary>
+    /// Surface the most recent news briefings this campaign hasn't responded to, each with the
+    /// candidate's pre-generated (lazily cached) response options. Only built while the campaign is
+    /// active and has actions left.
+    /// </summary>
+    private async Task<List<CampaignNewsItemDto>> BuildNewsItemsAsync(
+        CivicCampaign campaign, VirtualCandidate candidate, CancellationToken ct)
+    {
+        if (campaign.Status != CivicCampaignStatus.Active || campaign.ActionsRemaining <= 0)
+            return new List<CampaignNewsItemDto>();
+
+        var respondedSlugs = campaign.Actions
+            .Where(a => a.ActionType == CivicCampaignActionType.RespondToNews && a.RespondedBriefingSlug != null)
+            .Select(a => a.RespondedBriefingSlug!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var recent = await _db.Briefings
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(_opts.NewsItemsToOffer + respondedSlugs.Count)
+            .ToListAsync(ct);
+
+        var offer = recent
+            .Where(b => !respondedSlugs.Contains(b.Slug))
+            .Take(_opts.NewsItemsToOffer)
+            .ToList();
+
+        var result = new List<CampaignNewsItemDto>();
+        foreach (var b in offer)
+        {
+            var options = await GetOrCreateResponseOptionsAsync(candidate, b, ct);
+            result.Add(new CampaignNewsItemDto
+            {
+                BriefingSlug = b.Slug,
+                Headline = b.Headline,
+                Summary = b.Summary30,
+                ValuesInConflict = b.ValuesInConflict.ToList(),
+                Tags = b.Tags.ToList(),
+                Options = options.Select(o => new NewsResponseOptionDto
+                {
+                    Id = o.Id,
+                    Label = o.Label,
+                    Angle = o.Angle,
+                    Tone = o.Tone,
+                }).ToList(),
+            });
+        }
+        return result;
     }
 
     private List<CivicActionOptionDto> BuildActionOptions(CivicCampaign campaign, VirtualCandidate candidate, IReadOnlyList<string> salient)
@@ -516,38 +713,22 @@ public class CivicCampaignService
         if (campaign.Status != CivicCampaignStatus.Active || campaign.ActionsRemaining <= 0)
             return new List<CivicActionOptionDto>();
 
-        var topIssue = salient
-            .OrderByDescending(i => CivicCampaignFit.IssueFit(candidate, i))
-            .FirstOrDefault();
+        var topIssue = salient.OrderByDescending(i => CivicCampaignFit.IssueFit(candidate, i)).FirstOrDefault();
 
         return new List<CivicActionOptionDto>
         {
             new()
             {
-                ActionType = nameof(CivicCampaignActionType.PublishPost),
-                Label = "Publish a post",
-                Description = "Put out a campaign message on an issue. Strong on-brand issues move the most support.",
-                SuggestedTarget = topIssue,
-            },
-            new()
-            {
-                ActionType = nameof(CivicCampaignActionType.RapidResponse),
-                Label = "Rapid response",
-                Description = "Respond to the week's hottest issue. Higher risk and reward.",
-                SuggestedTarget = salient.FirstOrDefault(),
-            },
-            new()
-            {
                 ActionType = nameof(CivicCampaignActionType.TargetIssue),
                 Label = "Target an issue",
-                Description = "Concentrate the week on one issue you own for a focus bonus.",
+                Description = "Spend the day concentrating on one issue you own for a focus bonus.",
                 SuggestedTarget = topIssue,
             },
             new()
             {
                 ActionType = nameof(CivicCampaignActionType.ShoreUpAxis),
                 Label = "Shore up a weakness",
-                Description = "Play defense to blunt your opponents' gains this week.",
+                Description = "Play defense to blunt your opponents' gains today.",
                 SuggestedTarget = null,
             },
         };
@@ -576,22 +757,39 @@ public class CivicCampaignService
         }).ToList();
     }
 
-    private async Task<List<string>> SalientIssuesForCurrentWeekAsync(CivicCampaign campaign, CancellationToken ct)
+    private async Task<List<string>> SalientIssuesForCurrentDayAsync(CivicCampaign campaign, CancellationToken ct)
     {
         var raceCandidates = await RaceCandidatesByIdAsync(campaign, ct);
         var seed = campaign.Id.GetHashCode();
-        return CivicSalience.ForWeek(raceCandidates, campaign.CurrentWeek, seed);
+        return CivicSalience.ForWeek(raceCandidates, campaign.CurrentDay, seed);
+    }
+
+    private async Task<Election?> NextElectionAsync(CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        // Prefer the next upcoming National election (matches the home countdown). Fall back to any
+        // upcoming election, then to the latest-scheduled one if none are in the future.
+        return await _db.Elections
+                   .Where(e => e.ScheduledAt >= now && e.Scope == ElectionScope.National)
+                   .OrderBy(e => e.ScheduledAt)
+                   .FirstOrDefaultAsync(ct)
+               ?? await _db.Elections
+                   .Where(e => e.ScheduledAt >= now)
+                   .OrderBy(e => e.ScheduledAt)
+                   .FirstOrDefaultAsync(ct)
+               ?? await _db.Elections
+                   .OrderByDescending(e => e.ScheduledAt)
+                   .FirstOrDefaultAsync(ct);
     }
 
     private async Task<List<VirtualCandidate>> RaceCandidatesAsync(VirtualCandidate candidate, CancellationToken ct)
     {
-        var all = await _db.VirtualCandidates
+        return await _db.VirtualCandidates
             .Include(c => c.PlatformPlanks)
             .Include(c => c.Sources)
             .Where(c => c.Office == candidate.Office && c.State == candidate.State && c.District == candidate.District)
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
-        return all;
     }
 
     private async Task<List<VirtualCandidate>> RaceCandidatesByIdAsync(CivicCampaign campaign, CancellationToken ct)
@@ -629,9 +827,10 @@ public class CivicCampaignService
 
     private static CivicCampaignActionDto ToActionDto(CivicCampaignAction a) => new()
     {
-        WeekNumber = a.WeekNumber,
+        DayNumber = a.DayNumber,
         ActionType = a.ActionType.ToString(),
         Target = a.Target,
+        RespondedBriefingSlug = a.RespondedBriefingSlug,
         Tone = a.Tone?.ToString(),
         SupportDelta = Math.Round(a.SupportDelta, 2),
         GeneratedPostId = a.GeneratedPostId,
@@ -641,7 +840,7 @@ public class CivicCampaignService
 
     private static CivicCampaignWeekDto ToWeekDto(CivicCampaignWeek w) => new()
     {
-        WeekNumber = w.WeekNumber,
+        DayNumber = w.DayNumber,
         PlayerSupportAfter = Math.Round(w.PlayerSupportAfter, 1),
         SalientIssues = SafeDeserializeList(w.SalientIssuesJson),
         Summary = w.Summary,
@@ -654,27 +853,46 @@ public class CivicCampaignService
         catch { return new(); }
     }
 
+    private static List<NewsResponseOption> SafeDeserializeOptions(string json)
+    {
+        try { return JsonSerializer.Deserialize<List<NewsResponseOption>>(json, Json) ?? new(); }
+        catch { return new(); }
+    }
+
+    private static CampaignTone? ParseTone(string? s)
+        => Enum.TryParse<CampaignTone>(s, ignoreCase: true, out var t) ? t : null;
+
+    private static int ComputeTotalDays(DateTime start, DateTime electionDate, int maxDays)
+    {
+        var days = (int)Math.Ceiling((electionDate.Date - start.Date).TotalDays);
+        return Math.Clamp(days, 1, maxDays);
+    }
+
+    private static int DaysRemaining(DateTime electionDate)
+        => Math.Max(0, (int)Math.Ceiling((electionDate.Date - DateTime.UtcNow.Date).TotalDays));
+
+    private static string Sign(double d) => d >= 0 ? "+" : "";
+
     private static string DescribeAction(CivicCampaignActionType type, string target, double delta)
     {
-        var sign = delta >= 0 ? "+" : "";
+        var sign = Sign(delta);
         var issue = string.IsNullOrWhiteSpace(target) ? "the campaign" : target;
         return type switch
         {
-            CivicCampaignActionType.PublishPost => $"Published a post on {issue} ({sign}{delta:0.0} pts).",
-            CivicCampaignActionType.RapidResponse => $"Rapid response on {issue} ({sign}{delta:0.0} pts).",
             CivicCampaignActionType.TargetIssue => $"Targeted {issue} ({sign}{delta:0.0} pts).",
             CivicCampaignActionType.ShoreUpAxis => $"Shored up a weakness ({sign}{delta:0.0} pts; opponents blunted).",
+            CivicCampaignActionType.RespondToNews => $"Responded to the news ({sign}{delta:0.0} pts).",
             _ => $"Action on {issue} ({sign}{delta:0.0} pts).",
         };
     }
 
-    private static string BuildWeekSummary(int week, List<CivicCampaignAction> actions, double playerSupport, bool leading)
+    private static string BuildDaySummary(int day, List<CivicCampaignAction> actions, double playerSupport, bool leading)
     {
         var lead = leading ? "leading the field" : "trailing the leader";
         if (actions.Count == 0)
-            return $"Week {week}: a quiet week — no actions taken. Now at {playerSupport:0.0}% support, {lead}.";
+            return $"Day {day}: a quiet day — no actions taken. Now at {playerSupport:0.0}% support, {lead}.";
         var gained = actions.Sum(a => a.SupportDelta);
-        return $"Week {week}: {actions.Count} action(s) for {(gained >= 0 ? "+" : "")}{gained:0.0} pts. Now at {playerSupport:0.0}% support, {lead}.";
+        return $"Day {day}: {actions.Count} action(s) for {(gained >= 0 ? "+" : "")}{gained:0.0} pts. Now at {playerSupport:0.0}% support, {lead}.";
     }
 
     private static string Truncate(string s, int max)

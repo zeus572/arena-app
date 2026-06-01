@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Trophy, Loader2 } from "lucide-react";
+import { Trophy, Loader2, Newspaper } from "lucide-react";
 import {
   getCampaign,
   takeAction,
-  advanceWeek,
+  advanceDay,
   getCampaignResults,
   type CivicCampaignDetail,
   type CivicCampaignResults,
   type CivicActionOption,
+  type CampaignNewsItem,
+  type NewsResponseOption,
   type CivicCampaignActionType,
 } from "@/api/campaignManager";
 
@@ -34,7 +36,26 @@ export default function CampaignDashboard() {
     void refresh().finally(() => setLoaded(true));
   }, [refresh]);
 
-  async function onAction(option: CivicActionOption) {
+  async function respondToNews(item: CampaignNewsItem, option: NewsResponseOption) {
+    if (!id || busy) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await takeAction(id, {
+        actionType: "RespondToNews",
+        briefingSlug: item.briefingSlug,
+        optionId: option.id,
+      });
+      setNotice(res.action.summary);
+      await refresh();
+    } catch (err) {
+      setNotice(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSecondaryAction(option: CivicActionOption) {
     if (!id || busy) return;
     setBusy(true);
     setNotice(null);
@@ -57,7 +78,7 @@ export default function CampaignDashboard() {
     setBusy(true);
     setNotice(null);
     try {
-      const res = await advanceWeek(id);
+      const res = await advanceDay(id);
       setNotice(res.summary);
       await refresh();
     } catch (err) {
@@ -108,12 +129,17 @@ export default function CampaignDashboard() {
           <p className="text-sm text-[var(--fg-soft)]">{campaign.party}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-[var(--muted)]">
-            {completed ? "Final" : `Week ${campaign.currentWeek} of ${campaign.totalWeeks}`}
+          <p className="text-sm text-[var(--muted)]" data-testid="election-countdown">
+            {completed
+              ? "Final"
+              : `${campaign.daysRemaining} days to ${campaign.electionName}`}
           </p>
           <p className="text-4xl font-bold text-[var(--fg)]" data-testid="player-support">
             {(player?.supportShare ?? 0).toFixed(1)}%
           </p>
+          {!completed && (
+            <p className="text-xs text-[var(--muted)]">Day {campaign.currentDay}</p>
+          )}
         </div>
       </header>
 
@@ -143,44 +169,22 @@ export default function CampaignDashboard() {
                   </span>
                   <span className="block text-xs text-[var(--muted)]">{s.party}</span>
                 </span>
-                <span className="text-right">
-                  <span className="block text-lg font-bold text-[var(--fg)]">
-                    {s.supportShare.toFixed(1)}%
-                  </span>
-                </span>
+                <span className="text-lg font-bold text-[var(--fg)]">{s.supportShare.toFixed(1)}%</span>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Action panel */}
+        {/* Today panel */}
         <div>
           <div className="flex items-baseline justify-between">
-            <h2 className="display text-2xl">This week</h2>
+            <h2 className="display text-2xl">Today</h2>
             {!completed && (
               <span className="text-sm text-[var(--muted)]" data-testid="actions-remaining">
                 {campaign.actionsRemaining} action{campaign.actionsRemaining === 1 ? "" : "s"} left
               </span>
             )}
           </div>
-
-          {campaign.salientIssues.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                Hot issues this week
-              </p>
-              <div className="mt-1 flex flex-wrap gap-1.5" data-testid="salient-issues">
-                {campaign.salientIssues.map((issue) => (
-                  <span
-                    key={issue}
-                    className="rounded-full bg-[var(--border)] px-2.5 py-0.5 text-xs font-semibold text-[var(--fg-soft)]"
-                  >
-                    {issue}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
 
           {notice && (
             <p className="mt-3 rounded-md bg-[var(--bg-elev)] p-3 text-sm text-[var(--fg-soft)]" data-testid="notice">
@@ -190,50 +194,110 @@ export default function CampaignDashboard() {
 
           {!completed && (
             <>
-              <ul className="mt-4 space-y-2" data-testid="actions">
-                {campaign.availableActions.map((opt) => (
-                  <li key={opt.actionType}>
-                    <button
-                      type="button"
-                      data-testid={`action-${opt.actionType}`}
-                      disabled={busy || campaign.actionsRemaining <= 0}
-                      onClick={() => onAction(opt)}
-                      className="w-full border border-[var(--border)] bg-[var(--bg-elev)] p-3 text-left transition hover:border-[var(--accent)] disabled:opacity-50"
-                    >
-                      <span className="flex items-center justify-between">
-                        <span className="font-semibold text-[var(--fg)]">{opt.label}</span>
-                        {opt.suggestedTarget && (
-                          <span className="text-xs font-semibold text-[var(--accent)]">
-                            {opt.suggestedTarget}
-                          </span>
+              {/* Primary mechanic: respond to the news */}
+              <div className="mt-4">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  <Newspaper className="h-3.5 w-3.5" /> In the news
+                </p>
+
+                {campaign.actionsRemaining <= 0 ? (
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    Out of actions for today — advance to the next day.
+                  </p>
+                ) : campaign.newsItems.length === 0 ? (
+                  <p className="mt-2 text-sm text-[var(--muted)]" data-testid="no-news">
+                    No fresh news to respond to right now. Use a budgeting tool or advance the day.
+                  </p>
+                ) : (
+                  <ul className="mt-2 space-y-3" data-testid="news-items">
+                    {campaign.newsItems.map((item) => (
+                      <li
+                        key={item.briefingSlug}
+                        className="border border-[var(--border)] bg-[var(--bg-elev)] p-3"
+                        data-testid="news-item"
+                      >
+                        <p className="font-semibold text-[var(--fg)]">{item.headline}</p>
+                        <p className="mt-1 text-sm text-[var(--fg-soft)]">{item.summary}</p>
+                        {item.valuesInConflict.length > 0 && (
+                          <p className="mt-1 text-xs uppercase tracking-wide text-[var(--muted)]">
+                            {item.valuesInConflict.join(" · ")}
+                          </p>
                         )}
-                      </span>
-                      <span className="mt-1 block text-sm text-[var(--fg-soft)]">{opt.description}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                        <div className="mt-2 space-y-1.5">
+                          {item.options.map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              data-testid="news-response-option"
+                              disabled={busy}
+                              onClick={() => respondToNews(item, opt)}
+                              className="block w-full border border-[var(--border)] p-2 text-left text-sm transition hover:border-[var(--accent)] disabled:opacity-50"
+                            >
+                              <span className="font-semibold text-[var(--fg)]">{opt.label}</span>
+                              {opt.angle && (
+                                <span className="ml-1 text-[var(--fg-soft)]">— {opt.angle}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Secondary budgeting tools */}
+              {campaign.availableActions.length > 0 && campaign.actionsRemaining > 0 && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Other tools
+                  </p>
+                  <ul className="mt-2 space-y-2" data-testid="actions">
+                    {campaign.availableActions.map((opt) => (
+                      <li key={opt.actionType}>
+                        <button
+                          type="button"
+                          data-testid={`action-${opt.actionType}`}
+                          disabled={busy}
+                          onClick={() => onSecondaryAction(opt)}
+                          className="w-full border border-[var(--border)] bg-[var(--bg-elev)] p-3 text-left transition hover:border-[var(--accent)] disabled:opacity-50"
+                        >
+                          <span className="flex items-center justify-between">
+                            <span className="font-semibold text-[var(--fg)]">{opt.label}</span>
+                            {opt.suggestedTarget && (
+                              <span className="text-xs font-semibold text-[var(--accent)]">
+                                {opt.suggestedTarget}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-1 block text-sm text-[var(--fg-soft)]">{opt.description}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <button
                 type="button"
-                data-testid="advance-week"
+                data-testid="advance-day"
                 disabled={busy}
                 onClick={onAdvance}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {campaign.currentWeek >= campaign.totalWeeks ? "Hold the election" : "Advance to next week"}
+                {campaign.currentDay >= campaign.totalDays ? "Hold the election" : "Advance to next day"}
               </button>
             </>
           )}
 
-          {campaign.thisWeekActions.length > 0 && (
+          {campaign.todayActions.length > 0 && (
             <div className="mt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                Actions taken
+                Actions today
               </p>
-              <ul className="mt-2 space-y-1" data-testid="this-week-actions">
-                {campaign.thisWeekActions.map((a, i) => (
+              <ul className="mt-2 space-y-1" data-testid="today-actions">
+                {campaign.todayActions.map((a, i) => (
                   <li key={i} className="text-sm text-[var(--fg-soft)]">
                     · {a.summary}
                   </li>
@@ -244,15 +308,15 @@ export default function CampaignDashboard() {
         </div>
       </div>
 
-      {/* Week-by-week log */}
+      {/* Day-by-day log */}
       {campaign.history.length > 0 && (
         <div className="mt-10">
           <h2 className="display text-2xl">Campaign log</h2>
           <ol className="mt-3 space-y-2" data-testid="history">
-            {campaign.history.map((w) => (
-              <li key={w.weekNumber} className="border-l-2 border-[var(--border)] pl-4 text-sm">
-                <span className="font-semibold text-[var(--fg)]">Week {w.weekNumber}:</span>{" "}
-                <span className="text-[var(--fg-soft)]">{w.summary}</span>
+            {[...campaign.history].reverse().map((d) => (
+              <li key={d.dayNumber} className="border-l-2 border-[var(--border)] pl-4 text-sm">
+                <span className="font-semibold text-[var(--fg)]">Day {d.dayNumber}:</span>{" "}
+                <span className="text-[var(--fg-soft)]">{d.summary}</span>
               </li>
             ))}
           </ol>
@@ -282,9 +346,9 @@ function ResultsBanner({ results }: { results: CivicCampaignResults }) {
   );
 }
 
-// Hand-rolled inline-SVG sparkline of the player's support across weeks. No chart dependency.
+// Hand-rolled inline-SVG sparkline of the player's support across days. No chart dependency.
 function SupportTrend({ campaign }: { campaign: CivicCampaignDetail }) {
-  const points = campaign.history.map((w) => w.playerSupportAfter);
+  const points = campaign.history.map((d) => d.playerSupportAfter);
   if (points.length < 2) return null;
 
   const w = 320;
@@ -300,9 +364,7 @@ function SupportTrend({ campaign }: { campaign: CivicCampaignDetail }) {
 
   return (
     <div className="mt-6" data-testid="support-trend">
-      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-        Support trend
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Support trend</p>
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="mt-2 h-16 w-full max-w-md"

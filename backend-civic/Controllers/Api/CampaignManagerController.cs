@@ -64,11 +64,11 @@ public class CampaignManagerController : ControllerBase
         catch (CivicCampaignConflictException ex) { return Conflict(new { error = ex.Message }); }
     }
 
-    // POST /api/campaign-manager/campaigns/{id}/advance
+    // POST /api/campaign-manager/campaigns/{id}/advance — advance one campaign day.
     [HttpPost("campaigns/{id:guid}/advance")]
     public async Task<IActionResult> Advance(Guid id, CancellationToken ct)
     {
-        try { return Ok(await _campaigns.AdvanceWeekAsync(_user.GetCurrentUserId(), id, ct)); }
+        try { return Ok(await _campaigns.AdvanceDayAsync(_user.GetCurrentUserId(), id, ct)); }
         catch (CivicCampaignNotFoundException ex) { return NotFound(new { error = ex.Message }); }
         catch (CivicCampaignConflictException ex) { return Conflict(new { error = ex.Message }); }
     }

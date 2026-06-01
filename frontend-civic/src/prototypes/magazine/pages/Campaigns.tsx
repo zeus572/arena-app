@@ -86,7 +86,7 @@ export default function Campaigns() {
                     </p>
                   </div>
                   <p className="text-sm text-[var(--fg-soft)]">
-                    Week {c.currentWeek}/{c.totalWeeks}
+                    {c.status === "Completed" ? "Final" : `${c.daysRemaining}d left`}
                   </p>
                 </div>
               </Link>

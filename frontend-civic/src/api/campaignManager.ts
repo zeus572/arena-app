@@ -4,10 +4,11 @@ import type { CandidateSummary, CampaignTone } from "./campaign";
 export type CivicCampaignDifficulty = "Easy" | "Normal" | "Hard";
 export type CivicCampaignStatus = "Active" | "Completed" | "Abandoned";
 export type CivicCampaignActionType =
-  | "PublishPost"
-  | "RapidResponse"
+  | "RespondToNews"
+  | "TargetIssue"
   | "ShoreUpAxis"
-  | "TargetIssue";
+  | "PublishPost"
+  | "RapidResponse";
 
 export type CivicRace = {
   raceKey: string;
@@ -26,8 +27,11 @@ export type CivicCampaignSummary = {
   raceLabel: string;
   difficulty: CivicCampaignDifficulty;
   status: CivicCampaignStatus;
-  currentWeek: number;
-  totalWeeks: number;
+  currentDay: number;
+  totalDays: number;
+  daysRemaining: number;
+  electionName: string;
+  electionDate: string;
   playerSupport: number;
   isLeading: boolean;
   won: boolean | null;
@@ -45,8 +49,8 @@ export type CivicCampaignStanding = {
   momentum: number;
 };
 
-export type CivicCampaignWeek = {
-  weekNumber: number;
+export type CivicCampaignDay = {
+  dayNumber: number;
   playerSupportAfter: number;
   salientIssues: string[];
   summary: string;
@@ -54,9 +58,10 @@ export type CivicCampaignWeek = {
 };
 
 export type CivicCampaignAction = {
-  weekNumber: number;
+  dayNumber: number;
   actionType: CivicCampaignActionType;
   target: string | null;
+  respondedBriefingSlug: string | null;
   tone: string | null;
   supportDelta: number;
   generatedPostId: string | null;
@@ -71,6 +76,22 @@ export type CivicActionOption = {
   suggestedTarget: string | null;
 };
 
+export type NewsResponseOption = {
+  id: string;
+  label: string;
+  angle: string;
+  tone: string;
+};
+
+export type CampaignNewsItem = {
+  briefingSlug: string;
+  headline: string;
+  summary: string;
+  valuesInConflict: string[];
+  tags: string[];
+  options: NewsResponseOption[];
+};
+
 export type CivicCampaignDetail = {
   id: string;
   candidateSlug: string;
@@ -82,8 +103,11 @@ export type CivicCampaignDetail = {
   raceLabel: string;
   difficulty: CivicCampaignDifficulty;
   status: CivicCampaignStatus;
-  currentWeek: number;
-  totalWeeks: number;
+  electionName: string;
+  electionDate: string;
+  daysRemaining: number;
+  currentDay: number;
+  totalDays: number;
   actionsRemaining: number;
   won: boolean | null;
   finalSupport: number | null;
@@ -92,9 +116,10 @@ export type CivicCampaignDetail = {
   updatedAt: string;
   standings: CivicCampaignStanding[];
   salientIssues: string[];
+  newsItems: CampaignNewsItem[];
   availableActions: CivicActionOption[];
-  thisWeekActions: CivicCampaignAction[];
-  history: CivicCampaignWeek[];
+  todayActions: CivicCampaignAction[];
+  history: CivicCampaignDay[];
 };
 
 export type TakeActionResult = {
@@ -105,8 +130,8 @@ export type TakeActionResult = {
   campaign: CivicCampaignDetail;
 };
 
-export type AdvanceWeekResult = {
-  completedWeek: number;
+export type AdvanceDayResult = {
+  completedDay: number;
   playerSupportAfter: number;
   isLeading: boolean;
   standings: CivicCampaignStanding[];
@@ -126,17 +151,18 @@ export type CivicCampaignResults = {
   totalWeeks: number;
   outcome: string;
   finalStandings: CivicCampaignStanding[];
-  supportTrend: CivicCampaignWeek[];
+  supportTrend: CivicCampaignDay[];
 };
 
 export type CreateCampaignBody = {
   candidateSlug: string;
   difficulty: CivicCampaignDifficulty;
-  totalWeeks?: number;
 };
 
 export type TakeActionBody = {
   actionType: CivicCampaignActionType;
+  briefingSlug?: string;
+  optionId?: string;
   target?: string;
   tone?: CampaignTone;
 };
@@ -173,8 +199,8 @@ export async function takeAction(id: string, body: TakeActionBody): Promise<Take
   return data;
 }
 
-export async function advanceWeek(id: string): Promise<AdvanceWeekResult> {
-  const { data } = await civicApi.post<AdvanceWeekResult>(`${BASE}/campaigns/${id}/advance`);
+export async function advanceDay(id: string): Promise<AdvanceDayResult> {
+  const { data } = await civicApi.post<AdvanceDayResult>(`${BASE}/campaigns/${id}/advance`);
   return data;
 }
 

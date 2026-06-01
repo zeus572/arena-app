@@ -39,6 +39,7 @@ public class CivicDbContext : DbContext
     public DbSet<CivicCampaignStanding> CivicCampaignStandings => Set<CivicCampaignStanding>();
     public DbSet<CivicCampaignWeek> CivicCampaignWeeks => Set<CivicCampaignWeek>();
     public DbSet<CivicCampaignAction> CivicCampaignActions => Set<CivicCampaignAction>();
+    public DbSet<CandidateNewsResponse> CandidateNewsResponses => Set<CandidateNewsResponse>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -319,9 +320,9 @@ public class CivicDbContext : DbContext
                 .HasForeignKey(c => c.CandidateId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            e.HasOne(c => c.ElectionCycle)
+            e.HasOne(c => c.Election)
                 .WithMany()
-                .HasForeignKey(c => c.ElectionCycleId)
+                .HasForeignKey(c => c.ElectionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.HasMany(c => c.Standings)
@@ -354,15 +355,26 @@ public class CivicDbContext : DbContext
         modelBuilder.Entity<CivicCampaignWeek>(e =>
         {
             e.HasKey(w => w.Id);
-            e.HasIndex(w => new { w.CampaignId, w.WeekNumber }).IsUnique();
+            e.HasIndex(w => new { w.CampaignId, w.DayNumber }).IsUnique();
         });
 
         modelBuilder.Entity<CivicCampaignAction>(e =>
         {
             e.HasKey(a => a.Id);
-            e.HasIndex(a => new { a.CampaignId, a.WeekNumber });
+            e.HasIndex(a => new { a.CampaignId, a.DayNumber });
             e.Property(a => a.ActionType).HasConversion<string>().HasMaxLength(30);
             e.Property(a => a.Tone).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<CandidateNewsResponse>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.CandidateId, r.BriefingSlug }).IsUnique();
+
+            e.HasOne(r => r.Candidate)
+                .WithMany()
+                .HasForeignKey(r => r.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

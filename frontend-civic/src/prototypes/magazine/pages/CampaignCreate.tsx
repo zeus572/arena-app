@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { getRaces, createCampaign, type CivicRace, type CivicCampaignDifficulty } from "@/api/campaignManager";
-import type { CandidateSummary } from "@/api/campaign";
+import { getCandidate, type CandidateSummary, type CandidateDetail } from "@/api/campaign";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 
 const DIFFICULTIES: { key: CivicCampaignDifficulty; label: string; blurb: string }[] = [
@@ -16,7 +17,6 @@ export default function CampaignCreate() {
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<CandidateSummary | null>(null);
   const [difficulty, setDifficulty] = useState<CivicCampaignDifficulty>("Normal");
-  const [weeks, setWeeks] = useState(8);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +34,6 @@ export default function CampaignCreate() {
       const created = await createCampaign({
         candidateSlug: selected.slug,
         difficulty,
-        totalWeeks: weeks,
       });
       navigate(`/campaigns/${created.id}`);
     } catch {
@@ -67,35 +66,15 @@ export default function CampaignCreate() {
               <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--accent)]">
                 {race.label}
               </h2>
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-                {race.candidates.map((c) => {
-                  const isSelected = selected?.slug === c.slug;
-                  return (
-                    <li key={c.slug}>
-                      <button
-                        type="button"
-                        data-testid="candidate-option"
-                        onClick={() => setSelected(c)}
-                        className={`flex w-full items-center gap-3 border p-4 text-left transition ${
-                          isSelected
-                            ? "border-[var(--accent)] bg-[var(--accent)]/5"
-                            : "border-[var(--border)] bg-[var(--bg-elev)] hover:border-[var(--accent)]"
-                        }`}
-                      >
-                        <CandidateAvatar candidate={c} size={48} />
-                        <span className="min-w-0">
-                          <span className="block font-semibold text-[var(--fg)]">{c.name}</span>
-                          <span className="block text-sm text-[var(--fg-soft)]">{c.party}</span>
-                          {c.isIncumbent && (
-                            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-                              Incumbent
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
+              <ul className="mt-3 grid items-start gap-3 sm:grid-cols-2">
+                {race.candidates.map((c) => (
+                  <CandidateOption
+                    key={c.slug}
+                    candidate={c}
+                    selected={selected?.slug === c.slug}
+                    onSelect={() => setSelected(c)}
+                  />
+                ))}
               </ul>
             </div>
           ))}
@@ -128,21 +107,9 @@ export default function CampaignCreate() {
               </p>
             </div>
 
-            <div className="mt-6">
-              <label htmlFor="weeks" className="text-sm font-semibold text-[var(--fg)]">
-                Campaign length: <span className="text-[var(--accent)]">{weeks} weeks</span>
-              </label>
-              <input
-                id="weeks"
-                type="range"
-                min={4}
-                max={16}
-                value={weeks}
-                data-testid="weeks-slider"
-                onChange={(e) => setWeeks(Number(e.target.value))}
-                className="mt-2 w-full max-w-sm accent-[var(--accent)]"
-              />
-            </div>
+            <p className="mt-6 text-sm text-[var(--fg-soft)]" data-testid="duration-note">
+              The campaign runs until election day — every campaign is tied to the next real election.
+            </p>
 
             {error && (
               <p className="mt-4 text-sm font-semibold text-[var(--danger,#dc2626)]" data-testid="create-error">
@@ -167,5 +134,114 @@ export default function CampaignCreate() {
         </div>
       )}
     </section>
+  );
+}
+
+function CandidateOption({
+  candidate,
+  selected,
+  onSelect,
+}: {
+  candidate: CandidateSummary;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [detail, setDetail] = useState<CandidateDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function toggle() {
+    const next = !expanded;
+    setExpanded(next);
+    // Lazy-load the full profile the first time it's opened.
+    if (next && !detail && !loading) {
+      setLoading(true);
+      try {
+        const d = await getCandidate(candidate.slug);
+        setDetail(d ?? null);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+
+  return (
+    <li
+      className={`border transition ${
+        selected
+          ? "border-[var(--accent)] bg-[var(--accent)]/5"
+          : "border-[var(--border)] bg-[var(--bg-elev)]"
+      }`}
+      data-testid="candidate-option"
+    >
+      <div className="flex items-stretch">
+        <button
+          type="button"
+          data-testid="candidate-select"
+          onClick={onSelect}
+          className="flex flex-1 items-center gap-3 p-4 text-left"
+        >
+          <CandidateAvatar candidate={candidate} size={48} />
+          <span className="min-w-0">
+            <span className="block font-semibold text-[var(--fg)]">{candidate.name}</span>
+            <span className="block text-sm text-[var(--fg-soft)]">{candidate.party}</span>
+            {candidate.isIncumbent && (
+              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
+                Incumbent
+              </span>
+            )}
+          </span>
+        </button>
+        <button
+          type="button"
+          data-testid="candidate-expand"
+          aria-expanded={expanded}
+          aria-label={expanded ? `Hide ${candidate.name}'s profile` : `Show ${candidate.name}'s profile`}
+          onClick={toggle}
+          className="flex shrink-0 items-center border-l border-[var(--border)] px-3 text-[var(--muted)] transition hover:text-[var(--fg)]"
+        >
+          <ChevronDown
+            className={`h-5 w-5 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-[var(--border)] p-4" data-testid="candidate-profile">
+          {loading ? (
+            <p className="flex items-center gap-2 text-sm text-[var(--muted)]">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading profile…
+            </p>
+          ) : detail ? (
+            <div className="space-y-3">
+              <p className="text-sm leading-relaxed text-[var(--fg-soft)]">{detail.bio}</p>
+              {detail.platformPlanks.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Platform
+                  </p>
+                  <ul className="mt-1 space-y-1">
+                    {detail.platformPlanks.slice(0, 3).map((p) => (
+                      <li key={p.id} className="text-sm text-[var(--fg-soft)]">
+                        · <span className="font-semibold text-[var(--fg)]">{p.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onSelect}
+                className="text-sm font-semibold text-[var(--accent)] hover:underline"
+              >
+                {selected ? "Selected ✓" : `Manage ${candidate.name} →`}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">Profile unavailable.</p>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

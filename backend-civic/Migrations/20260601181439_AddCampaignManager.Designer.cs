@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Civic.API.Migrations
 {
     [DbContext(typeof(CivicDbContext))]
-    [Migration("20260601161537_AddCampaignManager")]
+    [Migration("20260601181439_AddCampaignManager")]
     partial class AddCampaignManager
     {
         /// <inheritdoc />
@@ -412,6 +412,38 @@ namespace Civic.API.Migrations
                     b.ToTable("CandidateMutes");
                 });
 
+            modelBuilder.Entity("Civic.API.Models.CandidateNewsResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BriefingSlug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("LlmGenerated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId", "BriefingSlug")
+                        .IsUnique();
+
+                    b.ToTable("CandidateNewsResponses");
+                });
+
             modelBuilder.Entity("Civic.API.Models.CandidateSource", b =>
                 {
                     b.Property<Guid>("Id")
@@ -522,7 +554,7 @@ namespace Civic.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("CurrentWeek")
+                    b.Property<int>("CurrentDay")
                         .HasColumnType("integer");
 
                     b.Property<string>("Difficulty")
@@ -530,8 +562,16 @@ namespace Civic.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<Guid>("ElectionCycleId")
+                    b.Property<DateTime>("ElectionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ElectionId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ElectionName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<double?>("FinalSupport")
                         .HasColumnType("double precision");
@@ -555,7 +595,7 @@ namespace Civic.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<int>("TotalWeeks")
+                    b.Property<int>("TotalDays")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -573,7 +613,7 @@ namespace Civic.API.Migrations
 
                     b.HasIndex("CandidateId");
 
-                    b.HasIndex("ElectionCycleId");
+                    b.HasIndex("ElectionId");
 
                     b.HasIndex("UserId");
 
@@ -599,8 +639,15 @@ namespace Civic.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("GeneratedPostId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("RespondedBriefingSlug")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -618,12 +665,9 @@ namespace Civic.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<int>("WeekNumber")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("CampaignId", "WeekNumber");
+                    b.HasIndex("CampaignId", "DayNumber");
 
                     b.ToTable("CivicCampaignActions");
                 });
@@ -674,6 +718,9 @@ namespace Civic.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("integer");
+
                     b.Property<string>("DeltaBreakdownJson")
                         .IsRequired()
                         .HasColumnType("text");
@@ -694,12 +741,9 @@ namespace Civic.API.Migrations
                         .HasMaxLength(600)
                         .HasColumnType("character varying(600)");
 
-                    b.Property<int>("WeekNumber")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("CampaignId", "WeekNumber")
+                    b.HasIndex("CampaignId", "DayNumber")
                         .IsUnique();
 
                     b.ToTable("CivicCampaignWeeks");
@@ -1487,6 +1531,17 @@ namespace Civic.API.Migrations
                     b.Navigation("Candidate");
                 });
 
+            modelBuilder.Entity("Civic.API.Models.CandidateNewsResponse", b =>
+                {
+                    b.HasOne("Civic.API.Models.VirtualCandidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
             modelBuilder.Entity("Civic.API.Models.CandidateSource", b =>
                 {
                     b.HasOne("Civic.API.Models.VirtualCandidate", "Candidate")
@@ -1517,15 +1572,15 @@ namespace Civic.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Civic.API.Models.ElectionCycle", "ElectionCycle")
+                    b.HasOne("Civic.API.Models.Election", "Election")
                         .WithMany()
-                        .HasForeignKey("ElectionCycleId")
+                        .HasForeignKey("ElectionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Candidate");
 
-                    b.Navigation("ElectionCycle");
+                    b.Navigation("Election");
                 });
 
             modelBuilder.Entity("Civic.API.Models.CivicCampaignAction", b =>

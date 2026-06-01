@@ -52,6 +52,7 @@ public static class CivicSupportModel
 
         points *= actionType switch
         {
+            CivicCampaignActionType.RespondToNews => o.NewsResponseMultiplier,
             CivicCampaignActionType.RapidResponse => o.RapidResponseMultiplier,
             CivicCampaignActionType.TargetIssue => o.TargetIssueFocusBonus,
             CivicCampaignActionType.ShoreUpAxis => o.ShoreUpAxisDefense,

@@ -6,13 +6,18 @@ namespace Civic.API.Services.Campaign;
 /// </summary>
 public class CivicCampaignOptions
 {
-    // Campaign length.
-    public int DefaultTotalWeeks { get; set; } = 8;
-    public int MinTotalWeeks { get; set; } = 4;
-    public int MaxTotalWeeks { get; set; } = 16;
+    // Campaign length is tied to the live election date, not a custom duration.
+    // Safety bound on the number of playable days (does not change the election date shown).
+    public int MaxCampaignDays { get; set; } = 200;
 
-    // Weekly action budget.
-    public int ActionsPerWeek { get; set; } = 3;
+    // Daily action budget.
+    public int ActionsPerDay { get; set; } = 2;
+
+    // How many recent news briefings to offer the manager to respond to (keep 5-7).
+    public int NewsItemsToOffer { get; set; } = 6;
+
+    // How many response options to generate per (candidate, briefing).
+    public int ResponseOptionsPerItem { get; set; } = 3;
 
     // Base magnitude (in support points) of a single well-aimed action before modifiers.
     public double BaseActionPoints { get; set; } = 3.0;
@@ -32,14 +37,19 @@ public class CivicCampaignOptions
 
     // Per-action-type modifiers.
     public double RapidResponseMultiplier { get; set; } = 1.3;  // higher risk/reward on hot news
+    public double NewsResponseMultiplier { get; set; } = 1.3;   // responding to real news lands harder
     public double TargetIssueFocusBonus { get; set; } = 1.25;   // concentrated effort
-    public double ShoreUpAxisDefense { get; set; } = 0.5;       // reduces opponent gains this week
+    public double ShoreUpAxisDefense { get; set; } = 0.5;       // reduces opponent gains this day
     public double OffBrandPenalty { get; set; } = 0.5;          // multiplier when fit is negative
 
-    // Opponent AI: weekly support drift toward/away, scaled by difficulty (support points).
-    public double OpponentDriftEasy { get; set; } = 0.8;
-    public double OpponentDriftNormal { get; set; } = 1.5;
-    public double OpponentDriftHard { get; set; } = 2.4;
+    // Base support magnitude per action (daily turns are smaller than the old weekly turns).
+    // NOTE: BaseActionPoints below is the base; daily play uses these alongside DailyDriftScale.
+
+    // Opponent AI: per-day support drift toward/away, scaled by difficulty (support points).
+    // Smaller than the old weekly values since opponents now move every day.
+    public double OpponentDriftEasy { get; set; } = 0.15;
+    public double OpponentDriftNormal { get; set; } = 0.30;
+    public double OpponentDriftHard { get; set; } = 0.50;
 
     // Random variance applied to opponent moves (support points, +/-). Deterministic in tests (0).
     public double OpponentVariance { get; set; } = 1.0;
