@@ -19,7 +19,12 @@ public static class CivicMappings
         Summary30 = b.Summary30,
     };
 
-    public static BriefingDto ToDto(this Briefing b) => new()
+    /// <summary>
+    /// Maps a briefing to its detail DTO. Pass the originating <paramref name="source"/> NewsItem
+    /// (resolved from <see cref="Briefing.SourceNewsItemId"/>) to surface original-article
+    /// attribution; omit it for hand-seeded briefings that have no upstream source.
+    /// </summary>
+    public static BriefingDto ToDto(this Briefing b, NewsItem? source = null) => new()
     {
         Id = b.Id,
         Slug = b.Slug,
@@ -46,6 +51,9 @@ public static class CivicMappings
         ThinkDeeperQuestion = b.ThinkDeeperQuestion,
         RelatedConcepts = b.RelatedConcepts,
         WhereToGoNext = b.WhereToGoNext,
+        SourceUrl = source?.Url,
+        SourcePublisher = source?.Source,
+        SourcePublishedAt = source is null ? null : DateTime.SpecifyKind(source.PublishedAt, DateTimeKind.Utc),
     };
 
     public static ConceptDto ToDto(this Concept c) => new()

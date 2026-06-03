@@ -1,5 +1,13 @@
 # Frontend Prototype Spec — Youth-First Civic Sensemaking Platform
 
+> **⚠️ Superseded / historical.** This was the spec for the original
+> frontend-only prototype (mocked data, no backend, five visual directions). The
+> app has since become a real full stack: the Magazine direction won and is now
+> the entire site, wired to a .NET 8 + PostgreSQL backend with real auth — none
+> of the "do not implement backend / mocked data only" guidance below applies
+> anymore. Kept for history. For the current frontend (routes, structure, API
+> client) and everything else, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
 ## Objective
 Build a frontend-only prototype for a youth-first civic learning and sensemaking platform.
 

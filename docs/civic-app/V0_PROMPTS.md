@@ -1,5 +1,10 @@
 # v0 Prompt Pack — Youth-First Civic Sensemaking Platform
 
+> **⚠️ Historical.** These are the prompts used to generate the original v0
+> visual prototypes. They are not part of the current build (the Magazine
+> direction was chosen and is now a real, backend-wired app). Kept for history.
+> For the current system see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
 Use these prompts directly in v0. Do not paste the full PRD. Start with one visual direction at a time.
 
 ---

@@ -20,6 +20,12 @@ public class DailyTopicRefreshService : BackgroundService
     {
         _logger.LogInformation("DailyTopicRefresh started. Interval={Hours}h", _intervalHours);
 
+        // Don't touch the DB until migrations have completed (DB init now runs
+        // in the background — see DatabaseInitializerService).
+        using (var readyScope = _scopeFactory.CreateScope())
+            await readyScope.ServiceProvider.GetRequiredService<StartupReadiness>()
+                .WaitUntilReadyAsync(stoppingToken);
+
         // Initial delay — let the app start up
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 

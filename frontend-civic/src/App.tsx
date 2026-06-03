@@ -24,6 +24,10 @@ import MagazineCampaigns from "@/prototypes/magazine/pages/Campaigns";
 import MagazineCampaignCreate from "@/prototypes/magazine/pages/CampaignCreate";
 import MagazineCampaignDashboard from "@/prototypes/magazine/pages/CampaignDashboard";
 import MagazineCampaignNewsResponse from "@/prototypes/magazine/pages/CampaignNewsResponse";
+import MagazineLeagues from "@/prototypes/magazine/pages/Leagues";
+import MagazineLeagueDetail from "@/prototypes/magazine/pages/LeagueDetail";
+import MagazineLeagueJoin from "@/prototypes/magazine/pages/LeagueJoin";
+import MagazineLeagueRound from "@/prototypes/magazine/pages/LeagueRound";
 
 function App() {
   return (
@@ -53,6 +57,10 @@ function App() {
             <Route path="campaigns/new" element={<MagazineCampaignCreate />} />
             <Route path="campaigns/:id" element={<MagazineCampaignDashboard />} />
             <Route path="campaigns/:id/news/:slug" element={<MagazineCampaignNewsResponse />} />
+            <Route path="leagues" element={<MagazineLeagues />} />
+            <Route path="leagues/join/:code" element={<MagazineLeagueJoin />} />
+            <Route path="leagues/:id" element={<MagazineLeagueDetail />} />
+            <Route path="leagues/:id/rounds/:roundId" element={<MagazineLeagueRound />} />
           </Route>
         </Routes>
       </AuthProvider>

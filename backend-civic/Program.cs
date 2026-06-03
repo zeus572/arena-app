@@ -9,6 +9,7 @@ using Civic.API.Data;
 using Civic.API.Services;
 using Civic.API.Services.Campaign;
 using Civic.API.Services.Generation;
+using Civic.API.Services.Leagues;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,7 +70,13 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<CampaignPostGenera
 
 // Campaign Manager game mode: manage an existing candidate to win their race.
 builder.Services.Configure<CivicCampaignOptions>(builder.Configuration.GetSection("CivicCampaign"));
+builder.Services.AddScoped<ICampaignPostFactory, CampaignPostFactory>();
 builder.Services.AddScoped<CivicCampaignService>();
+
+// Leagues: social competition groups (invites, membership, shared rounds, standings).
+builder.Services.AddScoped<LeagueScoringService>();
+builder.Services.AddScoped<LeagueService>();
+builder.Services.AddScoped<LeagueRoundService>();
 
 // HTTP client for proxying premium-initiated debate creation to the debate
 // backend. Base URL defaulted to the local dev port; override in production.

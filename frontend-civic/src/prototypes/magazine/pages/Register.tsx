@@ -11,6 +11,7 @@ export default function MagazineRegister() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,6 +19,11 @@ export default function MagazineRegister() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Catch typos before hitting the server — the password field is masked.
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
     setSubmitting(true);
     try {
       await register(email, password, displayName, inviteCode);
@@ -85,6 +91,27 @@ export default function MagazineRegister() {
             data-testid="register-password"
           />
           <span className="text-xs text-[var(--muted)]">At least 8 characters.</span>
+        </label>
+
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Confirm password
+          </span>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            aria-invalid={confirmPassword.length > 0 && confirmPassword !== password}
+            className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-base text-[var(--fg)] outline-none focus:border-[var(--accent)]"
+            data-testid="register-confirm-password"
+          />
+          {confirmPassword.length > 0 && confirmPassword !== password && (
+            <span className="text-xs text-red-600" data-testid="register-password-mismatch">
+              Passwords don't match.
+            </span>
+          )}
         </label>
 
         <label className="flex flex-col gap-2">

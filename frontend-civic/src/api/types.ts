@@ -39,6 +39,10 @@ export type CivicBriefing = CivicBriefingSummary & {
   thinkDeeperQuestion: string;
   relatedConcepts: string[];
   whereToGoNext: string[];
+  // Original-source attribution (null for hand-seeded briefings with no upstream article).
+  sourceUrl: string | null;
+  sourcePublisher: string | null;
+  sourcePublishedAt: string | null;
 };
 
 export type Concept = {

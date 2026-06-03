@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { to: "/", label: "Home", end: true },
   { to: "/candidates", label: "Feed" },
   { to: "/campaigns", label: "Campaign" },
+  { to: "/leagues", label: "Leagues" },
   { to: "/quizzes", label: "Quizzes" },
 ];
 

@@ -3,6 +3,7 @@ using System;
 using Civic.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Civic.API.Migrations
 {
     [DbContext(typeof(CivicDbContext))]
-    partial class CivicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260602065721_AddLeagues")]
+    partial class AddLeagues
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -987,9 +990,6 @@ namespace Civic.API.Migrations
 
                     b.HasIndex("OwnerUserId");
 
-                    b.HasIndex("OwnerUserId", "Name")
-                        .IsUnique();
-
                     b.ToTable("Leagues");
                 });
 
@@ -1057,10 +1057,6 @@ namespace Civic.API.Migrations
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("IdentityRefreshedAt")
                         .HasColumnType("timestamp with time zone");

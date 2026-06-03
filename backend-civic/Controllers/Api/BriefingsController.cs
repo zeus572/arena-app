@@ -35,7 +35,13 @@ public class BriefingsController : ControllerBase
         var b = await _db.Briefings
             .Include(x => x.WordsToKnow)
             .FirstOrDefaultAsync(x => x.Slug == slug);
-        return b is null ? NotFound() : Ok(b.ToDto());
+        if (b is null) return NotFound();
+
+        // Resolve the original article so the briefing can credit + link its source.
+        var source = b.SourceNewsItemId is Guid newsId
+            ? await _db.NewsItems.FirstOrDefaultAsync(n => n.Id == newsId)
+            : null;
+        return Ok(b.ToDto(source));
     }
 
     // GET /api/briefings/{slug}/candidate-reactions — Virtual Candidate posts

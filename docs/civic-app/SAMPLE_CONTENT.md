@@ -1,5 +1,12 @@
 # Sample Content — Youth-First Civic Sensemaking Platform
 
+> **📜 Reference (POC-era).** This hand-authored sample content is now seeded
+> into the live app from `backend-civic/Seed/*.json` (briefings, concepts,
+> think-deepers, questions, quiz-questions, etc.). In production, briefings are
+> also generated automatically from live news (see
+> **[ARCHITECTURE.md](./ARCHITECTURE.md)** §6). Kept here as the original
+> reference set.
+
 This file contains mocked sample content for design and frontend prototyping. It is not intended to be legally authoritative or current. Use it to test UI, layout, content density, and interaction patterns.
 
 ---

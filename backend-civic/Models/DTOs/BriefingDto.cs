@@ -35,4 +35,10 @@ public class BriefingDto : BriefingSummaryDto
     public string ThinkDeeperQuestion { get; set; } = "";
     public string[] RelatedConcepts { get; set; } = Array.Empty<string>();
     public string[] WhereToGoNext { get; set; } = Array.Empty<string>();
+
+    // Original-source attribution, resolved from the NewsItem this briefing was synthesized from.
+    // Null for hand-seeded briefings (no upstream article).
+    public string? SourceUrl { get; set; }
+    public string? SourcePublisher { get; set; }
+    public DateTime? SourcePublishedAt { get; set; }
 }

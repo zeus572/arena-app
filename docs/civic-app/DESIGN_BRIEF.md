@@ -1,5 +1,12 @@
 # Design Brief — Youth-First Civic Sensemaking Platform
 
+> **📜 POC-era vision doc.** This captures the original product vision and is
+> still the north star for *why* Civic Arena exists. It predates the
+> implementation — the modules described below are now built and live. For what
+> actually exists today (stack, API, data model, deployment) see
+> **[ARCHITECTURE.md](./ARCHITECTURE.md)**. Notes like "Mocked data only / No
+> backend required" reflect the prototype phase and no longer hold.
+
 ## Working Name
 Use placeholder names during exploration. Strong candidates:
 - Civic Spark

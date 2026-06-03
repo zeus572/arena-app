@@ -63,6 +63,12 @@ public class BotHeartbeatService : BackgroundService
         _logger.LogInformation("BotHeartbeat started. Enabled={Enabled}, Interval={Interval}s, MaxActive={Max}",
             _settings.Enabled, _settings.IntervalSeconds, _maxActiveDebates);
 
+        // Don't touch the DB until migrations have completed (DB init now runs
+        // in the background — see DatabaseInitializerService).
+        using (var readyScope = _scopeFactory.CreateScope())
+            await readyScope.ServiceProvider.GetRequiredService<StartupReadiness>()
+                .WaitUntilReadyAsync(stoppingToken);
+
         await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)

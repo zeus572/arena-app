@@ -75,6 +75,20 @@ export default function MagazineBriefingDetail() {
         <p className="mt-4 text-xs uppercase tracking-wider text-[var(--muted)]">
           Audience: {briefing.audienceLevel} · Key concept: {briefing.keyConcept}
         </p>
+        {briefing.sourceUrl && (
+          <p className="mt-3 text-xs text-[var(--muted)]" data-testid="briefing-source">
+            Source:{" "}
+            <a
+              href={briefing.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[var(--accent)] hover:underline"
+              data-testid="briefing-source-link"
+            >
+              {briefing.sourcePublisher || "Read the original"} ↗
+            </a>
+          </p>
+        )}
       </header>
 
       <div className="mx-auto mt-14 max-w-3xl">

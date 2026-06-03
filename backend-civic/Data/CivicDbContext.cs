@@ -41,6 +41,13 @@ public class CivicDbContext : DbContext
     public DbSet<CivicCampaignAction> CivicCampaignActions => Set<CivicCampaignAction>();
     public DbSet<CandidateNewsResponse> CandidateNewsResponses => Set<CandidateNewsResponse>();
 
+    // Leagues: social competition groups.
+    public DbSet<League> Leagues => Set<League>();
+    public DbSet<LeagueMember> LeagueMembers => Set<LeagueMember>();
+    public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();
+    public DbSet<LeagueRound> LeagueRounds => Set<LeagueRound>();
+    public DbSet<LeagueRoundEntry> LeagueRoundEntries => Set<LeagueRoundEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Petition>(e =>
@@ -376,6 +383,99 @@ public class CivicDbContext : DbContext
             e.HasOne(r => r.Candidate)
                 .WithMany()
                 .HasForeignKey(r => r.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<League>(e =>
+        {
+            e.HasKey(l => l.Id);
+            e.HasIndex(l => l.OwnerUserId);
+            // League names are unique per organizer (not globally): two different owners may both
+            // have a "Friends League", but one owner can't reuse a name. The Id (GUID) stays the
+            // global identifier.
+            e.HasIndex(l => new { l.OwnerUserId, l.Name }).IsUnique();
+            e.HasMany(l => l.Members)
+                .WithOne(m => m.League!)
+                .HasForeignKey(m => m.LeagueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(l => l.Rounds)
+                .WithOne(r => r.League!)
+                .HasForeignKey(r => r.LeagueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(l => l.Invites)
+                .WithOne(i => i.League!)
+                .HasForeignKey(i => i.LeagueId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LeagueMember>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.HasIndex(m => new { m.LeagueId, m.UserId }).IsUnique();
+            e.HasIndex(m => new { m.LeagueId, m.Role });
+            e.HasIndex(m => m.UserId);
+            e.Property(m => m.Role).HasConversion<string>().HasMaxLength(20);
+
+            // Linked campaign is optional and survives the campaign's deletion (member just unlinks).
+            e.HasOne(m => m.Campaign)
+                .WithMany()
+                .HasForeignKey(m => m.CampaignId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(m => m.Candidate)
+                .WithMany()
+                .HasForeignKey(m => m.CandidateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasMany(m => m.Entries)
+                .WithOne(en => en.Member!)
+                .HasForeignKey(en => en.LeagueMemberId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LeagueInvite>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.HasIndex(i => i.Code).IsUnique();
+            e.HasIndex(i => i.LeagueId);
+        });
+
+        modelBuilder.Entity<LeagueRound>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.LeagueId, r.SeasonNumber, r.RoundNumber }).IsUnique();
+            e.HasIndex(r => new { r.LeagueId, r.Status });
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(r => r.PointsAwardedJson).HasColumnType("jsonb");
+
+            // Winner is a soft pointer; clearing it on member removal must not cascade-delete the round.
+            e.HasOne(r => r.WinnerMember)
+                .WithMany()
+                .HasForeignKey(r => r.WinnerMemberId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasMany(r => r.Entries)
+                .WithOne(en => en.Round!)
+                .HasForeignKey(en => en.LeagueRoundId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LeagueRoundEntry>(e =>
+        {
+            e.HasKey(en => en.Id);
+            e.HasIndex(en => new { en.LeagueRoundId, en.LeagueMemberId }).IsUnique();
+            e.HasIndex(en => en.PostId);
+            e.Property(en => en.Tone).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(en => en.Candidate)
+                .WithMany()
+                .HasForeignKey(en => en.CandidateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // The post holds the body + votes; deleting an entry removes its post.
+            e.HasOne(en => en.Post)
+                .WithMany()
+                .HasForeignKey(en => en.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

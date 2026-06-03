@@ -11,6 +11,7 @@ import {
 import {
   type CampaignPost,
   type PostFragment,
+  type ReactionResult,
   reactToPost,
   removePostReaction,
   reactToFragment,
@@ -82,14 +83,28 @@ function HeatBody({
 export function CampaignPostCard({
   post,
   showCompare = true,
+  initialMine = null,
+  votingDisabled = false,
+  votingDisabledLabel,
+  onReact,
+  onRemoveReaction,
 }: {
   post: CampaignPost;
   showCompare?: boolean;
+  /** Pre-set the viewer's current vote (e.g. when the server already knows it). */
+  initialMine?: "up" | "down" | null;
+  /** Disable up/down + fragment voting (own entry, or a closed round). */
+  votingDisabled?: boolean;
+  /** Tooltip explaining why voting is off (e.g. "You can't vote on your own response"). */
+  votingDisabledLabel?: string;
+  /** Override whole-post voting (e.g. league rounds vote via a guarded endpoint). */
+  onReact?: (type: "up" | "down") => Promise<ReactionResult>;
+  onRemoveReaction?: () => Promise<ReactionResult>;
 }) {
   const candidate = post.candidate;
   const [up, setUp] = useState(post.up);
   const [down, setDown] = useState(post.down);
-  const [mine, setMine] = useState<"up" | "down" | null>(null);
+  const [mine, setMine] = useState<"up" | "down" | null>(initialMine);
   const [heatOn, setHeatOn] = useState(false);
   const [fragState, setFragState] = useState<FragState>(() => initialFragState(post.fragments));
   const [activeFrag, setActiveFrag] = useState<string | null>(null);
@@ -99,19 +114,23 @@ export function CampaignPostCard({
   const accent = toneColor(post.tone);
 
   async function vote(type: "up" | "down") {
-    if (busy) return;
+    if (busy || votingDisabled) return;
     setBusy(true);
     try {
-      const res = mine === type ? await removePostReaction(post.id) : await reactToPost(post.id, type);
+      const removing = mine === type;
+      const res = removing
+        ? await (onRemoveReaction ? onRemoveReaction() : removePostReaction(post.id))
+        : await (onReact ? onReact(type) : reactToPost(post.id, type));
       setUp(res.postUp);
       setDown(res.postDown);
-      setMine(mine === type ? null : type);
+      setMine(removing ? null : type);
     } finally {
       setBusy(false);
     }
   }
 
   async function voteFragment(fragmentId: string, type: "up" | "down") {
+    if (votingDisabled) return;
     const res = await reactToFragment(post.id, fragmentId, type);
     if (res.fragmentUp != null && res.fragmentDown != null) {
       const total = res.fragmentUp + res.fragmentDown;
@@ -181,7 +200,7 @@ export function CampaignPostCard({
         )}
       </div>
 
-      {heatOn && activeFrag && (
+      {heatOn && activeFrag && !votingDisabled && (
         <div
           className="mt-3 flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--bg)] p-2 text-sm"
           data-testid="fragment-react-bar"
@@ -241,10 +260,12 @@ export function CampaignPostCard({
       <footer className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || votingDisabled}
+          title={votingDisabled ? votingDisabledLabel : undefined}
           onClick={() => vote("up")}
           className={cn(
             "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-semibold transition",
+            votingDisabled && "cursor-not-allowed opacity-50",
             mine === "up"
               ? "border-green-600 bg-green-50 text-green-700"
               : "border-[var(--border)] text-[var(--fg-soft)] hover:border-green-500",
@@ -255,10 +276,12 @@ export function CampaignPostCard({
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || votingDisabled}
+          title={votingDisabled ? votingDisabledLabel : undefined}
           onClick={() => vote("down")}
           className={cn(
             "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-semibold transition",
+            votingDisabled && "cursor-not-allowed opacity-50",
             mine === "down"
               ? "border-red-600 bg-red-50 text-red-700"
               : "border-[var(--border)] text-[var(--fg-soft)] hover:border-red-500",

@@ -1,5 +1,12 @@
 # Civic Arena Values Profile System — Product Spec for Claude
 
+> **📘 Spec — implemented.** This is the design intent for the Civic Compass.
+> It is built and live (rule-based scoring: confidence × intensity weighting →
+> per-axis aggregation → cosine similarity to archetype vectors → softmax blend,
+> plus contradiction detection and the Values Receipt). For the as-built
+> details and where it lives in code, see
+> **[docs/civic-app/ARCHITECTURE.md](./civic-app/ARCHITECTURE.md)** §7.
+
 ## 1. Overview
 
 Civic Arena should help users build a nuanced civic values profile by making choices, resolving tradeoffs, and reflecting on why they believe what they believe.

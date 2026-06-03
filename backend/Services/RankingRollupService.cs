@@ -27,6 +27,12 @@ public class RankingRollupService : BackgroundService
     {
         _logger.LogInformation("RankingRollup started. Interval={Interval}min", _intervalMinutes);
 
+        // Don't touch the DB until migrations have completed (DB init now runs
+        // in the background — see DatabaseInitializerService).
+        using (var readyScope = _scopeFactory.CreateScope())
+            await readyScope.ServiceProvider.GetRequiredService<StartupReadiness>()
+                .WaitUntilReadyAsync(stoppingToken);
+
         // Initial delay
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
