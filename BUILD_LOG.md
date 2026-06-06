@@ -887,3 +887,52 @@ in-memory snapshots and emits `CoalitionOutcome` objects.
 
 **Stayed inside Layer 2.** No Layer 2H (human UI) or Layer 3 (ladder/leagues/campaign) work
 was started.
+
+---
+
+# Civic Arena Coalition Game — Layer 2H + Layer 3 (playable subset)
+
+**Batch scope (user):** strict plan order — 2H.1 → 2H.2 → 3.1 → 3.2 → 3.3 (defer 3.4) as
+backend + tests, then wire the product (persistence + API + frontend) at the end. **No live
+LLM** (seeded/constructed). Same operating rules (phase-by-phase, test-gated, commit per
+phase, halt on failure).
+
+## Phase 2H.1 — Human acts + spectrum bar
+
+**Status: GATE PASS** ✅
+
+### What was built
+- `backend-civic/Services/Coalition/Human/HumanActs.cs` — the human daily acts
+  (`HumanPosition`, `HumanAmendment`, `HumanCoSign`, `HumanDecline`,
+  `HumanReactionWithReason`, `HumanSteelman`) + `HumanActTranslator` mapping the
+  geometry-affecting ones onto the SAME `LoopAct`s the agents emit (A6). Reaction-with-reason
+  and steelman are broadcast engagement only → no `LoopAct` (no geometry change).
+- `backend-civic/Services/Coalition/Loop/SpectrumBarBuilder.cs` — `SpectrumBarView` (per-bucket
+  covered/uncovered cells, distance, deadline, leading version) built purely from geometry:
+  covered = the buckets occupied by the supporters of the current best spanning version; the
+  rest are dark corners.
+- `ComposedSpectrum` now preserves bucket insertion order (deterministic bar rendering).
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/HumanGameplayTests.cs` (pure unit tests).
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~HumanGameplayTests" --logger "console;verbosity=normal"
+```
+```
+  Passed HumanGameplayTests.SpectrumBar_ReflectsGeometry [112 ms]
+  Passed HumanGameplayTests.HumanDriven_And_AgentDriven_ReachTheSameOutcome [7 ms]
+  Passed HumanGameplayTests.HumanInput_ProducesIdenticalMachineBehavior_ToScriptedInput [11 ms]
+Total tests: 3   Passed: 3
+```
+
+### Gate evaluation
+Plan gate: *"human input produces identical machine behavior to scripted/agent input; spectrum
+bar reflects geometry."*
+- The same bridge script applied as raw LoopActs vs. as HumanActs-through-the-translator
+  (including engagement-only reaction/steelman no-ops) reaches an identical PASSED outcome
+  (same plank, signers, breadth). ✅
+- Agent self-play and human-driven play converge to the same plank. ✅
+- The spectrum bar lights the covered corner, leaves the uncovered one dark, and tracks the
+  distance (0.5 → 0.0) as the bridge lands. ✅
+No LLM. **PASS.** Proceeding to 2H.2.

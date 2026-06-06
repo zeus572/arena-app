@@ -13,14 +13,21 @@ namespace Civic.API.Services.Coalition.Geometry;
 /// </summary>
 public sealed class ComposedSpectrum
 {
-    private readonly HashSet<string> _buckets;
+    private readonly List<string> _ordered;
+    private readonly HashSet<string> _set;
 
     public ComposedSpectrum(IEnumerable<string> buckets)
-        => _buckets = new HashSet<string>(buckets, StringComparer.OrdinalIgnoreCase);
+    {
+        _set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        _ordered = new List<string>();
+        foreach (var b in buckets)
+            if (_set.Add(b)) _ordered.Add(b); // preserve insertion order, de-duplicated
+    }
 
-    public int TotalBuckets => _buckets.Count;
-    public IReadOnlyCollection<string> Buckets => _buckets;
-    public bool Contains(string bucket) => _buckets.Contains(bucket);
+    public int TotalBuckets => _ordered.Count;
+    /// <summary>Buckets in stable insertion order (so the spectrum bar renders deterministically).</summary>
+    public IReadOnlyList<string> Buckets => _ordered;
+    public bool Contains(string bucket) => _set.Contains(bucket);
 }
 
 /// <summary>Result of <see cref="BreadthCalculator.Breadth"/>.</summary>
