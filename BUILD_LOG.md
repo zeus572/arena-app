@@ -1,16 +1,9 @@
-> # ⛔ AWAITING HUMAN REVIEW OF EXTRACTION FIDELITY (Phase 0.3)
-> The unattended run reached the **mandatory stop at the end of Phase 0.3** and has ended.
-> The extraction function + fidelity harness + a starter labeled corpus are built; the
-> offline scorer and the cache-by-text-hash behavior are verified by passing automated
-> tests. **The live fidelity gate (real extraction LLM over the corpus) was NOT run here
-> because this environment has no `Anthropic:ApiKey`** — it is implemented and statically
-> skipped. A manual *Claude-in-the-loop* fidelity pass over the same corpus is recorded in
-> the Phase 0.3 section below for your review, with its limitations called out.
->
-> **Your call:** (1) review the 0.2 exemplar provisions (neutral-surface / real-tradeoff),
-> (2) supply a key, remove the `Skip` on `LiveExtraction_MeetsFidelityThreshold`, and run
-> it to get an independent fidelity number, (3) expand the starter corpus. Do NOT treat the
-> manual pass as the gate. **No work past Phase 0.3 was started.**
+> # ✅ Layer 0 reviewed & accepted · Layer 1 (geometry) in progress
+> Phase 0.3 extraction was human-reviewed and **accepted**; the prior "awaiting review"
+> banner is resolved. (The live fidelity test `LiveExtraction_MeetsFidelityThreshold`
+> remains `Skip`-gated on an `Anthropic:ApiKey` — un-skip it in a keyed environment to
+> enforce the threshold in CI.) **Layer 1 — the geometry — builds on the accepted extracted
+> structure and is PURE COMPUTATION (no LLM calls).** See the Layer 1 sections at the bottom.
 
 ---
 
@@ -414,3 +407,71 @@ judgment** (does extracted structure match human meaning) and is the **mandatory
 
 **STOPPING per operating rule 4 (mandatory human stop at end of 0.3). No later-layer work
 started.**
+
+---
+
+# Civic Arena Coalition Game — Layer 1 Build Log (geometry, computed & invisible)
+
+**Binding boundary for all of Layer 1:** every geometry function is PURE COMPUTATION —
+**no LLM calls** anywhere in `Civic.API.Services.Coalition.Geometry`. Distance, overlap,
+breadth, movement, fork detection all run over the already-extracted sub-question vectors
+from Phase 0.3 (treated as trusted input). No state machine / agents / synthesis / UI
+(those are Layer 2+).
+
+**Cross-cutting assumptions (recorded once):**
+- Geometry operates on **in-memory snapshots** (`VersionPoint`, `AcceptanceRegion`,
+  `PlayerGeometry`), not EF entities. Loading/translation from Layer 0 rows is a caller
+  concern, kept out of the geometry namespace to preserve purity and make the math trivially
+  testable on synthetic data. `VersionPoint.Positions` is exactly the extracted vector.
+- **Silence is acceptable:** a version that does not resolve a sub-question never violates a
+  player's constraint on it. Membership is monotone (more-specific versions can only lose
+  acceptability). "Teeth"/specificity is tracked (`VersionPoint.Specificity`) but is a
+  later-layer pass criterion, not a membership question.
+- Label comparisons are case-insensitive/trimmed (consistent with the 0.3 scorer).
+
+## Phase 1.1 — Acceptance-set & overlap computation
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Geometry/`)
+- `GeometryTypes.cs` — `VersionPoint` (a point in sub-question space), `AcceptanceRegion`
+  (per-sub-question acceptable label sets; `Contains(version)` with silence-acceptable
+  semantics; `FromConstraints`/`Unconstrained` builders), `PlayerGeometry` (UserId + Region
+  + optional spectrum bucket).
+- `OverlapCalculator.cs` — `Overlaps(players, version)` (does the version sit in ALL
+  regions), `Supporters` / `SupportCount`, `Intersect(regions)` (combined acceptable region),
+  `IrreconcilableKeys(regions)` (sub-questions whose acceptable-label intersection is empty —
+  no resolving version can satisfy everyone).
+- `AcceptanceSetDeriver.cs` — derives a region from sparse accept/decline signals (the
+  AcceptanceRecords + extracted-vector inputs the plan names): acceptable label set per
+  sub-question = union of co-signed labels. **Documented limitation:** a decline can't be
+  pinned to a sub-question from sparse data, so declines don't subtract labels here (precise
+  inference = probing at near-coalition, a later layer); declines are used by movement
+  detection instead.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/OverlapGeometryTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~OverlapGeometryTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed OverlapGeometryTests.Contains_RejectsConflictingLabel_AllowsSilenceAndMatch [6 ms]
+  Passed OverlapGeometryTests.Overlap_FullOverlap_AllAccept [< 1 ms]
+  Passed OverlapGeometryTests.Overlap_SingleDimensionDisagreement [2 ms]
+  Passed OverlapGeometryTests.Intersect_CombinesConstraints [12 ms]
+  Passed OverlapGeometryTests.UnconstrainedRegion_AcceptsEverything [< 1 ms]
+  Passed OverlapGeometryTests.Contains_MultiLabelAcceptableSet [< 1 ms]
+  Passed OverlapGeometryTests.Derive_BuildsAcceptableUnionFromAcceptedVersions [< 1 ms]
+  Passed OverlapGeometryTests.Overlap_EmptyOverlap_OneRejects [2 ms]
+Total tests: 8   Passed: 8
+```
+
+### Gate evaluation
+Plan gate: *"overlap correct on constructed cases incl. edge (empty overlap, full overlap,
+single-dimension disagreement)."* All covered and passing:
+- full overlap (all accept), empty overlap (one rejects + `IrreconcilableKeys` flags the key),
+  single-dimension disagreement (resolving the contested key → false; silent → true & toothless).
+No LLM in any geometry function. **PASS.** Proceeding to Phase 1.2.
