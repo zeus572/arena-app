@@ -936,3 +936,35 @@ bar reflects geometry."*
 - The spectrum bar lights the covered corner, leaves the uncovered one dark, and tracks the
   distance (0.5 → 0.0) as the bridge lands. ✅
 No LLM. **PASS.** Proceeding to 2H.2.
+
+## Phase 2H.2 — Mixed agent+human + broadcast-only invariant
+
+**Status: GATE PASS** ✅
+
+### What was built
+- `backend-civic/Services/Coalition/Agents/MixedPlayRunner.cs` — runs one provision with
+  agents AND humans co-participating (agents as seed/ballast): each round applies one queued
+  human act then every agent's chosen act, all through the same state machine.
+- `backend-civic/Services/Coalition/CoalitionSafety.cs` — structural enforcement of the
+  broadcast-only invariant (A8): a reflective scan asserting no coalition act type
+  (LoopAct/HumanAct) carries a recipient/target-user field (which would be a private channel).
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/MixedPlayTests.cs`.
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~MixedPlayTests" --logger "console;verbosity=normal"
+```
+```
+  Passed MixedPlayTests.BroadcastOnlyInvariant_HoldsAcrossEveryCoalitionAct [16 ms]
+  Passed MixedPlayTests.MixedAgentAndHuman_ReachesCoalition [27 ms]
+Total tests: 2   Passed: 2
+```
+
+### Gate evaluation
+Plan gate: *"mixed play works; safety invariant verified."*
+- A human corner + an agent corner co-drive a provision to PASSED (the human declines the
+  base, the agent tables the carve-out, both co-sign). ✅
+- Broadcast-only holds across every coalition act type; the reflective guard demonstrably
+  catches a probe type carrying `RecipientUserId`. ✅
+No LLM. **PASS.** Proceeding to Layer 3 (playable subset).
