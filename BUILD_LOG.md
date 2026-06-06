@@ -1144,3 +1144,57 @@ Frontend: `npm run build` (tsc -b + vite build) succeeds clean.
   semantic gates) remain stubbed/templated — set a key to enable later.
 - `agent-step` runs one round per call (interactive ballast); a full autoplay endpoint is a
   trivial add if wanted.
+
+## Phase 3.4 — Campaign milestones & promotion/relegation
+
+**Status: GATE PASS** ✅ — completes the implementation plan (Part F: 0.1 → 3.4).
+
+### What was built (`backend-civic/Services/Coalition/Curriculum/CampaignProgression.cs`)
+- `PassedPlank` + `CampaignMilestones.Accrue` — the legislative record, coalition-breadth meter
+  (total/avg breadth), governance-vs-culture ratio, and a payout-coupled `WeightedScore`
+  (breadth × (1 + gap-at-birth) — bridging harder provisions is worth more).
+- `PromotionService` — `Decide(skill, leagueGapTier)` (promote over-skilled players to wider
+  gaps / relegate strugglers / else stay) + `NextTier` (bounded ladder movement).
+- `CampaignCadence` — soft participation cadence = recency-weighted coverage in [0,1] (a single
+  missed day only nudges it down), with a `HardStreak` helper kept only to contrast the
+  all-or-nothing behavior we deliberately avoid.
+All pure (no LLM).
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/CampaignProgressionTests.cs`.
+```
+dotnet test ... --filter "FullyQualifiedName~CampaignProgressionTests"
+  Passed CampaignProgressionTests.Milestones_AccrueFromPassedPlanks [7 ms]
+  Passed CampaignProgressionTests.PayoutCoupling_HarderProvisionWorthMore_AtEqualBreadth [< 1 ms]
+  Passed CampaignProgressionTests.Cadence_RewardsConsistency_WithoutAllOrNothingBreakage [1 ms]
+  Passed CampaignProgressionTests.Promotion_MovesOverSkilledPlayersToWiderGaps [2 ms]
+  Passed CampaignProgressionTests.SimulatedFullCampaign_ProducesSensibleProgression [2 ms]
+Total tests: 5   Passed: 5
+```
+
+### Gate evaluation
+Plan gate: *"a simulated full campaign produces sensible records, breadth meters, ratios, and
+league movement."*
+- Milestones accrue correctly (record, breadth meter, governance ratio, payout-coupled score). ✅
+- Promotion moves over-skilled players to wider-gap leagues (and relegates strugglers, bounded). ✅
+- Cadence rewards consistency without all-or-nothing breakage (one miss stays high; a hard
+  streak would zero). ✅
+- The full simulated campaign ties them together sensibly. ✅
+No LLM. **PASS.**
+
+---
+
+## Implementation plan COMPLETE (0.1 → 3.4)
+
+Every phase in `07_IMPLEMENTATION_PLAN.md` Part F is built and gate-passing, plus the
+product-wiring slice. Full coalition suite: **67 passed, 1 skipped (API-key-gated live
+extraction fidelity), 0 failed.** No LLM in geometry/loop/curriculum; constructed-agent /
+seeded validation throughout.
+
+**Remaining optional follow-ups (not plan phases):**
+- Persist coalition outcomes as rows (currently re-derived on read).
+- Wire the live LLM seams with a key (provision birth, extraction, agent-region derivation,
+  plank prose, semantic integrity gates) + run the keyed extraction-fidelity test.
+- Fix & re-enable the pre-existing `CivicCampaignServiceTests` (unrelated, excluded since 0.1).
+- A full autoplay endpoint + persisting league/campaign progression to EF (3.2–3.4 currently
+  pure/in-memory).
