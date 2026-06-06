@@ -725,3 +725,46 @@ pairs."*
   is principled (NonNegotiable). ✅
 - Act policy: position → amend → accept progression. ✅
 No LLM (agents constructed by hand — the plan's validation mode). **PASS.** Proceeding to 2.3.
+
+## Phase 2.3 — Synthesis + integrity gates
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Loop/`)
+- `LoopMovement.cs` — shared pure movement rule (declined an earlier version before
+  co-signing the plank); the state machine now delegates to it.
+- `SynthesisService.cs` — `Synthesize(state)` SELECTS the plank from the live amendment
+  versions (bounded/precomputed set) as the best toothful version sitting in enough
+  acceptance regions and spanning the spectrum; returns the plank config, a templated text,
+  and the would-be signers. (Polished prose is the deferred LLM seam; it never changes the
+  structured plank.)
+- `IntegrityGates.cs` — `IsSubstantive(prior, amended)` (vector changed?), `HasTeeth(plank,
+  minSpecificity)`, `CountMovedSigners` / `Evaluate` (teeth + ≥1 mover). Structural and pure;
+  semantic refinement is the deferred LLM seam that could only tighten, never loosen.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/SynthesisAndGatesTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~SynthesisAndGatesTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed SynthesisAndGatesTests.Gate_Movement_CountsSignersWhoBargainedIn [15 ms]
+  Passed SynthesisAndGatesTests.Synthesis_ProducesPlankInsideSpanningIntersection_AcceptedBySigners [14 ms]
+  Passed SynthesisAndGatesTests.Gate_Substantive_RejectsCosmeticAmendment [< 1 ms]
+  Passed SynthesisAndGatesTests.Synthesis_ReturnsNull_WhenNoSpanningVersionExists [< 1 ms]
+  Passed SynthesisAndGatesTests.Gate_Teeth_RejectsToothlessPlank [< 1 ms]
+Total tests: 5   Passed: 5
+```
+
+### Gate evaluation
+Plan gate: *"gates catch the negative cases; synthesis output is itself accepted by the
+would-be signers' wouldSign()."*
+- Synthesis plank sits inside the spanning intersection and both signers' wouldSign() accept
+  it. ✅
+- Substantive gate rejects a cosmetic (same-vector) amendment; teeth gate rejects a toothless
+  plank; movement gate counts only signers who bargained in. ✅
+LLM confined to deferred refinement seams; structural gates do the enforcement. **PASS.**
+Proceeding to 2.4.

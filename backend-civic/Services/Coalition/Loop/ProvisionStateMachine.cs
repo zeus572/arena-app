@@ -150,15 +150,7 @@ public sealed class ProvisionStateMachine
 
     /// <summary>Did the signer decline some version before co-signing the plank? (bargained in, not pre-matched)</summary>
     private static bool SignerMovedToward(ProvisionLoopState s, string userId, VersionPoint plank)
-    {
-        var signals = s.SignalsFor(userId); // chronological
-        var plankCanon = plank.Canonical();
-        var acceptAt = signals
-            .Where(x => x.Version.Canonical() == plankCanon && x.Accept)
-            .Select(x => (DateTime?)x.At)
-            .FirstOrDefault();
-        return signals.Any(x => !x.Accept && (acceptAt is null || x.At < acceptAt));
-    }
+        => LoopMovement.MovedToward(s.SignalsFor(userId), plank);
 
     private static void Die(ProvisionLoopState s, string reason)
     {
