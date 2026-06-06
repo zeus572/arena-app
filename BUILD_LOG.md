@@ -1036,3 +1036,44 @@ Plan gate: *"served gap width tracks group skill on simulated league histories."
 - Served gap width is monotone non-decreasing across simulated histories of increasing skill.
   ✅
 No LLM. **PASS.** Proceeding to 3.3.
+
+## Phase 3.3 — League composition + breadth-favoring scoring
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Curriculum/`)
+- `LeagueComposition.cs` — `AgeBand`, `LeagueMemberSpec`, `ComposedLeague`, and
+  `LeagueComposer.Compose`: partitions by age band first (adults and minors NEVER share a
+  league — the age-banding safety layer, A8), then deals each band's members (bucket-grouped)
+  round-robin across leagues so each league spans as much of the intended spectrum as
+  possible. Pure.
+- `BreadthFavoringScoring.cs` — `PlayerContribution`, `BreadthFavoringScoring.Score` /
+  `Standings`: weights breadth (×5) and bridging/movement (×3) far above raw act volume
+  (×0.1), so cross-cutting play climbs fastest. Pure.
+
+**Decision recorded:** the first draft used a positional round-robin that could hand a league
+the same bucket twice; a test caught it. Fixed by dealing a bucket-grouped list round-robin
+(each league gets one per bucket before any gets a second) — not by relaxing the spanning
+assertion.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/LeagueCompositionTests.cs`.
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~LeagueCompositionTests" --logger "console;verbosity=normal"
+```
+```
+  Passed LeagueCompositionTests.Scoring_RewardsBreadthOverVolume [5 ms]
+  Passed LeagueCompositionTests.Standings_AreBreadthFavoring_OnASimulatedCohort [3 ms]
+  Passed LeagueCompositionTests.ComposedLeagues_SpanTheSpectrum_AndNeverMixAgeBands [45 ms]
+Total tests: 3   Passed: 3
+```
+
+### Gate evaluation
+Plan gate: *"composition + scoring produce breadth-favoring standings on simulated cohorts."*
+- Composed leagues span the spectrum (full leagues cover all 3 buckets) and never mix age
+  bands; no member lost/duplicated. ✅
+- Scoring rewards breadth over volume; on a simulated cohort the broad/bridging player tops
+  the standings and the pure-volume grinder sinks to the bottom. ✅
+No LLM. **PASS.** Layer 3 playable subset (3.1–3.3) complete; 3.4 deferred per scope.
+Proceeding to product wiring.
