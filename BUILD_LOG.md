@@ -475,3 +475,61 @@ single-dimension disagreement)."* All covered and passing:
 - full overlap (all accept), empty overlap (one rejects + `IrreconcilableKeys` flags the key),
   single-dimension disagreement (resolving the contested key → false; silent → true & toothless).
 No LLM in any geometry function. **PASS.** Proceeding to Phase 1.2.
+
+## Phase 1.2 — Distance & breadth signals
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Geometry/`)
+- `DistanceCalculator.cs` — `DistanceToCoalition(versions, requiredPlayers)` returns the
+  best available version and its gap = the minimum number of required players whose region
+  doesn't contain it (normalized to [0,1]; tie-break toward more specific/teeth). Adding an
+  amendment version that covers an excluded corner strictly lowers the minimum gap.
+- `BreadthCalculator.cs` — `ComposedSpectrum` (the league's bucket set, a supplied fixture)
+  + `Breadth(signers, spectrum)` = distinct spectrum buckets covered by signers / total
+  buckets. Coverage-based, so headcount-invariant.
+- `MovementDetector.cs` — `DetectFromSignals(signals)` fires when the same configuration
+  (canonical point) is rejected then later accepted; `RegionExpandedToInclude(before, after,
+  version)` is the direct region-expansion form.
+
+**Assumptions (surfaced):**
+- "Enough acceptance sets / spanning" is modeled as a **supplied required-player set** that
+  must all be covered; values-breadth of that set is measured separately by `Breadth` and
+  combined by the (later) game loop. Distance itself is the coverage gap over that set.
+- Breadth denominator is the **composed spectrum** (supplied), not the responders;
+  responders outside the spectrum don't count toward coverage (doc 06). Spectrum is a flat
+  bucket set for now; multi-axis can be encoded as composite bucket ids later.
+- Movement is detected on the **same configuration** (reject→accept). Accepting a *different*
+  configuration after rejecting another is not, by itself, movement here (the amendment-driven
+  A→B case is a loop-level region-comparison concern); `RegionExpandedToInclude` covers the
+  region form. Recorded as a deliberate, precise definition.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/DistanceBreadthMovementTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~DistanceBreadthMovementTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed DistanceBreadthMovementTests.Breadth_MeasuredAgainstComposedSpectrum_NotResponders [5 ms]
+  Passed DistanceBreadthMovementTests.Movement_Fires_OnRejectThenAccept_SameConfiguration [7 ms]
+  Passed DistanceBreadthMovementTests.Distance_Shrinks_WhenAmendmentPullsCornerIn [5 ms]
+  Passed DistanceBreadthMovementTests.Movement_RegionExpansionForm [< 1 ms]
+  Passed DistanceBreadthMovementTests.Breadth_IgnoresHeadcount_CountsDistinctSpectrumCoverage [1 ms]
+  Passed DistanceBreadthMovementTests.Distance_Edges_NoVersionsAndEmptyRequired [< 1 ms]
+  Passed DistanceBreadthMovementTests.Movement_DoesNotFire_WithoutAPriorReject [< 1 ms]
+Total tests: 7   Passed: 7
+```
+
+### Gate evaluation
+Plan gate: *"distance shrinks when an amendment pulls a corner in; breadth ignores headcount;
+movement fires on reject→accept."*
+- (a) distance 1/3 → 0 when the bridge version is added (best version flips vBase→vBridge, P
+  covered). ✅
+- (b) breadth unchanged when a signer is added in an already-covered bucket; rises only on a
+  new bucket; measured against the composed spectrum. ✅
+- (c) movement fires on reject→accept of the same config; does not fire on accept-only,
+  contraction, or accept-of-a-different-config. ✅
+No LLM in any geometry function. **PASS.** Proceeding to Phase 1.3.
