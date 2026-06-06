@@ -603,3 +603,80 @@ input; no compensating hacks were introduced).
 
 **Stayed inside Layer 1.** No state machine, agents, synthesis, or UI were built. Layer 2 is
 the next batch.
+
+---
+
+# Civic Arena Coalition Game — Layer 2 Build Log (the coalition loop, agent-played)
+
+**Scope decision (user):** build ALL of Layer 2 (2.1 → 2.5) in this batch, **no API key**.
+
+**How the no-key constraint is handled (cross-cutting):** the loop's MECHANICS are pure
+geometry + structured acts over Layer 1 — no LLM. The plan's own validation mode is
+**constructed agents/scenarios** ("pick Values profiles on purpose"), so every Layer 2 gate
+is machine-verifiable with engineered agents and runs for real here. The LLM is confined to
+isolated, stubbable SEAMS that are NOT needed by the gates:
+  1. deriving an agent's acceptance region from its real Values profile/sources (the
+     `IAgentProfileMapper` seam — stubbed; tests construct regions by hand);
+  2. rendering free-form amendment/plank TEXT (templated/stubbed; the structured config is
+     pure);
+  3. semantic refinements of the integrity gates ("restatement?" / "constrains a real
+     institution?") — the structural gates (vector-changed, specificity, movement) do the
+     primary enforcement purely.
+These seams are flagged for a keyed run; none gate this batch.
+
+**Persistence note (assumption):** the loop runs on in-memory snapshots
+(`ProvisionLoopState`) and emits `CoalitionOutcome` objects, consistent with Layer 1. Wiring
+to EF (updating `Provision.State`, persisting versions/acceptances/outcomes) is a thin
+adapter deferred out of Layer 2's computational core. The governance-vs-culture ratio is a
+Layer 3 campaign metric and is not computed here.
+
+## Phase 2.1 — Coalition loop state machine
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Loop/`)
+- `LoopTypes.cs` — `LoopConfig` (thresholds), the `LoopAct` family (`TakePosition`,
+  `ProposeAmendment`, `CastAcceptance`, `AdvanceToDeadline`), `LoopAcceptance`, `ForkChild`,
+  `CoalitionOutcome` (pass criteria in their proper spaces).
+- `ProvisionLoopState.cs` — in-memory snapshot (roster of `PlayerGeometry`, candidate
+  versions, acceptance history, deadline/logical clock, state) + helpers (per-user signals,
+  latest acceptance).
+- `ProvisionStateMachine.cs` — `Apply(state, act)`: mutate then recompute state from acts +
+  geometry. Transitions:
+  - OPEN→CONTESTED: enough positions + a concrete version on the table.
+  - CONTESTED→NEAR: a TOOTHFUL version sits in enough acceptance regions (DistanceCalculator)
+    AND its supporters span the spectrum (BreadthCalculator).
+  - CONTESTED/NEAR→FORKED: ForkDetector finds two non-overlapping broad basins → spawns two
+    `ForkChild`ren.
+  - NEAR→PASSED: explicit acceptances of one version cover ALL required signers, the version
+    has teeth (specificity), and ≥1 signer moved (declined an earlier version before
+    co-signing — doc 06 "rejected A → signed amended B").
+  - any active→DIED on deadline.
+
+**Assumptions (surfaced):** "meaningful spread" operationalized as positions ≥
+`MinPositionsForSpread` (2) + ≥1 candidate version; movement-for-pass = a signer declined some
+earlier version before co-signing (not strict same-config); a passing coalition requires ≥1
+mover (the over-breadth/cost weighting is Phase 2.5). Defaults in `LoopConfig`.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/ProvisionStateMachineTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~ProvisionStateMachineTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed ProvisionStateMachineTests.TerminalState_IgnoresFurtherActs [7 ms]
+  Passed ProvisionStateMachineTests.Died_Path_DeadlineInContested [5 ms]
+  Passed ProvisionStateMachineTests.Forked_Path_TwoBroadDisjointCamps [12 ms]
+  Passed ProvisionStateMachineTests.Passed_Path_TraversesOpenContestedNearPassed [4 ms]
+  Passed ProvisionStateMachineTests.Died_FromOpen_OnDeadline [< 1 ms]
+  Passed ProvisionStateMachineTests.Died_FromNear_WhenPlankNotApproved [< 1 ms]
+Total tests: 6   Passed: 6
+```
+
+### Gate evaluation
+Plan gate: *"every transition and all three resolutions traversed correctly by scripted
+input."* Covered: OPEN→CONTESTED, CONTESTED→NEAR, NEAR→PASSED; CONTESTED→FORKED;
+CONTESTED→DIED, OPEN→DIED, NEAR→DIED. No LLM in the machine. **PASS.** Proceeding to 2.2.
