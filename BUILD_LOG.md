@@ -968,3 +968,40 @@ Plan gate: *"mixed play works; safety invariant verified."*
 - Broadcast-only holds across every coalition act type; the reflective guard demonstrably
   catches a probe type carrying `RecipientUserId`. ✅
 No LLM. **PASS.** Proceeding to Layer 3 (playable subset).
+
+## Phase 3.1 — Provision gap-width estimation
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Curriculum/`)
+- `GapWidthEstimator.cs` — `EstimateAtBirth(league, baseVersion)` = a birth-time gap proxy =
+  (1) base-rejection mass (intensity-weighted positions the league won't co-sign in the base)
+  + (2) irreconcilability mass (sub-questions where members' acceptable sets don't intersect
+  at all — disjoint poles). `NormalizedGap` for [0,1] bucketing. Pure.
+
+**Decision recorded:** the estimator first used base-rejection mass only, but a test surfaced
+that this *understates* an unbridgeable provision whose base sits at one pole (one side
+"accepts" the base). Rather than weaken the test, I improved the estimator to add the
+irreconcilability term (zero on the single-constrainer ladder, so the correlation gate is
+unaffected).
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/GapWidthEstimationTests.cs`.
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~GapWidthEstimationTests" --logger "console;verbosity=normal"
+```
+```
+  Passed GapWidthEstimationTests.Estimator_FlagsAnUnbridgeableProvision_AsWiderThanAnEasyOne [12 ms]
+  Passed GapWidthEstimationTests.EstimatedGapWidth_CorrelatesWithObservedClosureDifficulty [22 ms]
+Total tests: 2   Passed: 2
+```
+
+### Gate evaluation
+Plan gate: *"estimator predicts observed closure difficulty above chance."*
+- Across a ladder of provisions (k=2..5 demanding corners), the birth gap estimate
+  rank-correlates (Spearman > 0.5) with observed difficulty-to-close (carve-out versions the
+  self-play loop had to create). ✅
+- The estimator flags a disjoint-NonNegotiable provision as a wider gap than an easy
+  bridgeable one. ✅
+No LLM; calibrated against real self-play runs. **PASS.** Proceeding to 3.2.
