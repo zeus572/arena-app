@@ -1005,3 +1005,34 @@ Plan gate: *"estimator predicts observed closure difficulty above chance."*
 - The estimator flags a disjoint-NonNegotiable provision as a wider gap than an easy
   bridgeable one. ✅
 No LLM; calibrated against real self-play runs. **PASS.** Proceeding to 3.2.
+
+## Phase 3.2 — Difficulty laddering
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Curriculum/`)
+- `DifficultyLadder.cs` — `LeagueOutcome`/`LeagueHistory` (a group's bridging track record),
+  `GroupSkill.Estimate` (skill in [0,1] = blend of closure rate + widest gap bridged; new
+  league = 0), and `DifficultyLadder.Serve`/`ServedGap` (serve the candidate whose gap width
+  best matches the group's skill-target; narrow for new groups, wider as skill grows). Pure.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/DifficultyLadderTests.cs`.
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~DifficultyLadderTests" --logger "console;verbosity=normal"
+```
+```
+  Passed DifficultyLadderTests.Serve_PicksClosestGapToSkillTarget [6 ms]
+  Passed DifficultyLadderTests.NewLeague_GetsNarrowGap_VeteranLeague_GetsWiderGap [3 ms]
+  Passed DifficultyLadderTests.ServedGapWidth_IsMonotoneInGroupSkill_OnSimulatedHistories [1 ms]
+Total tests: 3   Passed: 3
+```
+
+### Gate evaluation
+Plan gate: *"served gap width tracks group skill on simulated league histories."*
+- A new league (skill 0) is served the narrowest (near-overlapping) provision; a veteran
+  (skill high) a wider one. ✅
+- Served gap width is monotone non-decreasing across simulated histories of increasing skill.
+  ✅
+No LLM. **PASS.** Proceeding to 3.3.
