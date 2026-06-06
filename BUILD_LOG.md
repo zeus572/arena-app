@@ -680,3 +680,48 @@ Total tests: 6   Passed: 6
 Plan gate: *"every transition and all three resolutions traversed correctly by scripted
 input."* Covered: OPEN→CONTESTED, CONTESTED→NEAR, NEAR→PASSED; CONTESTED→FORKED;
 CONTESTED→DIED, OPEN→DIED, NEAR→DIED. No LLM in the machine. **PASS.** Proceeding to 2.2.
+
+## Phase 2.2 — Agent acceptance + act policy
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Agents/`)
+- `CoalitionAgent.cs` — a Values-grounded agent = acceptance region + per-sub-question
+  intensities + spectrum bucket; `ToPlayer()` projects it to the geometry player type. The
+  region+intensities are the structured projection of the agent's Values onto a provision;
+  producing them from a real profile is the `IAgentProfileMapper` LLM seam (deferred/stubbed),
+  after which all per-version reasoning is pure.
+- `AgentAcceptancePolicy.cs` — `WouldSign(agent, version)` (Part C core function): pure region
+  membership; returns accept?, intensity (strongest position satisfied / violated), reasoning,
+  and `IsPrincipledDissent` when a decline is anchored to a NonNegotiable (doc 06). Supports
+  honest partial acceptance.
+- `AgentActPolicy.cs` — `ChooseAct(agent, state)` chooses among {take position, propose
+  amendment, accept/decline}; `ProposeBridge` builds a carve-out that flips a version's
+  conflicting sub-questions to the agent's acceptable labels (never violating the agent's own
+  positions). All pure.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/AgentPolicyTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~AgentPolicyTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed AgentPolicyTests.UnbridgeablePair_NeverOverlapsWithoutViolatingANonNegotiable [10 ms]
+  Passed AgentPolicyTests.BridgeablePair_OverlapsAfterSensibleAmendment [1 ms]
+  Passed AgentPolicyTests.ActPolicy_PositionsThenAmendsThenAccepts [7 ms]
+Total tests: 3   Passed: 3
+```
+
+### Gate evaluation
+Plan gate: *"agent acceptance behavior matches engineered expectations on the constructed
+pairs."*
+- Bridgeable pair: no overlap on the base; after P's sensible carve-out (gf→exempt) BOTH
+  wouldSign → overlap. ✅
+- Unbridgeable pair (disjoint NonNegotiable on scope): across every toothful candidate
+  (incl. each side's self-serving bridge), no version is accepted by both, and every decline
+  is principled (NonNegotiable). ✅
+- Act policy: position → amend → accept progression. ✅
+No LLM (agents constructed by hand — the plan's validation mode). **PASS.** Proceeding to 2.3.
