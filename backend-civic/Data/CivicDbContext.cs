@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Civic.API.Models;
 
 namespace Civic.API.Data;
@@ -47,6 +49,14 @@ public class CivicDbContext : DbContext
     public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();
     public DbSet<LeagueRound> LeagueRounds => Set<LeagueRound>();
     public DbSet<LeagueRoundEntry> LeagueRoundEntries => Set<LeagueRoundEntry>();
+
+    // Coalition game (Layer 0): provisions & structured engagement.
+    public DbSet<Provision> Provisions => Set<Provision>();
+    public DbSet<SubQuestion> SubQuestions => Set<SubQuestion>();
+    public DbSet<ProvisionPosition> ProvisionPositions => Set<ProvisionPosition>();
+    public DbSet<Amendment> Amendments => Set<Amendment>();
+    public DbSet<ProvisionVersion> ProvisionVersions => Set<ProvisionVersion>();
+    public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -477,6 +487,115 @@ public class CivicDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(en => en.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        ConfigureCoalition(modelBuilder);
+    }
+
+    /// <summary>
+    /// Coalition game (Layer 0). The provision is the aggregate root; all child
+    /// engagement cascades from it. Two non-tree edges (Amendment->Version and
+    /// AcceptanceRecord->Version) are set non-cascading to avoid multiple
+    /// cascade paths through the provision.
+    /// </summary>
+    private static void ConfigureCoalition(ModelBuilder modelBuilder)
+    {
+        // jsonb storage for the extracted sub-question-position vector. Stored
+        // as jsonb (not fixed columns) precisely so a sub-question added after
+        // birth needs no migration (principle A4).
+        var positionsComparer = new ValueComparer<Dictionary<string, string>>(
+            (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions?)null)
+                   == JsonSerializer.Serialize(b, (JsonSerializerOptions?)null),
+            d => JsonSerializer.Serialize(d, (JsonSerializerOptions?)null).GetHashCode(),
+            d => JsonSerializer.Deserialize<Dictionary<string, string>>(
+                     JsonSerializer.Serialize(d, (JsonSerializerOptions?)null),
+                     (JsonSerializerOptions?)null) ?? new());
+
+        modelBuilder.Entity<Provision>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.Slug).IsUnique();
+            e.HasIndex(p => p.State);
+            e.HasIndex(p => p.SourceBriefingId);
+            e.Property(p => p.State).HasConversion<string>().HasMaxLength(20);
+
+            e.HasMany(p => p.SubQuestions)
+                .WithOne(s => s.Provision!)
+                .HasForeignKey(s => s.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(p => p.Positions)
+                .WithOne(s => s.Provision!)
+                .HasForeignKey(s => s.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(p => p.Amendments)
+                .WithOne(s => s.Provision!)
+                .HasForeignKey(s => s.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(p => p.Versions)
+                .WithOne(s => s.Provision!)
+                .HasForeignKey(s => s.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(p => p.AcceptanceRecords)
+                .WithOne(s => s.Provision!)
+                .HasForeignKey(s => s.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SubQuestion>(e =>
+        {
+            e.HasKey(s => s.Id);
+            // Key is stable + unique within a provision; it's the vector key.
+            e.HasIndex(s => new { s.ProvisionId, s.Key }).IsUnique();
+            e.Property(s => s.Origin).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ProvisionPosition>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.ProvisionId);
+            e.HasIndex(p => new { p.ProvisionId, p.UserId });
+            e.Property(p => p.Intensity).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<Amendment>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => a.ProvisionId);
+            // Proposed version is a soft pointer; deleting the version nulls it
+            // rather than cascading (the provision is the cascade root).
+            e.HasOne(a => a.ProposedVersion)
+                .WithMany()
+                .HasForeignKey(a => a.ProposedVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ProvisionVersion>(e =>
+        {
+            e.HasKey(v => v.Id);
+            e.HasIndex(v => v.ProvisionId);
+            e.HasIndex(v => new { v.ProvisionId, v.TextHash });
+            e.Property(v => v.ExtractedPositions)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    d => JsonSerializer.Serialize(d, (JsonSerializerOptions?)null),
+                    s => JsonSerializer.Deserialize<Dictionary<string, string>>(s, (JsonSerializerOptions?)null) ?? new())
+                .Metadata.SetValueComparer(positionsComparer);
+        });
+
+        modelBuilder.Entity<AcceptanceRecord>(e =>
+        {
+            e.HasKey(r => r.Id);
+            // One acceptance record per (user, version).
+            e.HasIndex(r => new { r.UserId, r.VersionId }).IsUnique();
+            e.HasIndex(r => r.ProvisionId);
+            e.HasIndex(r => r.VersionId);
+            e.Property(r => r.Intensity).HasConversion<string>().HasMaxLength(20);
+            // Version edge is non-cascading: the provision cascade already
+            // removes these rows, so this avoids a second cascade path.
+            e.HasOne(r => r.Version)
+                .WithMany(v => v.AcceptanceRecords)
+                .HasForeignKey(r => r.VersionId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
