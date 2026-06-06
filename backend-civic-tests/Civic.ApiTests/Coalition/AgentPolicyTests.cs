@@ -109,10 +109,15 @@ public class AgentPolicyTests
         sm.Apply(state, new TakePositionAct("M", "x", AnswerIntensity.Medium));
         sm.Apply(state, new TakePositionAct("P", "y", AnswerIntensity.Medium));
 
-        // P rejects the base, so its next act is to propose a carve-out amendment.
-        var pAct = AgentActPolicy.ChooseAct(p, state);
-        pAct.Should().BeOfType<ProposeAmendmentAct>();
-        ((ProposeAmendmentAct)pAct!).Version.Positions["gf"].Should().Be("exempt");
+        // P rejects the base. Honest reporting first: it records a decline of the base...
+        var pDecline = AgentActPolicy.ChooseAct(p, state);
+        pDecline.Should().BeOfType<CastAcceptanceAct>().Which.Accept.Should().BeFalse();
+        sm.Apply(state, pDecline!);
+
+        // ...then it proposes the carve-out amendment that would pull the base into its set.
+        var pAmend = AgentActPolicy.ChooseAct(p, state);
+        pAmend.Should().BeOfType<ProposeAmendmentAct>();
+        ((ProposeAmendmentAct)pAmend!).Version.Positions["gf"].Should().Be("exempt");
 
         // M already accepts the base, so its act is to co-sign an acceptable version.
         AgentActPolicy.ChooseAct(m, state).Should().BeOfType<CastAcceptanceAct>()

@@ -39,25 +39,26 @@ public static class AgentActPolicy
             return new CastAcceptanceAct(agent.UserId, v, true, AgentAcceptancePolicy.WouldSign(agent, v).Intensity);
         }
 
-        // 3. Otherwise, take the leading version we reject and propose a carve-out that
-        //    pulls it into our acceptance set.
         var rejected = toothful
             .Where(v => !AgentAcceptancePolicy.WouldSign(agent, v).Accept)
             .OrderByDescending(v => OverlapCalculator.SupportCount(state.Players, v))
             .ToList();
+
+        // 3. Honest reporting (Part C): record a decline of the leading rejected version we
+        //    haven't yet weighed in on. This logs the disagreement and is the move an agent
+        //    later bargains away from.
+        foreach (var v in rejected)
+        {
+            if (state.LatestAcceptance(agent.UserId, v) is null)
+                return new CastAcceptanceAct(agent.UserId, v, false, AgentAcceptancePolicy.WouldSign(agent, v).Intensity);
+        }
+
+        // 4. Then propose a carve-out that pulls the leading rejected version into our set.
         foreach (var v in rejected)
         {
             var bridge = ProposeBridge(agent, v);
             if (bridge is not null && state.Versions.All(x => x.Canonical() != bridge.Canonical()))
                 return new ProposeAmendmentAct(agent.UserId, bridge);
-        }
-
-        // 4. Nothing constructive left: record a principled decline of the leading
-        //    rejected version (once), so the disagreement is logged honestly.
-        foreach (var v in rejected)
-        {
-            if (state.LatestAcceptance(agent.UserId, v) != false)
-                return new CastAcceptanceAct(agent.UserId, v, false, AgentAcceptancePolicy.WouldSign(agent, v).Intensity);
         }
 
         return null; // no useful act this round

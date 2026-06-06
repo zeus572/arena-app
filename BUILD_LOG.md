@@ -768,3 +768,48 @@ would-be signers' wouldSign()."*
   plank; movement gate counts only signers who bargained in. ✅
 LLM confined to deferred refinement seams; structural gates do the enforcement. **PASS.**
 Proceeding to 2.4.
+
+## Phase 2.4 — THE VERTICAL SLICE (agent self-play) — de-risk milestone
+
+**Status: GATE PASS** ✅  ← the core thesis is demonstrated end-to-end.
+
+### What was built (`backend-civic/Services/Coalition/Agents/`)
+- `SelfPlayRunner.cs` — the autonomous self-play harness (also the reusable regression
+  engine, Part E). Each round every agent picks an act (pure `AgentActPolicy`) and the
+  `ProvisionStateMachine` applies it, until the provision resolves, a full round produces no
+  act (stall), or a round cap is hit. Records the distance-to-coalition signal each round.
+  Entirely pure — no LLM.
+- Refinement to `AgentActPolicy` (from 2.2): agents now record an HONEST DECLINE of the
+  leading rejected version (Part C honest reporting) before proposing a carve-out — this is
+  the move they later bargain away from, which is what makes movement/cost real. The 2.2
+  act-policy test was updated to the new (still correct) progression: position → honest
+  decline → propose carve-out → co-sign.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/VerticalSliceTests.cs` (pure self-play).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~VerticalSliceTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed VerticalSliceTests.BridgeablePair_DrivesToPassed_DistanceShrinks_PlankRecorded [27 ms]
+  Passed VerticalSliceTests.ThreeAgents_BridgeableViaOneCarveOut_PassWithFullSpectrumBreadth [1 ms]
+Total tests: 2   Passed: 2
+```
+(The updated `AgentPolicyTests` also re-run green: 3/3.)
+
+### What the slice demonstrates
+A bridgeable pair (and a 3-agent variant) start from a base version one corner rejects; the
+agents autonomously take positions → CONTESTED, the rejecting corner honestly declines and
+proposes the grandfather carve-out → a spanning, broad version → NEAR-COALITION → the corner
+that bargained in plus the others co-sign → **PASSED**. The recorded outcome carries the
+plank (`scope=large-only; gf=exempt`), the signers, breadth (2 buckets / full 3-bucket
+spectrum), specificity (teeth) and the mover count. The distance signal is monotonically
+non-increasing across the run and ends at 0.0.
+
+### Gate evaluation
+Plan gate: *"the full slice runs autonomously and produces a sane coalition."* The bridgeable
+set drives the provision to PASSED via a sensible amendment; distance shrinks as expected; the
+passed plank lands in the outcome record. Fully autonomous, no LLM. **PASS.** Proceeding to 2.5.
