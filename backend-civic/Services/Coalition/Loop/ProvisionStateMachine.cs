@@ -57,6 +57,17 @@ public sealed class ProvisionStateMachine
         return s.State;
     }
 
+    /// <summary>
+    /// Recompute the state from current data + geometry WITHOUT applying a new act.
+    /// Used by the persistence layer, where acts are already written to the DB and the
+    /// state is rebuilt from rows: persist row -> reload -> Evaluate -> save State.
+    /// </summary>
+    public ProvisionState Evaluate(ProvisionLoopState s)
+    {
+        Recompute(s);
+        return s.State;
+    }
+
     private static void Recompute(ProvisionLoopState s)
     {
         if (s.IsTerminal) return;
@@ -101,6 +112,17 @@ public sealed class ProvisionStateMachine
                 return;
         }
     }
+
+    /// <summary>
+    /// Re-derive the PASS outcome from current data (ignoring the persisted state) — used by the
+    /// read model to surface the plank/breadth/signers for an already-resolved provision, since
+    /// the outcome isn't stored.
+    /// </summary>
+    public CoalitionOutcome? ResolvePassOutcome(ProvisionLoopState s) => EvaluatePass(s, s.RequiredPlayers);
+
+    /// <summary>Re-derive the fork basins from current data (for the read model).</summary>
+    public ForkResult DetectFork(ProvisionLoopState s) =>
+        ForkDetector.Detect(s.Versions, s.RequiredPlayers, s.Spectrum, s.Config.ForkOptions);
 
     /// <summary>Geometry-only: does a TOOTHFUL version sit in enough acceptance regions and span the spectrum?</summary>
     private static bool HasSpanningBroadVersion(ProvisionLoopState s, IReadOnlyList<PlayerGeometry> required)

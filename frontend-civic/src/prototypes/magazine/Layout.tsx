@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { to: "/candidates", label: "Feed" },
   { to: "/campaigns", label: "Campaign" },
   { to: "/leagues", label: "Leagues" },
+  { to: "/coalition", label: "Coalition" },
   { to: "/quizzes", label: "Quizzes" },
 ];
 

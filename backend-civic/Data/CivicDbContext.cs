@@ -58,6 +58,7 @@ public class CivicDbContext : DbContext
     public DbSet<ProvisionVersion> ProvisionVersions => Set<ProvisionVersion>();
     public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
     public DbSet<ExtractionCacheEntry> ExtractionCacheEntries => Set<ExtractionCacheEntry>();
+    public DbSet<CoalitionParticipant> CoalitionParticipants => Set<CoalitionParticipant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -605,6 +606,18 @@ public class CivicDbContext : DbContext
             // Cache key: normalized-text hash + known-sub-question signature.
             e.HasIndex(c => new { c.TextHash, c.KnownSignature }).IsUnique();
             e.Property(c => c.ResultJson).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<CoalitionParticipant>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => new { c.ProvisionId, c.UserId }).IsUnique();
+            e.Property(c => c.RegionJson).HasColumnType("jsonb");
+            e.Property(c => c.IntensitiesJson).HasColumnType("jsonb");
+            e.HasOne(c => c.Provision)
+                .WithMany()
+                .HasForeignKey(c => c.ProvisionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

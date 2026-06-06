@@ -79,6 +79,10 @@ builder.Services.AddScoped<
     Civic.API.Services.Coalition.IExtractionService,
     Civic.API.Services.Coalition.ExtractionService>();
 
+// Coalition game (Layer 2/2H/3): the playable loop + seeding.
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopService>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
+
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();
 builder.Services.AddScoped<LeagueService>();
@@ -191,6 +195,10 @@ using (var scope = app.Services.CreateScope())
 
     var seeder = scope.ServiceProvider.GetRequiredService<ISeedService>();
     await seeder.SeedAsync();
+
+    // Seed the coalition demo provisions (constructed agents; idempotent).
+    var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
+    await coalitionSeeder.SeedAsync();
 }
 
 app.Run();

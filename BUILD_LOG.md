@@ -1077,3 +1077,70 @@ Plan gate: *"composition + scoring produce breadth-favoring standings on simulat
   the standings and the pure-volume grinder sinks to the bottom. ✅
 No LLM. **PASS.** Layer 3 playable subset (3.1–3.3) complete; 3.4 deferred per scope.
 Proceeding to product wiring.
+
+---
+
+## Product wiring — persistence + API + frontend slice (testable in the product)
+
+**Status: built; backend integration tests PASS; frontend builds clean.** This is the
+product-wiring track (beyond the plan's phases) that makes the loop clickable end-to-end. No
+live LLM (constructed agents + templated text).
+
+### What was built
+Backend (`backend-civic/`):
+- `Models/Coalition/CoalitionParticipant.cs` + migration `20260606221152_AddCoalitionParticipants`
+  (applied to `civic` and `civic_test`) — persists agents (region+intensities as jsonb) and
+  human players (bucket; region derived from their AcceptanceRecords).
+- `Services/Coalition/Product/CoalitionLoopService.cs` — the bridge: rebuilds the pure
+  `ProvisionLoopState` from EF rows, applies human/agent acts (persisting positions, versions,
+  acceptances), recomputes state via the pure state machine (`Evaluate`), and exposes read
+  models (incl. the spectrum bar). Agents persist by canonical-version matching; the outcome is
+  re-derived on read via `ResolvePassOutcome`/`DetectFork` (it isn't stored).
+- `Services/Coalition/Product/CoalitionSeeder.cs` — seeds two demo provisions with constructed
+  agents (idempotent): an interactive data-center fee (one agent corner + open human corner) and
+  an agent-only AI-hiring provision (3 bridgeable corners). Seeded on startup.
+- `Controllers/Api/CoalitionProvisionsController.cs` — `GET /api/coalition/provisions`,
+  `GET .../{id}`, `POST .../{id}/join|positions|amendments|acceptances|agent-step`,
+  `POST /api/coalition/seed`. All broadcast-only.
+- `ProvisionStateMachine.Evaluate` (DB-driven recompute) + `ResolvePassOutcome`/`DetectFork`
+  (read-model resolution). Registered services + startup seeding in `Program.cs`.
+
+Frontend (`frontend-civic/`):
+- `src/api/coalition.ts` — typed client.
+- `pages/CoalitionProvisions.tsx` (list + seed) and `pages/CoalitionProvisionDetail.tsx`
+  (spectrum bar, sub-questions, versions with co-sign/decline, take-position, propose-carve-out,
+  "Run agents", outcome banner, participants). Routes + a "Coalition" nav link added.
+
+### Tests + actual output
+Backend HTTP integration (`backend-civic-tests/Civic.ApiTests/CoalitionApiTests.cs`):
+```
+dotnet test ... --filter "FullyQualifiedName~CoalitionApiTests"
+  Passed CoalitionApiTests.AgentOnlyProvision_SelfPlaysToPassed_OverHttp [317 ms]
+  Passed CoalitionApiTests.HumanPlusAgentProvision_BridgesToPassed_OverHttp [117 ms]
+```
+- Agent-only provision self-plays to PASSED over real HTTP (state machine + persistence),
+  spectrum fully covered, distance 0.
+- Human (join+position+co-sign) + agent (ballast) bridge to PASSED via the grandfather carve-out.
+
+Full coalition suite (Layers 0+1+2+2H+3 + product): **62 passed, 1 skipped, 0 failed**.
+Frontend: `npm run build` (tsc -b + vite build) succeeds clean.
+
+### How to test in the product
+1. `docker start arena-postgres`
+2. Backend: `cd backend-civic && dotnet run` (serves on the civic port; seeds the demo provisions
+   on startup). 
+3. Frontend: `cd frontend-civic && npm run dev`, open the app, click **Coalition** in the nav.
+4. Open the **AI-hiring** provision and click **Run agents** a few times → watch it reach PASSED
+   with the spectrum bar filling in. Or open the **data-center fee**, **Join as left**, take a
+   position, **Run agents** until the grandfather carve-out appears, **Co-sign** it, **Run agents**
+   once more → PASSED.
+
+### Assumptions / limitations (recorded)
+- Outcomes aren't persisted as rows; they're re-derived on read from the data (plank = the
+  version all required signed). Persisting an outcome row is a clean follow-up.
+- Human regions derive from their AcceptanceRecords (declines don't subtract — precise inference
+  is the deferred probing step). The composed spectrum is derived from participant buckets.
+- Live LLM seams (provision birth from briefings, real agent-region derivation, plank prose,
+  semantic gates) remain stubbed/templated — set a key to enable later.
+- `agent-step` runs one round per call (interactive ballast); a full autoplay endpoint is a
+  trivial add if wanted.

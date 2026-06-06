@@ -24,6 +24,8 @@ import MagazineCampaigns from "@/prototypes/magazine/pages/Campaigns";
 import MagazineCampaignCreate from "@/prototypes/magazine/pages/CampaignCreate";
 import MagazineCampaignDashboard from "@/prototypes/magazine/pages/CampaignDashboard";
 import MagazineCampaignNewsResponse from "@/prototypes/magazine/pages/CampaignNewsResponse";
+import MagazineCoalitionProvisions from "@/prototypes/magazine/pages/CoalitionProvisions";
+import MagazineCoalitionProvisionDetail from "@/prototypes/magazine/pages/CoalitionProvisionDetail";
 import MagazineLeagues from "@/prototypes/magazine/pages/Leagues";
 import MagazineLeagueDetail from "@/prototypes/magazine/pages/LeagueDetail";
 import MagazineLeagueJoin from "@/prototypes/magazine/pages/LeagueJoin";
@@ -57,6 +59,8 @@ function App() {
             <Route path="campaigns/new" element={<MagazineCampaignCreate />} />
             <Route path="campaigns/:id" element={<MagazineCampaignDashboard />} />
             <Route path="campaigns/:id/news/:slug" element={<MagazineCampaignNewsResponse />} />
+            <Route path="coalition" element={<MagazineCoalitionProvisions />} />
+            <Route path="coalition/:id" element={<MagazineCoalitionProvisionDetail />} />
             <Route path="leagues" element={<MagazineLeagues />} />
             <Route path="leagues/join/:code" element={<MagazineLeagueJoin />} />
             <Route path="leagues/:id" element={<MagazineLeagueDetail />} />
