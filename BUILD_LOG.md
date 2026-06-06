@@ -533,3 +533,73 @@ movement fires on reject→accept."*
 - (c) movement fires on reject→accept of the same config; does not fire on accept-only,
   contraction, or accept-of-a-different-config. ✅
 No LLM in any geometry function. **PASS.** Proceeding to Phase 1.3.
+
+## Phase 1.3 — Fork detection
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/Geometry/`)
+- `ForkDetector.cs` — `Detect(versions, players, spectrum, options)` builds a `Basin` per
+  candidate version (supporters + their values-breadth) and classifies:
+  - **Fork** — ≥2 values-broad basins whose supporter sets are non-overlapping (distinct
+    cross-spectrum camps);
+  - **Convergent** — a single values-broad basin;
+  - **None** — no values-broad basin yet.
+  `ForkOptions` exposes the thresholds.
+
+**Assumptions (surfaced):**
+- "Values-broad" = a basin covers ≥ `BroadCoverage` (default 0.6) of the composed spectrum's
+  buckets (floored at 2 buckets). Two broad basins are "non-overlapping" if they share ≤
+  `OverlapTolerance` (default 0.34) of the smaller camp's supporters. Defaults are sane
+  starts; tune against observed self-play later (Layer 3 calibration).
+- Fully-empty (toothless catch-all) versions are ignored (`MinSpecificity` default 1) so a
+  degenerate "everyone trivially accepts the empty version" can't mask a real fork. A
+  *toothful* bridge version that genuinely unites both camps correctly flips the result to
+  Convergent (covered by a test).
+- Fork classification runs over the **actual candidate versions** (what players authored);
+  convergence vs. fork turns on whether a uniting broad version exists among them — exactly
+  the doc-06 framing ("no single configuration in a spanning intersection, but two").
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/ForkDetectionTests.cs` (pure unit tests).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~ForkDetectionTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed ForkDetectionTests.None_WhenNoBroadBasinExists [7 ms]
+  Passed ForkDetectionTests.Fork_TwoNonOverlappingBroadBasins_IsFlagged [14 ms]
+  Passed ForkDetectionTests.Convergent_SingleBroadBasin_IsNotAFork [1 ms]
+  Passed ForkDetectionTests.Fork_CollapsesToConvergent_WhenABridgeVersionUnitesBothCamps [< 1 ms]
+Total tests: 4   Passed: 4
+```
+
+### Gate evaluation
+Plan gate: *"a constructed three-way that should fork is flagged; a convergent case is not."*
+- The data-center-style two-camp scenario (all-facilities vs large-only, each spanning the
+  spectrum, disjoint supporters) is classified **Fork**. ✅
+- The single-broad-basin scenario is classified **Convergent** (not a fork). ✅
+- Bonus: adding a uniting bridge version flips Fork→Convergent; no broad basin → None.
+No LLM in any geometry function. **PASS.**
+
+---
+
+## Layer 1 — run summary
+
+All three Layer 1 gates passed on executed, constructed-data tests. The full coalition test
+set (Layer 0 + Layer 1) runs **26 passed, 1 skipped** (the API-key-gated live extraction
+fidelity test), **0 failed**:
+```
+Passed!  - Failed: 0, Passed: 26, Skipped: 1, Total: 27 - Civic.ApiTests.dll (net8.0)
+```
+
+**Architecture boundary verified:** a grep of `backend-civic/Services/Coalition/Geometry`
+for `ILlmClient | GenerateStructured | Anthropic | LlmModelTier | Claude` returns **0
+matches** — the geometry layer makes no LLM calls (principle A2/A5 upheld). No geometry test
+failure traced back to extraction output (extraction was accepted and treated as trusted
+input; no compensating hacks were introduced).
+
+**Stayed inside Layer 1.** No state machine, agents, synthesis, or UI were built. Layer 2 is
+the next batch.
