@@ -813,3 +813,77 @@ non-increasing across the run and ends at 0.0.
 Plan gate: *"the full slice runs autonomously and produces a sane coalition."* The bridgeable
 set drives the provision to PASSED via a sensible amendment; distance shrinks as expected; the
 passed plank lands in the outcome record. Fully autonomous, no LLM. **PASS.** Proceeding to 2.5.
+
+## Phase 2.5 — Widen scenarios + over-breadth guard
+
+**Status: GATE PASS** ✅
+
+### What was built (`backend-civic/Services/Coalition/`)
+- `Loop/CoalitionScorer.cs` — scores a passed coalition on breadth · cost · specificity ·
+  movement. The over-breadth guard lives in COST: a signer's stake = the weight of the
+  strongest position it holds on the plank's resolved cruxes (Low=1…NonNegotiable=4); an
+  "accept-anything, low-intensity-everywhere" agent constrains no crux → floor stake, so its
+  cheap acceptance scores low. Weighted-sum total (not a product) so one zero dimension
+  doesn't collapse the score. Starting weights for Layer 3 calibration.
+- `Agents/SelfPlayRunner.cs` refinement: if no agent can move the provision to a resolution,
+  the deadline is advanced so "fail" scenarios resolve honestly to DIED.
+
+### Test + actual output
+`backend-civic-tests/Civic.ApiTests/Coalition/WidenScenariosTests.cs` (pure self-play + scorer).
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~WidenScenariosTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Passed WidenScenariosTests.Breadth_ScalesWithNumberOfSpectrumBucketsCovered(n: 4) [19 ms]
+  Passed WidenScenariosTests.Breadth_ScalesWithNumberOfSpectrumBucketsCovered(n: 2) [< 1 ms]
+  Passed WidenScenariosTests.OverBreadthGuard_CheapAcceptancesScoreBelowCostlyConcessions [4 ms]
+  Passed WidenScenariosTests.Engineered_Unbridgeable_DiesAtDeadline [< 1 ms]
+  Passed WidenScenariosTests.Engineered_ThreeWay_Forks [44 ms]
+Total tests: 5   Passed: 5
+```
+
+### Gate evaluation
+Plan gate: *"each engineered property reproduced; the over-breadth guard demonstrably bites."*
+- Engineered three-way (two NonNegotiable camps) self-plays to **FORKED** with two scope
+  basins. ✅
+- Unbridgeable pair self-plays to an honest **DIED** at the deadline. ✅
+- Breadth **scales** with distinct spectrum buckets covered (n=2→2, n=4→4). ✅
+- Over-breadth guard: a cheap accept-anything coalition scores below a costly cross-spectrum
+  one of identical breadth + specificity (cost 3 vs 9; total clearly lower). ✅
+No LLM. **PASS.**
+
+---
+
+## Layer 2 — run summary
+
+All five Layer 2 gates passed on executed, constructed-scenario tests. Full coalition suite
+(Layers 0+1+2) runs **47 passed, 1 skipped** (the API-key-gated live extraction fidelity
+test), **0 failed**:
+```
+Passed!  - Failed: 0, Passed: 47, Skipped: 1, Total: 48 - Civic.ApiTests.dll (net8.0)
+```
+
+**Architecture boundary verified:** a grep of `backend-civic/Services/Coalition` for
+`ILlmClient | GenerateStructured | Anthropic | LlmModelTier | Claude` matches **only** the two
+Layer 0 files (`ExtractionService`, `ProvisionBirthService`) — the **Geometry, Loop, and
+Agents** namespaces (all of Layer 1 + Layer 2) contain **zero** LLM references. The state
+machine, agent policies, synthesis, gates, scorer and self-play are pure computation
+(A2/A5 upheld).
+
+**LLM seams left for a keyed run (flagged, none gate this batch):**
+1. `IAgentProfileMapper` — derive an agent's acceptance region from a real
+   celebrity/historical Values profile (agents here are constructed, the plan's validation
+   mode).
+2. Free-form TEXT rendering of amendments and the synthesized plank (templated here).
+3. Semantic refinement of the integrity gates ("restatement?", "constrains a real
+   institution?") — structural gates do the enforcement; refinement could only tighten.
+
+**Deferred (recorded) adapters:** persisting the loop to EF (Provision.State, versions,
+acceptances, outcomes) and the governance-vs-culture ratio (Layer 3). The loop runs on
+in-memory snapshots and emits `CoalitionOutcome` objects.
+
+**Stayed inside Layer 2.** No Layer 2H (human UI) or Layer 3 (ladder/leagues/campaign) work
+was started.

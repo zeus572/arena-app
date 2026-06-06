@@ -57,6 +57,13 @@ public sealed class SelfPlayRunner
             }
         }
 
+        // If no one could move it to a resolution, the deadline eventually arrives (DIED).
+        if (!state.IsTerminal)
+        {
+            _sm.Apply(state, new AdvanceToDeadlineAct());
+            distances.Add(CurrentDistance(state));
+        }
+
         return new SelfPlayResult(state.Outcome, distances, rounds, stalled);
     }
 
