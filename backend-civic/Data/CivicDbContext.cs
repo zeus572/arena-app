@@ -57,6 +57,7 @@ public class CivicDbContext : DbContext
     public DbSet<Amendment> Amendments => Set<Amendment>();
     public DbSet<ProvisionVersion> ProvisionVersions => Set<ProvisionVersion>();
     public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
+    public DbSet<ExtractionCacheEntry> ExtractionCacheEntries => Set<ExtractionCacheEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -596,6 +597,14 @@ public class CivicDbContext : DbContext
                 .WithMany(v => v.AcceptanceRecords)
                 .HasForeignKey(r => r.VersionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ExtractionCacheEntry>(e =>
+        {
+            e.HasKey(c => c.Id);
+            // Cache key: normalized-text hash + known-sub-question signature.
+            e.HasIndex(c => new { c.TextHash, c.KnownSignature }).IsUnique();
+            e.Property(c => c.ResultJson).HasColumnType("jsonb");
         });
     }
 }

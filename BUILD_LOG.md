@@ -1,3 +1,19 @@
+> # ⛔ AWAITING HUMAN REVIEW OF EXTRACTION FIDELITY (Phase 0.3)
+> The unattended run reached the **mandatory stop at the end of Phase 0.3** and has ended.
+> The extraction function + fidelity harness + a starter labeled corpus are built; the
+> offline scorer and the cache-by-text-hash behavior are verified by passing automated
+> tests. **The live fidelity gate (real extraction LLM over the corpus) was NOT run here
+> because this environment has no `Anthropic:ApiKey`** — it is implemented and statically
+> skipped. A manual *Claude-in-the-loop* fidelity pass over the same corpus is recorded in
+> the Phase 0.3 section below for your review, with its limitations called out.
+>
+> **Your call:** (1) review the 0.2 exemplar provisions (neutral-surface / real-tradeoff),
+> (2) supply a key, remove the `Skip` on `LiveExtraction_MeetsFidelityThreshold`, and run
+> it to get an independent fidelity number, (3) expand the starter corpus. Do NOT treat the
+> manual pass as the gate. **No work past Phase 0.3 was started.**
+
+---
+
 # Civic Arena Coalition Game — Layer 0 Build Log
 
 > Unattended multi-phase run per `docs/civic_arena_gamification/07_IMPLEMENTATION_PLAN.md`
@@ -277,3 +293,124 @@ toothless provisions). The only reviewer flag is the judicial→policy reframing
 Plan gate is **human review** of neutral-surface/real-tradeoff quality (explicitly not
 self-certifiable, and explicitly not the mandatory stop). Mechanics tests pass; exemplar
 outputs recorded above for review. **Proceeding to Phase 0.3 per the operating rules.**
+
+---
+
+## Phase 0.3 — The extraction function + fidelity harness (CRITICAL; ends this run)
+
+**Status: built; offline scorer + cache behavior GATE-verified by passing tests; the LIVE
+fidelity gate is implemented but UNRUN (no API key) — AWAITING HUMAN (see banner).**
+
+### What was built
+
+Production (`backend-civic/`):
+- `Services/Coalition/ExtractionResult.cs` — `ExtractionResult` (`Positions` map +
+  `NewSubQuestions`) and its LLM wire DTOs.
+- `Services/Coalition/ExtractionService.cs` — `IExtractionService.ExtractAsync(versionText,
+  knownSubQuestions)` = **the extraction function**. Computes a normalized-text SHA-256 +
+  a known-sub-question signature, checks the persistent cache, calls the extraction LLM on a
+  miss, stores the result. `CoalitionPrompts.Extract(...)` is the prompt (built in 0.2).
+- `Models/Coalition/ExtractionCacheEntry.cs` + DbContext config — the cache table
+  (`jsonb` result, unique `(TextHash, KnownSignature)`).
+- Migration `20260606065933_AddExtractionCache` (applied to `civic_test`).
+- Registered `IExtractionService` in `Program.cs`.
+
+Test harness (`backend-civic-tests/Civic.ApiTests/`):
+- `Coalition/ExtractionFidelityCorpus.cs` — **STARTER** hand-labeled corpus: 15 free-form
+  versions across the 4 sample provisions, each with gold positions + an
+  `ExpectsNewSubQuestion` flag. 4 cases (SD-5, OS-4, AI-4, SP-3) are designed to surface a
+  brand-new sub-question (A4). **Clearly marked as a starter the human will expand.**
+- `Coalition/ExtractionFidelityScorer.cs` — pure scorer: position accuracy =
+  matched-gold / total-gold; new-sub-question detection correctness per case.
+- `ExtractionServiceTests.cs` — three tests (see below).
+
+**Assumptions (surfaced):**
+- Extraction default tier = **Sonnet** (A7 says fidelity is the load-bearing risk; cache
+  bounds cost). Switch to Haiku and re-run the harness if cost dominates.
+- Cache key = normalized-text hash **+** known-sub-question signature (same text can extract
+  differently once more sub-questions are known). Normalization = trim + collapse internal
+  whitespace, case preserved.
+- Fidelity threshold set to **0.80** position accuracy + **perfect** new-sub-question
+  detection. Tune after the first real keyed run.
+
+### Tests + actual output
+
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~ExtractionServiceTests" --logger "console;verbosity=normal"
+```
+Output:
+```
+  Skipped Civic.ApiTests.ExtractionServiceTests.LiveExtraction_MeetsFidelityThreshold [1 ms]
+  Passed  Civic.ApiTests.ExtractionServiceTests.Extraction_IsCachedByTextHash [141 ms]
+  Passed  Civic.ApiTests.ExtractionServiceTests.Scorer_IsCorrect_OnSyntheticPredictions [3 ms]
+Total tests: 3   Passed: 2   Skipped: 1
+```
+
+- `Scorer_IsCorrect_OnSyntheticPredictions` (PASS) — proves the scorer math offline
+  (2/3 accuracy on a crafted case; detection catches an expected-but-didn't-fire case).
+- `Extraction_IsCachedByTextHash` (PASS) — **proves "cached by text hash"**: a repeat call
+  with identical text+known set makes **one** LLM call (second served from cache); changed
+  text makes a second call; the cache row is persisted.
+- `LiveExtraction_MeetsFidelityThreshold` (**SKIPPED**, no API key) — the real gate. Body is
+  fully implemented: runs all 15 corpus cases through `extract()`, asserts position accuracy
+  ≥ 0.80 and perfect new-sub-question detection. **Remove the `Skip` + set a key to run.**
+
+Full Layer 0 suite (all three test classes): **7 passed, 1 skipped, 0 failed.**
+
+### >>> Manual Claude-in-the-loop fidelity pass (NOT the gate; for review) <<<
+
+Because no key is available, I (this agent) applied the `CoalitionPrompts.Extract` prompt to
+each corpus version by hand and scored it against the gold labels. **Limitations, stated
+plainly:** the same intelligence wrote the corpus texts, the labels, AND this extraction, so
+this is **circular** and will read optimistically; the texts are also deliberately clear.
+**This is not evidence the extraction LLM is reliable** — it shows the harness wiring and the
+corpus are coherent. Treat the numbers as an upper bound; the real signal comes from the
+keyed `LiveExtraction_MeetsFidelityThreshold` run.
+
+| Case | Gold positions | Predicted | Match | NewSubQ exp/fired |
+|---|---|---|---|---|
+| SD-1 | floor; federal-agency | floor; federal-agency | 2/2 | no/no |
+| SD-2 | ceiling; state-ag; delete-on-graduation | same | 3/3 | no/no |
+| SD-3 | private-right-of-action | same | 1/1 | no/no |
+| SD-4 | vendor-scope=large-only | same (silent on floor/ceiling) | 1/1 | no/no |
+| SD-5 | floor | floor + parental-opt-out NEW | 1/1 | yes/yes |
+| OS-1 | large-only; transparency-plus-appeal; independent-board | same | 3/3 | no/no |
+| OS-2 | all-platforms; must-carry | same | 2/2 | no/no |
+| OS-3 | courts-only | same | 1/1 | no/no |
+| OS-4 | large-only | large-only + middleware-choice NEW | 1/1 | yes/yes |
+| AI-1 | size-threshold; main-factors; on-request | same | 3/3 | no/no |
+| AI-2 | mandatory-third-party; all-employers | same | 2/2 | no/no |
+| AI-3 | federal-contractors-only; self-audit-attestation | same | 2/2 | no/no |
+| AI-4 | (none) | (none) + second-tool-reeval NEW | 0/0 | yes/yes |
+| SP-1 | bell-to-bell; district; medical-and-emergency | same | 3/3 | no/no |
+| SP-2 | instruction-only; parent; graduated-penalties | same | 3/3 | no/no |
+| SP-3 | bell-to-bell | bell-to-bell + storage-funding NEW | 1/1 | yes/yes |
+
+Manual totals: **position accuracy 29/29 = 100%**, **new-sub-question detection 16/16**.
+
+**Honest fidelity-risk flags (where a real model could diverge — A7):**
+- **AI-4**: "re-scored by a different vendor's tool" is a genuinely NEW crux, but a model
+  could misread it as `human-review-trigger=on-request`. A false position match here would
+  also suppress the new-sub-question. This is the highest-risk item.
+- **OS-1**: distinguishing `transparency-plus-appeal` from `transparency-only` hinges on the
+  "appeal path" clause; a model might collapse them.
+- **SD-4**: "baseline" arguably implies a floor; the label intentionally treats the text as
+  silent on floor-vs-ceiling. A model that infers `floor` would diverge from the (silent)
+  gold — worth deciding whether "baseline ⇒ floor" should be the labeled convention.
+- General: 100% reflects clear texts + circular authorship. Expect the keyed run to be lower;
+  set the threshold from that run, and grow the corpus with adversarial/ambiguous texts.
+
+### Gate evaluation
+
+Plan gate: *"fidelity ≥ agreed threshold on the labeled corpus."* This is **partly a human
+judgment** (does extracted structure match human meaning) and is the **mandatory stop**.
+- Built: the function, the cache, the scorer, and a starter labeled corpus. ✅
+- Verified automatically: scorer math + cache-by-text-hash. ✅
+- **NOT machine-verified here:** live fidelity ≥ 0.80, because no API key exists in this
+  environment. The test is implemented and skipped; a manual stand-in pass is recorded above
+  with its circularity called out.
+
+**STOPPING per operating rule 4 (mandatory human stop at end of 0.3). No later-layer work
+started.**
