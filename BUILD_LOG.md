@@ -120,3 +120,160 @@ Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration:
 Plan gate: *"all CRUD + the 'add sub-question late' path pass."* All three tests pass when
 executed, including the explicit no-migration assertion for the late sub-question path.
 **PASS.** Proceeding to Phase 0.2.
+
+---
+
+## Phase 0.2 — Provision birth from a briefing
+
+**Status: built; mechanics gate PASS; neutral-surface/real-tradeoff is a HUMAN gate —
+exemplar outputs recorded below for review.** (Per the kickoff, 0.2 is *not* the mandatory
+stop; proceeding to 0.3 after this.)
+
+### What was built
+
+- `backend-civic/Services/Coalition/CoalitionDtos.cs` — `GeneratedProvisionDto` /
+  `GeneratedSubQuestionDto` (LLM birth response shape).
+- `backend-civic/Services/Coalition/CoalitionPrompts.cs` — `ProvisionBirth(briefing)`
+  (the birth prompt: neutral-surface + real-tradeoff + teeth, plus sub-questions + axis
+  tags in **one** birth call) and `Extract(...)` (used in 0.3, co-located).
+- `backend-civic/Services/Coalition/ProvisionBirthService.cs` — `BirthFromBriefingAsync`:
+  one Sonnet call -> map to a persisted `Provision` with Birth-origin `SubQuestion`s,
+  unique slug, unique sub-question keys, 7-day deadline, source-briefing linkage, state
+  `Open`. Registered in `Program.cs`.
+
+**Assumptions (surfaced):**
+- The plan lists "neutral text + sub-questions" and "axis tagging (one LLM call at birth)".
+  I combined all three into a **single** birth call (cheapest; satisfies "one LLM call at
+  birth"). Split into two calls if you want axis-tagging independently swappable.
+- Birth uses the **Sonnet** tier (framing quality matters; once-per-provision, not hot).
+  Downgrade to Haiku if cost matters more than framing nuance.
+- Freshly-born provisions are set to state **`Open`** (immediately open for
+  position-gathering). The formal BIRTH->OPEN transition belongs to the Layer 2 state
+  machine; this is just the natural initial state so Layer 0 engagement can attach.
+- The base `ProvisionVersion` and its text->positions extraction are **not** created at
+  birth — that is Phase 0.3's job. Birth produces provision + sub-questions + axes only.
+
+### Mechanics test (StubLlmClient)
+
+`backend-civic-tests/Civic.ApiTests/ProvisionBirthServiceTests.cs`:
+- `Birth_HappyPath_PersistsProvisionWithSubQuestionsAxesAndLinkage` — one Sonnet call;
+  persisted provision has neutral text, >=1 Birth-origin sub-question with unique keys,
+  axis tags, 7-day deadline, source linkage, state `Open`.
+- `Birth_DedupesSubQuestionKeys_AndSkipsEmptyPrompts` — colliding keys are made unique;
+  empty-prompt sub-questions are dropped.
+
+Command:
+```
+dotnet test backend-civic-tests/Civic.ApiTests/Civic.ApiTests.csproj \
+  --filter "FullyQualifiedName~ProvisionBirthServiceTests" --logger "console;verbosity=normal"
+```
+Actual output:
+```
+  Passed Civic.ApiTests.ProvisionBirthServiceTests.Birth_DedupesSubQuestionKeys_AndSkipsEmptyPrompts [226 ms]
+  Passed Civic.ApiTests.ProvisionBirthServiceTests.Birth_HappyPath_PersistsProvisionWithSubQuestionsAxesAndLinkage [40 ms]
+```
+
+### >>> HUMAN REVIEW NEEDED: exemplar provision births for the 4 sample briefings <<<
+
+**IMPORTANT — how these were produced.** There is no `Anthropic:ApiKey` in this
+environment, so the live birth call cannot run here. The four outputs below were produced
+by **Claude (this agent) applying the exact `ProvisionBirth` system+user prompt** from
+`CoalitionPrompts.cs` to each briefing in `docs/civic-app/SAMPLE_CONTENT.md` — i.e. a
+faithful stand-in for the live extraction call, **not** live API output. **Re-run with a
+real key** (`ProvisionBirthService.BirthFromBriefingAsync` over the 4 seeded briefings) to
+confirm the live model produces comparably neutral/real-tradeoff provisions. They are
+recorded here precisely so a human can judge the neutral-surface / real-tradeoff quality,
+which is the actual Phase 0.2 gate.
+
+#### Briefing 1 — Student Data Privacy (Congress / Legislative)
+```json
+{
+  "title": "National baseline rules for student data privacy",
+  "neutralText": "Congress should set a national baseline standard for how schools and education-technology vendors collect, retain, and share student data, while leaving stricter state and district rules permitted.",
+  "relevantAxes": ["local-vs-national", "innovation-vs-precaution"],
+  "subQuestions": [
+    { "key": "floor-vs-ceiling", "prompt": "Is the national standard a floor (states may go stricter) or a ceiling that preempts local rules?", "tradeoff": "A floor preserves local control; a ceiling guarantees uniformity for vendors.", "positionOptions": ["floor", "ceiling"] },
+    { "key": "enforcement-authority", "prompt": "Who enforces the standard?", "tradeoff": "Federal enforcement is uniform but slow; state/private enforcement is responsive but uneven.", "positionOptions": ["federal-agency", "state-ag", "private-right-of-action"] },
+    { "key": "retention-limit", "prompt": "How long may student data be retained?", "tradeoff": "Short retention protects privacy; longer retention aids continuity and analytics.", "positionOptions": ["delete-on-graduation", "fixed-years", "vendor-discretion"] },
+    { "key": "vendor-scope", "prompt": "Which vendors are covered?", "tradeoff": "Covering all tools is comprehensive but burdens small edtech; covering only large platforms is lighter but leaves gaps.", "positionOptions": ["all-vendors", "large-only", "k12-contracted-only"] }
+  ]
+}
+```
+*Assessment:* Neutral surface (states a proposal, not a verdict). Real tradeoff
+(floor-vs-ceiling is a genuine federalism crux; reasonable people split). Has teeth
+(constrains Congress + vendors). **Not partisan, not toothless.** ✅
+
+#### Briefing 2 — Online Speech / Platform Moderation (Supreme Court / Judicial)
+Note: the briefing is a *court case*, not a policy proposal. The birth reframes it as a
+governable proposition (the game needs something to position on), which is a legitimate but
+**reviewer-worthy** transformation — confirm this framing is acceptable.
+```json
+{
+  "title": "Transparency and consistency rules for large platform moderation",
+  "neutralText": "Large online platforms should be required to publish their content-moderation standards and apply them consistently, with disclosure when content is removed or down-ranked, without the government dictating which lawful content must be carried.",
+  "relevantAxes": ["market-vs-regulation", "free-speech-vs-safety"],
+  "subQuestions": [
+    { "key": "platform-scope", "prompt": "Which platforms are covered?", "tradeoff": "A size threshold targets gatekeepers but draws an arbitrary line; covering all platforms is principled but burdens small sites.", "positionOptions": ["large-only", "all-platforms", "dominant-gatekeepers-only"] },
+    { "key": "transparency-vs-must-carry", "prompt": "Does the rule require only transparency/consistency, or also that certain lawful speech be carried?", "tradeoff": "Transparency-only respects platform editorial rights; must-carry protects user speech but compels private hosts.", "positionOptions": ["transparency-only", "transparency-plus-appeal", "must-carry"] },
+    { "key": "enforcer", "prompt": "Who enforces and adjudicates disputes?", "tradeoff": "A government agency has teeth but risks state control of speech; an independent body is safer but weaker.", "positionOptions": ["federal-agency", "independent-board", "courts-only"] }
+  ]
+}
+```
+*Assessment:* Neutral surface; the "without the government dictating which lawful content
+must be carried" clause keeps it from leaning either way. Real tradeoff
+(transparency-only vs must-carry is the live constitutional crux). Has teeth.
+**Flag:** the judicial→policy reframing is a judgment call — confirm acceptable. Otherwise
+not partisan/toothless. ✅ (with reframing flag)
+
+#### Briefing 3 — AI in Hiring (Federal agency / Executive)
+```json
+{
+  "title": "Disclosure and human-review rules for AI hiring tools",
+  "neutralText": "Employers that use AI tools to screen or rank job candidates should be required to disclose that use, explain the main factors the tool weighs, and provide a route to human review of automated rejections.",
+  "relevantAxes": ["innovation-vs-precaution", "individual-vs-employer"],
+  "subQuestions": [
+    { "key": "employer-scope", "prompt": "Which employers are covered?", "tradeoff": "Covering all employers is comprehensive but burdens small businesses; a size threshold is lighter but leaves gaps.", "positionOptions": ["all-employers", "size-threshold", "federal-contractors-only"] },
+    { "key": "explanation-depth", "prompt": "How detailed must the explanation be?", "tradeoff": "Deep explanations empower candidates but expose vendor IP and may be gamed; shallow ones are easy but near-useless.", "positionOptions": ["main-factors", "full-feature-weights", "category-level-only"] },
+    { "key": "audit-requirement", "prompt": "Must tools be independently audited for bias?", "tradeoff": "Mandatory audits catch disparate impact but add cost and slow adoption; voluntary audits are cheap but toothless.", "positionOptions": ["mandatory-third-party", "self-audit-attestation", "none"] },
+    { "key": "human-review-trigger", "prompt": "When is human review guaranteed?", "tradeoff": "Review on every rejection is fair but expensive; review only on request is cheaper but missed by many.", "positionOptions": ["every-rejection", "on-request", "high-stakes-roles-only"] }
+  ]
+}
+```
+*Assessment:* Neutral surface; real tradeoff on every sub-question (audit mandate and
+explanation depth genuinely split innovation- vs precaution-leaning people). Has teeth.
+**Not partisan, not toothless.** ✅
+
+#### Briefing 4 — Phone Use in Schools (State legislature / State)
+```json
+{
+  "title": "Statewide default limit on student phone use during class",
+  "neutralText": "The state should set a default policy limiting student phone use during instructional time, with a defined process for districts to adopt a stricter or looser alternative.",
+  "relevantAxes": ["local-vs-national", "authority-vs-autonomy"],
+  "subQuestions": [
+    { "key": "time-scope", "prompt": "Does the limit apply bell-to-bell or only during instruction?", "tradeoff": "Bell-to-bell is simpler to enforce but restricts lunch/passing time; instruction-only is narrower but harder to police.", "positionOptions": ["bell-to-bell", "instruction-only"] },
+    { "key": "opt-out-holder", "prompt": "Who can override the default?", "tradeoff": "District opt-out preserves local control; parent opt-out preserves family choice but fragments classrooms.", "positionOptions": ["district", "school", "parent"] },
+    { "key": "emergency-exception", "prompt": "What emergency/medical access is guaranteed?", "tradeoff": "Broad exceptions reassure families but create loopholes; narrow ones are clean but feel unsafe.", "positionOptions": ["medical-and-emergency", "emergency-only", "none-codified"] },
+    { "key": "enforcement", "prompt": "How is the limit enforced?", "tradeoff": "Confiscation/penalties have teeth but escalate conflict; honor-system is gentle but weak.", "positionOptions": ["confiscation", "graduated-penalties", "honor-system"] }
+  ]
+}
+```
+*Assessment:* Neutral surface (a "default with opt-out", not a mandate verdict). Real
+tradeoff (opt-out-holder is a genuine local-control crux). Has teeth.
+**Not partisan, not toothless.** ✅
+
+#### Summary for the human reviewer
+| Briefing | Neutral surface? | Real tradeoff (>=1)? | Teeth? | Flags |
+|---|---|---|---|---|
+| 1 Student data privacy | yes | yes (4 sub-Qs) | yes | none |
+| 2 Online speech | yes | yes (3 sub-Qs) | yes | judicial->policy reframing — confirm acceptable |
+| 3 AI hiring | yes | yes (4 sub-Qs) | yes | none |
+| 4 School phones | yes | yes (4 sub-Qs) | yes | none |
+
+All four read as neutral-surface and carry real tradeoffs with teeth (no partisan or
+toothless provisions). The only reviewer flag is the judicial→policy reframing on Briefing 2.
+
+### Gate evaluation
+
+Plan gate is **human review** of neutral-surface/real-tradeoff quality (explicitly not
+self-certifiable, and explicitly not the mandatory stop). Mechanics tests pass; exemplar
+outputs recorded above for review. **Proceeding to Phase 0.3 per the operating rules.**

@@ -73,6 +73,9 @@ builder.Services.Configure<CivicCampaignOptions>(builder.Configuration.GetSectio
 builder.Services.AddScoped<ICampaignPostFactory, CampaignPostFactory>();
 builder.Services.AddScoped<CivicCampaignService>();
 
+// Coalition game (Layer 0): provision birth.
+builder.Services.AddScoped<Civic.API.Services.Coalition.ProvisionBirthService>();
+
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();
 builder.Services.AddScoped<LeagueService>();
