@@ -73,6 +73,23 @@ builder.Services.Configure<CivicCampaignOptions>(builder.Configuration.GetSectio
 builder.Services.AddScoped<ICampaignPostFactory, CampaignPostFactory>();
 builder.Services.AddScoped<CivicCampaignService>();
 
+// Coalition game (Layer 0): provision birth + extraction.
+builder.Services.AddScoped<Civic.API.Services.Coalition.ProvisionBirthService>();
+builder.Services.AddScoped<
+    Civic.API.Services.Coalition.IExtractionService,
+    Civic.API.Services.Coalition.ExtractionService>();
+
+// Coalition game (Layer 2/2H/3): the playable loop + seeding.
+// SECURITY: the single LLM-access gate — only premium users trigger coalition LLM calls.
+builder.Services.AddScoped<Civic.API.Services.Coalition.ILlmAccessPolicy, Civic.API.Services.Coalition.PremiumLlmAccessPolicy>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.ITwoFramingsService, Civic.API.Services.Coalition.TwoFramingsService>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopService>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, Civic.API.Services.Coalition.Judges.CoalitionJudge>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Agents.IAgentProfileMapper, Civic.API.Services.Coalition.Agents.AgentProfileMapper>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLifecycleService>();
+builder.Services.AddHostedService<Civic.API.Services.Coalition.Product.CoalitionLifecycleHostedService>();
+
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();
 builder.Services.AddScoped<LeagueService>();
@@ -185,6 +202,10 @@ using (var scope = app.Services.CreateScope())
 
     var seeder = scope.ServiceProvider.GetRequiredService<ISeedService>();
     await seeder.SeedAsync();
+
+    // Seed the coalition demo provisions (constructed agents; idempotent).
+    var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
+    await coalitionSeeder.SeedAsync();
 }
 
 app.Run();

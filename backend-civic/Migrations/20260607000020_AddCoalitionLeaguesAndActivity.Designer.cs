@@ -3,6 +3,7 @@ using System;
 using Civic.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Civic.API.Migrations
 {
     [DbContext(typeof(CivicDbContext))]
-    partial class CivicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260607000020_AddCoalitionLeaguesAndActivity")]
+    partial class AddCoalitionLeaguesAndActivity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -876,55 +879,6 @@ namespace Civic.API.Migrations
                     b.ToTable("CivicQuestions");
                 });
 
-            modelBuilder.Entity("Civic.API.Models.CoalitionAct", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<int>("GovernanceScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Payload")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<int>("Points")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("ProvisionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("QualityScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProvisionId", "Type");
-
-                    b.HasIndex("UserId", "CreatedAt");
-
-                    b.ToTable("CoalitionActs");
-                });
-
             modelBuilder.Entity("Civic.API.Models.CoalitionActivityDay", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1011,11 +965,6 @@ namespace Civic.API.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("AgeBand")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

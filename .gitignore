@@ -52,3 +52,7 @@ npm-debug.log*
 
 # Build
 *.zip
+
+# Local dev server logs (coalition feature)
+*.devlog.txt
+.claude/scheduled_tasks.lock
