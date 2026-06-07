@@ -26,15 +26,36 @@ public class CoalitionLoopService
     private readonly IExtractionService _extraction;
     private readonly ProvisionBirthService _birth;
     private readonly Judges.ICoalitionJudge _judge;
+    private readonly ITwoFramingsService _framings;
     private readonly ProvisionStateMachine _sm = new();
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
-    public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth, Judges.ICoalitionJudge judge)
+    public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth,
+        Judges.ICoalitionJudge judge, ITwoFramingsService framings)
     {
         _db = db;
         _extraction = extraction;
         _birth = birth;
         _judge = judge;
+        _framings = framings;
+    }
+
+    /// <summary>The provision's cultural vs governance framings (doc 02). LLM (premium) or heuristic.</summary>
+    public async Task<FramingsDto?> GetFramingsAsync(Guid provisionId, CancellationToken ct = default)
+    {
+        var p = await _db.Provisions.FirstOrDefaultAsync(x => x.Id == provisionId, ct);
+        if (p is null) return null;
+
+        string? disagreement = null;
+        string[] values = Array.Empty<string>();
+        if (p.SourceBriefingId is Guid bid)
+        {
+            var b = await _db.Briefings.FirstOrDefaultAsync(x => x.Id == bid, ct);
+            if (b is not null) { disagreement = b.Disagreement; values = b.ValuesInConflict; }
+        }
+
+        var r = await _framings.ForAsync(p.Title, p.NeutralText, p.RelevantAxes, disagreement, values, ct);
+        return new FramingsDto(r.CulturalFrame, r.GovernanceFrame, r.FromLlm);
     }
 
     // ---------------------------------------------------------------- reads

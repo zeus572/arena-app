@@ -13,15 +13,17 @@ public class CoalitionJudge : ICoalitionJudge
 {
     private readonly ILlmClient _llm;
     private readonly ILogger<CoalitionJudge> _log;
+    private readonly ILlmAccessPolicy? _policy;
 
     private static readonly char[] WordSep = { ' ', '\n', '\t', '\r', '.', ',', ';', ':', '!', '?' };
     private static readonly string[] ConcessionMarkers =
         { "carve-out", "carve out", "exempt", "threshold", "only if", "in exchange", "compromise", "give up", "concede", "accept that" };
 
-    public CoalitionJudge(ILlmClient llm, ILogger<CoalitionJudge> log)
+    public CoalitionJudge(ILlmClient llm, ILogger<CoalitionJudge> log, ILlmAccessPolicy? policy = null)
     {
         _llm = llm;
         _log = log;
+        _policy = policy;
     }
 
     public async Task<GovernanceScore> ScoreContributionAsync(string text, IEnumerable<string> relevantAxes, CancellationToken ct = default)
@@ -29,6 +31,7 @@ public class CoalitionJudge : ICoalitionJudge
         var axes = relevantAxes.ToList();
         try
         {
+            _policy?.EnsureAllowed();
             var (sys, user) = JudgePrompts.Governance(text, axes);
             var dto = await _llm.GenerateStructuredAsync<GovernanceScoreDto>(sys, user, LlmModelTier.Haiku, maxTokens: 200, ct: ct);
             return new GovernanceScore(
@@ -51,6 +54,7 @@ public class CoalitionJudge : ICoalitionJudge
     {
         try
         {
+            _policy?.EnsureAllowed();
             var (sys, user) = JudgePrompts.CommonGround(statement);
             var dto = await _llm.GenerateStructuredAsync<CommonGroundDto>(sys, user, LlmModelTier.Haiku, maxTokens: 220, ct: ct);
             return new CommonGround(dto.IsGenuine, dto.Concrete, dto.Costly, dto.CrossCutting, dto.Reason ?? "", FromLlm: true);
@@ -70,6 +74,7 @@ public class CoalitionJudge : ICoalitionJudge
     {
         try
         {
+            _policy?.EnsureAllowed();
             var (sys, user) = JudgePrompts.AmendmentSubstantive(priorText, amendedText);
             var dto = await _llm.GenerateStructuredAsync<AmendmentSubstantiveDto>(sys, user, LlmModelTier.Haiku, maxTokens: 160, ct: ct);
             return dto.Substantive;
@@ -85,6 +90,7 @@ public class CoalitionJudge : ICoalitionJudge
     {
         try
         {
+            _policy?.EnsureAllowed();
             var (sys, user) = JudgePrompts.Teeth(plankText);
             var dto = await _llm.GenerateStructuredAsync<TeethDto>(sys, user, LlmModelTier.Haiku, maxTokens: 160, ct: ct);
             return dto.HasTeeth;
@@ -100,6 +106,7 @@ public class CoalitionJudge : ICoalitionJudge
     {
         try
         {
+            _policy?.EnsureAllowed();
             var (sys, user) = JudgePrompts.Steelman(provisionText, steelmanText);
             var dto = await _llm.GenerateStructuredAsync<SteelmanDto>(sys, user, LlmModelTier.Haiku, maxTokens: 200, ct: ct);
             return new SteelmanVerdict(dto.ProponentWouldEndorse, Math.Clamp(dto.Quality, 0, 100), dto.Reason ?? "", FromLlm: true);

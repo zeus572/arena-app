@@ -105,6 +105,8 @@ public sealed record MeDto(
 
 public sealed record ActResultDto(int Points, string Currency);
 
+public sealed record FramingsDto(string CulturalFrame, string GovernanceFrame, bool FromLlm);
+
 public sealed record StandingRowDto(
     int Rank, string UserId, string DisplayName, bool IsAgent, double Score,
     int CoalitionsSigned, int TotalBreadth, int MovedCount);

@@ -110,6 +110,14 @@ public class CoalitionProvisionsController : ControllerBase
         return Ok(new { seeded = true });
     }
 
+    /// <summary>The provision's two framings — cultural vs governance (doc 02).</summary>
+    [HttpGet("{id:guid}/framings")]
+    public async Task<ActionResult<FramingsDto>> Framings(Guid id, CancellationToken ct)
+    {
+        var f = await _loop.GetFramingsAsync(id, ct);
+        return f is null ? NotFound() : Ok(f);
+    }
+
     /// <summary>Birth a new provision from a briefing (system-extracted; LLM in prod, heuristic fallback in dev).</summary>
     [HttpPost("/api/coalition/birth")]
     public async Task<ActionResult<ProvisionDetailDto>> Birth([FromBody] BirthRequest req, CancellationToken ct)

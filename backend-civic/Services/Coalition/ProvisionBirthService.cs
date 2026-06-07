@@ -21,6 +21,7 @@ public class ProvisionBirthService
     private readonly CivicDbContext _db;
     private readonly ILlmClient _llm;
     private readonly ILogger<ProvisionBirthService> _log;
+    private readonly ILlmAccessPolicy? _policy;
 
     // ~1 week lifecycle target (doc 03).
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
@@ -28,11 +29,13 @@ public class ProvisionBirthService
     public ProvisionBirthService(
         CivicDbContext db,
         ILlmClient llm,
-        ILogger<ProvisionBirthService> log)
+        ILogger<ProvisionBirthService> log,
+        ILlmAccessPolicy? policy = null)
     {
         _db = db;
         _llm = llm;
         _log = log;
+        _policy = policy;
     }
 
     /// <summary>
@@ -42,6 +45,7 @@ public class ProvisionBirthService
     /// </summary>
     public async Task<Provision> BirthFromBriefingAsync(Briefing briefing, CancellationToken ct = default)
     {
+        _policy?.EnsureAllowed(); // gate: only premium users trigger live birth (else caller falls back to heuristic)
         var (sys, user) = CoalitionPrompts.ProvisionBirth(briefing);
         // Birth framing quality matters (neutral surface / real tradeoff), so this
         // uses the Sonnet tier. It is a once-per-provision call, not a hot path.

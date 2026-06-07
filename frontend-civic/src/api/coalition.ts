@@ -253,3 +253,14 @@ export async function birthFromBriefing(briefingId: string): Promise<ProvisionDe
   const { data } = await civicApi.post<ProvisionDetail>("/coalition/birth", { briefingId });
   return data;
 }
+
+export interface Framings {
+  culturalFrame: string;
+  governanceFrame: string;
+  fromLlm: boolean;
+}
+
+export async function getFramings(id: string): Promise<Framings> {
+  const { data } = await civicApi.get<Framings>(`${BASE}/${id}/framings`);
+  return data;
+}

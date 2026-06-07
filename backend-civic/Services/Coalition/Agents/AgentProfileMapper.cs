@@ -33,11 +33,13 @@ public class AgentProfileMapper : IAgentProfileMapper
 {
     private readonly ILlmClient _llm;
     private readonly ILogger<AgentProfileMapper> _log;
+    private readonly Civic.API.Services.Coalition.ILlmAccessPolicy? _policy;
 
-    public AgentProfileMapper(ILlmClient llm, ILogger<AgentProfileMapper> log)
+    public AgentProfileMapper(ILlmClient llm, ILogger<AgentProfileMapper> log, Civic.API.Services.Coalition.ILlmAccessPolicy? policy = null)
     {
         _llm = llm;
         _log = log;
+        _policy = policy;
     }
 
     public async Task<AgentProfile> DeriveAsync(
@@ -45,6 +47,7 @@ public class AgentProfileMapper : IAgentProfileMapper
     {
         try
         {
+            _policy?.EnsureAllowed(); // gate: only premium users trigger the live mapper (else heuristic)
             var (sys, user) = BuildPrompt(values, subQuestions);
             var dto = await _llm.GenerateStructuredAsync<AgentProfileDto>(sys, user, LlmModelTier.Haiku, maxTokens: 500, ct: ct);
             // Keep only known sub-question keys / valid options.

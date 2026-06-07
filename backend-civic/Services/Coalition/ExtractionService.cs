@@ -32,6 +32,7 @@ public class ExtractionService : IExtractionService
     private readonly CivicDbContext _db;
     private readonly ILlmClient _llm;
     private readonly ILogger<ExtractionService> _log;
+    private readonly ILlmAccessPolicy? _policy;
 
     // A7: extraction fidelity is the load-bearing risk, so the default tier is
     // Sonnet (quality over cost). The cache bounds the cost. Swap to Haiku and
@@ -41,11 +42,12 @@ public class ExtractionService : IExtractionService
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public ExtractionService(CivicDbContext db, ILlmClient llm, ILogger<ExtractionService> log)
+    public ExtractionService(CivicDbContext db, ILlmClient llm, ILogger<ExtractionService> log, ILlmAccessPolicy? policy = null)
     {
         _db = db;
         _llm = llm;
         _log = log;
+        _policy = policy;
     }
 
     public async Task<ExtractionResult> ExtractAsync(
@@ -64,6 +66,7 @@ public class ExtractionService : IExtractionService
             return JsonSerializer.Deserialize<ExtractionResult>(cached.ResultJson, JsonOpts) ?? new();
         }
 
+        _policy?.EnsureAllowed(); // gate: only premium users trigger the live extraction LLM (else caller falls back)
         var (sys, user) = CoalitionPrompts.Extract(versionText, knownSubQuestions);
         var dto = await _llm.GenerateStructuredAsync<ExtractionResultDto>(sys, user, ExtractionTier, ct: ct);
 

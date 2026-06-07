@@ -1198,3 +1198,53 @@ seeded validation throughout.
 - Fix & re-enable the pre-existing `CivicCampaignServiceTests` (unrelated, excluded since 0.1).
 - A full autoplay endpoint + persisting league/campaign progression to EF (3.2–3.4 currently
   pure/in-memory).
+
+---
+
+# Spec-completion batch (#1–#5) + deferred items + LLM access gate
+
+Built unattended against `ILlmClient` with graceful no-key fallbacks; StubLlmClient for the
+live path, KeylessLlmClient/DenyLlmPolicy for the fallback/gated paths. Commits:
+`400b92a` #1 judges+wiring · `e866ed8` #2/#3 acts+points · `4f03724` #4 lifecycle ·
+`81e9f3a` #5 smaller items. Then the deferred items + the security gate (this section).
+
+## Deferred items now built
+- **Multi-axis / per-axis breadth** (`Geometry/PerAxisBreadth.cs`): `MultiAxisSpectrum` +
+  `PerAxisBreadthCalculator` — a coalition must span EACH relevant axis (overall = worst-covered
+  axis); incomplete cross-axis coverage is flagged as a fork trigger (doc 06). Pure + tested.
+  *Wiring into the live single-bucket loop (replacing the flat spectrum) remains a data-model
+  migration — the geometry is delivered computed/tested, as Layer 1 was.*
+- **Two framings** (`TwoFramingsService` + `GET /provisions/{id}/framings` + detail-page card):
+  a story's cultural vs governance framing; LLM (premium) or heuristic fallback.
+
+## SECURITY: LLM access gate (pre-prod requirement)
+**Requirement:** no anonymous or non-premium user may directly trigger a coalition LLM call.
+
+**Design — one chokepoint.** `ILlmAccessPolicy` / `PremiumLlmAccessPolicy`
+(`Services/Coalition/LlmAccessPolicy.cs`): `CanUseLlm()` =
+- no `HttpContext` → trusted background/system caller (the lifecycle scheduler) → **allowed**;
+- in-request user → **allowed only if authenticated AND JWT `plan` claim == "Premium"**
+  (same premium signal as `DebateInitController`); anonymous (X-User-Id only) and Free → **denied**.
+
+Every coalition LLM seam consults it and falls back when denied (no exception leaks to the user):
+| Seam | Used by | On deny |
+|---|---|---|
+| `CoalitionJudge` (governance/commonground/substantive/teeth/steelman) | acts (position/amend/cosign/steelman/…) | heuristic verdict |
+| `ExtractionService` | free-form amendment | caller → heuristic option-match |
+| `ProvisionBirthService` | birth-from-briefing | caller → heuristic provision |
+| `AgentProfileMapper` | agent-from-Values | heuristic lean→option |
+| `TwoFramingsService` | `/framings` | heuristic framings |
+
+**Endpoint audit (coalition):**
+- LLM-capable (now gated to premium): `POST …/positions`, `…/amendments`, `…/amendments/freeform`,
+  `…/acceptances`, `…/acts`, `/acts`, `POST /coalition/birth`, `GET …/framings`.
+- No LLM ever: `GET /coalition/provisions`, `GET …/{id}`, `GET /coalition/me`,
+  `GET /coalition/leagues`, `POST …/agent-step` (pure agent geometry), `POST …/join`,
+  `POST /coalition/seed`, `POST /coalition/leagues/compose`.
+- Other app LLM use (news ingestion, civic content generation, campaign) is unchanged and runs
+  as background/system (no in-request user) — outside this feature's surface.
+
+**Net effect:** in dev (no key) everyone gets heuristics; in prod, anon/Free users still get
+heuristics (no LLM cost/abuse vector), Premium users and the background scheduler get the real
+model. Verified by `LlmAccessGateTests` (policy matrix + each seam falls back/never calls the LLM
+under a deny policy). Full coalition suite: **99 passed, 1 skipped, 0 failed.**

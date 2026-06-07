@@ -80,6 +80,9 @@ builder.Services.AddScoped<
     Civic.API.Services.Coalition.ExtractionService>();
 
 // Coalition game (Layer 2/2H/3): the playable loop + seeding.
+// SECURITY: the single LLM-access gate — only premium users trigger coalition LLM calls.
+builder.Services.AddScoped<Civic.API.Services.Coalition.ILlmAccessPolicy, Civic.API.Services.Coalition.PremiumLlmAccessPolicy>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.ITwoFramingsService, Civic.API.Services.Coalition.TwoFramingsService>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopService>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, Civic.API.Services.Coalition.Judges.CoalitionJudge>();

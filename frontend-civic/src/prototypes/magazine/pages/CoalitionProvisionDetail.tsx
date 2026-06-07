@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Bot, Check, X } from "lucide-react";
 import {
   getProvision,
+  getFramings,
   joinProvision,
   takePosition,
   proposeAmendment,
@@ -11,6 +12,7 @@ import {
   castAcceptance,
   agentStep,
   type ProvisionDetail,
+  type Framings,
 } from "@/api/coalition";
 
 function SpectrumBarView({ d }: { d: ProvisionDetail }) {
@@ -56,9 +58,11 @@ export default function CoalitionProvisionDetail() {
   const [freeText, setFreeText] = useState("");
   const [steelText, setSteelText] = useState("");
   const [ptsMsg, setPtsMsg] = useState<string | null>(null);
+  const [framings, setFramings] = useState<Framings | null>(null);
 
   function reload() { void getProvision(id).then(setD); }
   useEffect(reload, [id]);
+  useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
 
   async function run(fn: () => Promise<ProvisionDetail>) {
     setBusy(true);
@@ -98,6 +102,19 @@ export default function CoalitionProvisionDetail() {
           ))}
         </div>
       </header>
+
+      {framings && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-700">Cultural framing</p>
+            <p className="mt-1 text-sm text-[var(--fg-soft)]">{framings.culturalFrame}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Governance framing</p>
+            <p className="mt-1 text-sm text-[var(--fg-soft)]">{framings.governanceFrame}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6"><SpectrumBarView d={d} /></div>
 
