@@ -123,10 +123,12 @@ public class CoalitionProvisionsController : ControllerBase
         return f is null ? NotFound() : Ok(f);
     }
 
-    /// <summary>Birth a new provision from a briefing (system-extracted; LLM in prod, heuristic fallback in dev).</summary>
+    /// <summary>Manually birth a provision from a briefing. Development-only — in prod the
+    /// lifecycle scheduler births provisions from the briefing catalog automatically.</summary>
     [HttpPost("/api/coalition/birth")]
     public async Task<ActionResult<ProvisionDetailDto>> Birth([FromBody] BirthRequest req, CancellationToken ct)
     {
+        if (!_env.IsDevelopment()) return NotFound();
         var detail = await _loop.BirthFromBriefingAsync(req.BriefingId, _user.GetCurrentUserId(), ct);
         return detail is null ? NotFound(new { error = "Briefing not found." }) : Ok(detail);
     }
