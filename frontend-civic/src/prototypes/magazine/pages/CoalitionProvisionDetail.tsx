@@ -74,9 +74,13 @@ export default function CoalitionProvisionDetail() {
           <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
         </div>
         <p className="mt-2 text-[var(--fg-soft)]">{d.neutralText}</p>
-        {d.relevantAxes.length > 0 && (
-          <p className="mt-1 text-xs text-[var(--muted)]">axes: {d.relevantAxes.join(", ")}</p>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider">
+          <span className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[var(--muted)]">{d.difficulty} gap · {(d.gapWidth * 100).toFixed(0)}%</span>
+          <span className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[var(--muted)]">{d.governance ? "governance" : "culture"}</span>
+          {d.relevantAxes.map((a) => (
+            <span key={a} className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[var(--muted)]">{a}</span>
+          ))}
+        </div>
       </header>
 
       <div className="mt-6"><SpectrumBarView d={d} /></div>

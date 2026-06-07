@@ -59,6 +59,73 @@ export interface ProvisionSummary {
   coveredBuckets: number;
   totalBuckets: number;
   deadline: string | null;
+  gapWidth: number;
+  difficulty: string;
+  governance: boolean;
+}
+
+export interface CampaignRecord {
+  planksPassed: number;
+  totalBreadth: number;
+  avgBreadth: number;
+  totalMovedSigners: number;
+  governanceRatio: number;
+  weightedScore: number;
+}
+
+export interface Cadence {
+  score: number;
+  last7Days: boolean[];
+}
+
+export interface Plank {
+  provisionId: string;
+  title: string;
+  breadth: number;
+  gapWidth: number;
+  governance: boolean;
+}
+
+export interface Recommended {
+  id: string;
+  title: string;
+  state: string;
+  gapWidth: number;
+  difficulty: string;
+}
+
+export interface Me {
+  userId: string;
+  skill: number;
+  skillLabel: string;
+  record: CampaignRecord;
+  cadence: Cadence;
+  leagueId: string | null;
+  leagueName: string | null;
+  leagueGapTier: number;
+  movement: string;
+  recentPlanks: Plank[];
+  recommended: Recommended[];
+}
+
+export interface Standing {
+  rank: number;
+  userId: string;
+  displayName: string;
+  isAgent: boolean;
+  score: number;
+  coalitionsSigned: number;
+  totalBreadth: number;
+  movedCount: number;
+}
+
+export interface League {
+  id: string;
+  name: string;
+  gapTier: number;
+  difficultyLabel: string;
+  buckets: string[];
+  standings: Standing[];
 }
 
 export interface ProvisionDetail {
@@ -76,6 +143,9 @@ export interface ProvisionDetail {
   outcome: CoalitionOutcome | null;
   yourUserId: string | null;
   youJoined: boolean;
+  gapWidth: number;
+  difficulty: string;
+  governance: boolean;
 }
 
 const BASE = "/coalition/provisions";
@@ -133,4 +203,19 @@ export async function agentStep(id: string): Promise<ProvisionDetail> {
 
 export async function seedCoalition(): Promise<void> {
   await civicApi.post("/coalition/seed");
+}
+
+export async function getMe(): Promise<Me> {
+  const { data } = await civicApi.get<Me>("/coalition/me");
+  return data;
+}
+
+export async function getLeagues(): Promise<League[]> {
+  const { data } = await civicApi.get<League[]>("/coalition/leagues");
+  return data;
+}
+
+export async function composeLeagues(): Promise<League[]> {
+  const { data } = await civicApi.post<League[]>("/coalition/leagues/compose");
+  return data;
 }
