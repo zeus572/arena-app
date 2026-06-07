@@ -79,4 +79,24 @@ public class CoalitionProvisionsController : ControllerBase
         await _seeder.SeedAsync(ct);
         return Ok(new { seeded = true });
     }
+
+    // ---- Layer 3 gamification ----
+
+    /// <summary>The current player's record, breadth meter, governance ratio, skill, cadence, league + recommendations.</summary>
+    [HttpGet("/api/coalition/me")]
+    public async Task<ActionResult<MeDto>> Me(CancellationToken ct)
+        => Ok(await _loop.GetMeAsync(_user.GetCurrentUserId(), ct));
+
+    /// <summary>Composed leagues with breadth-favoring standings.</summary>
+    [HttpGet("/api/coalition/leagues")]
+    public async Task<ActionResult<IReadOnlyList<LeagueDto>>> Leagues(CancellationToken ct)
+        => Ok(await _loop.GetLeaguesAsync(ct));
+
+    /// <summary>Dev helper: (re)compose leagues from the current player pool.</summary>
+    [HttpPost("/api/coalition/leagues/compose")]
+    public async Task<ActionResult> ComposeLeagues(CancellationToken ct)
+    {
+        await _loop.ComposeLeaguesAsync(4, ct);
+        return Ok(await _loop.GetLeaguesAsync(ct));
+    }
 }

@@ -59,6 +59,9 @@ public class CivicDbContext : DbContext
     public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
     public DbSet<ExtractionCacheEntry> ExtractionCacheEntries => Set<ExtractionCacheEntry>();
     public DbSet<CoalitionParticipant> CoalitionParticipants => Set<CoalitionParticipant>();
+    public DbSet<CoalitionLeague> CoalitionLeagues => Set<CoalitionLeague>();
+    public DbSet<CoalitionLeagueMember> CoalitionLeagueMembers => Set<CoalitionLeagueMember>();
+    public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -618,6 +621,28 @@ public class CivicDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(c => c.ProvisionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CoalitionLeague>(e =>
+        {
+            e.HasKey(l => l.Id);
+            e.HasMany(l => l.Members)
+                .WithOne(m => m.League!)
+                .HasForeignKey(m => m.LeagueId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CoalitionLeagueMember>(e =>
+        {
+            e.HasKey(m => m.Id);
+            // A user belongs to at most one coalition league.
+            e.HasIndex(m => m.UserId).IsUnique();
+        });
+
+        modelBuilder.Entity<CoalitionActivityDay>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => new { a.UserId, a.Day }).IsUnique();
         });
     }
 }

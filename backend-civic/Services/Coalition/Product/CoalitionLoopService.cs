@@ -4,6 +4,7 @@ using System.Text.Json;
 using Civic.API.Data;
 using Civic.API.Models;
 using Civic.API.Services.Coalition.Agents;
+using Civic.API.Services.Coalition.Curriculum;
 using Civic.API.Services.Coalition.Geometry;
 using Civic.API.Services.Coalition.Loop;
 using Microsoft.EntityFrameworkCore;
@@ -34,8 +35,10 @@ public class CoalitionLoopService
         {
             var state = await LoadStateAsync(p.Id, ct);
             var bar = state is null ? null : SpectrumBarBuilder.Build(state);
+            var (gap, gov) = await ProvisionMetaAsync(p, ct);
             result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.State.ToString(),
-                bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline));
+                bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
+                gap, DifficultyLabel(gap), gov));
         }
         return result;
     }
@@ -81,6 +84,7 @@ public class CoalitionLoopService
         }
 
         var barDto = ToBarDto(bar);
+        var (gap, gov) = await ProvisionMetaAsync(p, ct);
 
         return new ProvisionDetailDto(
             p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(), p.RelevantAxes, p.Deadline,
@@ -89,8 +93,22 @@ public class CoalitionLoopService
             participants.Select(c => new ParticipantDto(c.UserId, c.SpectrumBucket, c.IsAgent, positionedUsers.Contains(c.UserId))).ToList(),
             barDto, outcome,
             currentUserId,
-            currentUserId is not null && participants.Any(c => string.Equals(c.UserId, currentUserId, StringComparison.OrdinalIgnoreCase)));
+            currentUserId is not null && participants.Any(c => string.Equals(c.UserId, currentUserId, StringComparison.OrdinalIgnoreCase)),
+            gap, DifficultyLabel(gap), gov);
     }
+
+    private async Task<(double gap, bool governance)> ProvisionMetaAsync(Provision p, CancellationToken ct)
+    {
+        var (agents, baseV) = await BuildAllAgentsAsync(p.Id, ct);
+        var gap = (baseV is not null && agents.Count > 0)
+            ? GapWidthEstimator.NormalizedGap(agents, baseV)
+            : 0.0;
+        var governance = GovernanceClassifier.IsGovernance(p.RelevantAxes, p.Title);
+        return (gap, governance);
+    }
+
+    private static string DifficultyLabel(double gap) =>
+        gap < 0.34 ? "Narrow" : gap < 0.67 ? "Moderate" : "Wide";
 
     private static SpectrumBarDto ToBarDto(SpectrumBarView bar)
     {
@@ -106,6 +124,7 @@ public class CoalitionLoopService
     {
         await EnsureParticipantAsync(provisionId, userId, bucket ?? "center", isAgent: false, ct);
         await _db.SaveChangesAsync(ct);
+        await LogActivityAsync(userId, ct);
     }
 
     public async Task<ProvisionDetailDto?> TakePositionAsync(Guid provisionId, string userId, PositionRequest req, CancellationToken ct = default)
@@ -124,6 +143,7 @@ public class CoalitionLoopService
 
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
+        await LogActivityAsync(userId, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -136,6 +156,7 @@ public class CoalitionLoopService
         await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
+        await LogActivityAsync(userId, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -150,6 +171,7 @@ public class CoalitionLoopService
         await UpsertAcceptanceAsync(provisionId, userId, version.Id, req.Accept, ParseIntensity(req.Intensity), ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
+        await LogActivityAsync(userId, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -175,6 +197,7 @@ public class CoalitionLoopService
 
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
+        if (currentUserId is not null) await LogActivityAsync(currentUserId, ct);
         return await GetDetailAsync(provisionId, currentUserId, ct);
     }
 
@@ -259,6 +282,262 @@ public class CoalitionLoopService
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    // ---------------------------------------------------------------- Layer 3 gamification
+
+    private static bool Eq(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Build CoalitionAgents for ALL participants (agents from JSON; humans from derived region).</summary>
+    private async Task<(List<CoalitionAgent> Agents, VersionPoint? BaseVersion)> BuildAllAgentsAsync(Guid provisionId, CancellationToken ct)
+    {
+        var p = await LoadProvisionAsync(provisionId, ct);
+        if (p is null) return (new(), null);
+        var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
+
+        var versions = p.Versions.OrderBy(v => v.CreatedAt)
+            .Select(v => new VersionPoint(v.Id.ToString(), v.ExtractedPositions)).ToList();
+        var versionById = versions.ToDictionary(v => v.Id, StringComparer.OrdinalIgnoreCase);
+        var signalsByUser = p.AcceptanceRecords
+            .Where(a => versionById.ContainsKey(a.VersionId.ToString()))
+            .GroupBy(a => a.UserId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key,
+                g => g.OrderBy(a => a.CreatedAt)
+                      .Select(a => new AcceptanceSignal(versionById[a.VersionId.ToString()], a.Accept, a.CreatedAt)).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var agents = participants.Select(c =>
+        {
+            var region = c.IsAgent && !string.IsNullOrWhiteSpace(c.RegionJson)
+                ? RegionFromJson(c.RegionJson)
+                : AcceptanceSetDeriver.Derive(signalsByUser.TryGetValue(c.UserId, out var s) ? s : new());
+            return new CoalitionAgent(c.UserId, c.SpectrumBucket, region, IntensitiesFromJson(c.IntensitiesJson));
+        }).ToList();
+
+        var baseV = versions.FirstOrDefault(v => v.Specificity >= 1);
+        return (agents, baseV);
+    }
+
+    public async Task LogActivityAsync(string userId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (await _db.CoalitionActivityDays.AnyAsync(a => a.UserId == userId && a.Day == today, ct)) return;
+        _db.CoalitionActivityDays.Add(new CoalitionActivityDay { Id = Guid.NewGuid(), UserId = userId, Day = today });
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private sealed record ProvisionWorld(Provision P, ProvisionLoopState State, double Gap, bool Governance, CoalitionOutcome? Pass);
+
+    private async Task<List<ProvisionWorld>> LoadWorldAsync(CancellationToken ct)
+    {
+        var provisions = await _db.Provisions.ToListAsync(ct);
+        var worlds = new List<ProvisionWorld>();
+        foreach (var p in provisions)
+        {
+            var state = await LoadStateAsync(p.Id, ct);
+            if (state is null) continue;
+            var (agents, baseV) = await BuildAllAgentsAsync(p.Id, ct);
+            var gap = (baseV is not null && agents.Count > 0) ? GapWidthEstimator.NormalizedGap(agents, baseV) : 0.0;
+            var gov = GovernanceClassifier.IsGovernance(p.RelevantAxes, p.Title);
+            var pass = p.State == ProvisionState.Passed ? _sm.ResolvePassOutcome(state) : null;
+            worlds.Add(new ProvisionWorld(p, state, gap, gov, pass));
+        }
+        return worlds;
+    }
+
+    private double UserSkill(string userId, IReadOnlyList<ProvisionWorld> worlds)
+    {
+        var history = new LeagueHistory(worlds
+            .Where(w => w.State.Players.Any(pl => Eq(pl.UserId, userId)))
+            .Select(w => new LeagueOutcome(w.Gap, w.Pass?.Signers?.Any(s => Eq(s, userId)) == true))
+            .ToList());
+        return GroupSkill.Estimate(history);
+    }
+
+    public async Task<MeDto> GetMeAsync(string userId, CancellationToken ct = default)
+    {
+        var worlds = await LoadWorldAsync(ct);
+
+        var myPlanks = worlds
+            .Where(w => w.Pass?.Plank is not null && w.Pass.Signers?.Any(s => Eq(s, userId)) == true)
+            .Select(w => (w, plank: new PassedPlank(w.Gap, w.Pass!.Breadth?.CoveredBuckets ?? 0, w.Pass.Specificity, w.Pass.MovedSigners, w.Governance)))
+            .ToList();
+
+        var rec = CampaignMilestones.Accrue(myPlanks.Select(x => x.plank).ToList());
+        var recordDto = new CampaignRecordDto(rec.PlanksPassed, rec.TotalBreadth, rec.AvgBreadth, rec.TotalMovedSigners, rec.GovernanceRatio, rec.WeightedScore);
+
+        var skill = UserSkill(userId, worlds);
+        var cadence = await CadenceAsync(userId, ct);
+        var member = await EnsureLeagueMembershipAsync(userId, skill, ct);
+
+        string? leagueId = null, leagueName = null; double tier = 0; var movement = "Stay";
+        if (member is not null)
+        {
+            var lg = await _db.CoalitionLeagues.FirstOrDefaultAsync(l => l.Id == member.LeagueId, ct);
+            leagueId = member.LeagueId.ToString(); leagueName = lg?.Name; tier = lg?.GapTier ?? 0;
+            movement = PromotionService.Decide(skill, tier).ToString();
+        }
+
+        var served = DifficultyLadder.TargetGap(skill);
+        var recommended = worlds
+            .Where(w => w.P.State is ProvisionState.Open or ProvisionState.Contested or ProvisionState.NearCoalition)
+            .OrderBy(w => Math.Abs(w.Gap - served))
+            .Take(3)
+            .Select(w => new RecommendedProvisionDto(w.P.Id, w.P.Title, w.P.State.ToString(), w.Gap, DifficultyLabel(w.Gap)))
+            .ToList();
+
+        var recentPlanks = myPlanks
+            .Select(x => new PlankDto(x.w.P.Id, x.w.P.Title, x.plank.Breadth, x.plank.GapWidthAtBirth, x.plank.IsGovernance))
+            .ToList();
+
+        return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, leagueId, leagueName, tier, movement, recentPlanks, recommended);
+    }
+
+    private async Task<CadenceDto> CadenceAsync(string userId, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var since = today.AddDays(-6);
+        var active = (await _db.CoalitionActivityDays
+            .Where(a => a.UserId == userId && a.Day >= since)
+            .Select(a => a.Day).ToListAsync(ct)).ToHashSet();
+        var days = new bool[7];
+        for (var i = 0; i < 7; i++) days[i] = active.Contains(since.AddDays(i));
+        return new CadenceDto(CampaignCadence.Score(days), days);
+    }
+
+    private async Task<CoalitionLeagueMember?> EnsureLeagueMembershipAsync(string userId, double skill, CancellationToken ct)
+    {
+        var member = await _db.CoalitionLeagueMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
+        if (member is not null) return member;
+
+        var leagues = await _db.CoalitionLeagues.ToListAsync(ct);
+        if (leagues.Count == 0)
+        {
+            await ComposeLeaguesAsync(4, ct);
+            member = await _db.CoalitionLeagueMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
+            if (member is not null) return member;
+            leagues = await _db.CoalitionLeagues.ToListAsync(ct);
+        }
+        if (leagues.Count == 0) return null;
+
+        var served = DifficultyLadder.TargetGap(skill);
+        var best = leagues.OrderBy(l => Math.Abs(l.GapTier - served)).First();
+        var bucket = await _db.CoalitionParticipants.Where(c => c.UserId == userId)
+            .Select(c => c.SpectrumBucket).FirstOrDefaultAsync(ct) ?? "center";
+        member = new CoalitionLeagueMember { Id = Guid.NewGuid(), LeagueId = best.Id, UserId = userId, SpectrumBucket = bucket, AgeBand = "Adult" };
+        _db.CoalitionLeagueMembers.Add(member);
+        await _db.SaveChangesAsync(ct);
+        return member;
+    }
+
+    public async Task ComposeLeaguesAsync(int size = 4, CancellationToken ct = default)
+    {
+        _db.CoalitionLeagueMembers.RemoveRange(_db.CoalitionLeagueMembers);
+        _db.CoalitionLeagues.RemoveRange(_db.CoalitionLeagues);
+        await _db.SaveChangesAsync(ct);
+
+        var participants = await _db.CoalitionParticipants.ToListAsync(ct);
+        var pool = participants
+            .GroupBy(c => c.UserId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .Select(c => new LeagueMemberSpec(c.UserId, c.SpectrumBucket, AgeBand.Adult))
+            .ToList();
+        if (pool.Count == 0) return;
+
+        var spectrum = pool.Select(m => m.SpectrumBucket).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var composed = LeagueComposer.Compose(pool, spectrum, size);
+        var worlds = await LoadWorldAsync(ct);
+
+        var i = 1;
+        foreach (var cl in composed)
+        {
+            var tier = cl.Members.Count == 0 ? 0.5 : Math.Clamp(cl.Members.Average(m => UserSkill(m.UserId, worlds)), 0.15, 0.9);
+            var league = new CoalitionLeague { Id = Guid.NewGuid(), Name = $"League {i++}", GapTier = tier };
+            foreach (var m in cl.Members)
+                league.Members.Add(new CoalitionLeagueMember { Id = Guid.NewGuid(), UserId = m.UserId, SpectrumBucket = m.SpectrumBucket, AgeBand = m.Age.ToString() });
+            _db.CoalitionLeagues.Add(league);
+        }
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<LeagueDto>> GetLeaguesAsync(CancellationToken ct = default)
+    {
+        var leagues = await _db.CoalitionLeagues.Include(l => l.Members).ToListAsync(ct);
+        if (leagues.Count == 0)
+        {
+            await ComposeLeaguesAsync(4, ct);
+            leagues = await _db.CoalitionLeagues.Include(l => l.Members).ToListAsync(ct);
+        }
+
+        var worlds = await LoadWorldAsync(ct);
+        var acts = await ActsAsync(ct);
+        var contrib = BuildContributions(worlds, acts);
+        var agentUsers = (await _db.CoalitionParticipants.Where(c => c.IsAgent).Select(c => c.UserId).Distinct().ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var result = new List<LeagueDto>();
+        foreach (var l in leagues.OrderBy(l => l.GapTier))
+        {
+            var contribs = l.Members
+                .Select(m => contrib.TryGetValue(m.UserId, out var c) ? c : new PlayerContribution(m.UserId, 0, 0, 0, 0))
+                .ToList();
+            var standings = BreadthFavoringScoring.Standings(contribs);
+            var rows = standings.Select((s, idx) =>
+            {
+                var c = contribs.First(x => Eq(x.UserId, s.UserId));
+                var isAgent = agentUsers.Contains(s.UserId);
+                return new StandingRowDto(idx + 1, s.UserId, Pretty(s.UserId, isAgent), isAgent, s.Score,
+                    c.CoalitionsSigned, c.TotalBreadthOfSignedCoalitions, c.MovedCount);
+            }).ToList();
+            result.Add(new LeagueDto(l.Id.ToString(), l.Name, l.GapTier, DifficultyLabel(l.GapTier),
+                l.Members.Select(m => m.SpectrumBucket).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), rows));
+        }
+        return result;
+    }
+
+    private Dictionary<string, PlayerContribution> BuildContributions(IReadOnlyList<ProvisionWorld> worlds, Dictionary<string, int> acts)
+    {
+        var signed = new Dictionary<string, (int s, int b, int m)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in worlds)
+        {
+            if (w.Pass?.Plank is null || w.Pass.Signers is null) continue;
+            foreach (var u in w.Pass.Signers)
+            {
+                var cur = signed.GetValueOrDefault(u);
+                cur.s += 1;
+                cur.b += w.Pass.Breadth?.CoveredBuckets ?? 0;
+                cur.m += LoopMovement.MovedToward(w.State.SignalsFor(u), w.Pass.Plank) ? 1 : 0;
+                signed[u] = cur;
+            }
+        }
+        var users = signed.Keys.Union(acts.Keys, StringComparer.OrdinalIgnoreCase);
+        return users.ToDictionary(u => u,
+            u => new PlayerContribution(u, signed.GetValueOrDefault(u).s, signed.GetValueOrDefault(u).b, signed.GetValueOrDefault(u).m, acts.GetValueOrDefault(u)),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private async Task<Dictionary<string, int>> ActsAsync(CancellationToken ct)
+    {
+        var pos = await _db.ProvisionPositions.Select(x => x.UserId).ToListAsync(ct);
+        var amd = await _db.ProvisionVersions.Where(v => v.AuthorUserId != null).Select(v => v.AuthorUserId!).ToListAsync(ct);
+        var acc = await _db.AcceptanceRecords.Select(a => a.UserId).ToListAsync(ct);
+        var d = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var u in pos.Concat(amd).Concat(acc)) d[u] = d.GetValueOrDefault(u) + 1;
+        return d;
+    }
+
+    private static string Pretty(string userId, bool isAgent)
+    {
+        if (isAgent)
+        {
+            var name = userId.Replace("agent:", "", StringComparison.OrdinalIgnoreCase);
+            return char.ToUpperInvariant(name[0]) + name[1..] + " (agent)";
+        }
+        return "Player " + userId[..Math.Min(6, userId.Length)];
+    }
+
+    private static string SkillLabel(double skill) =>
+        skill < 0.34 ? "Rookie" : skill < 0.67 ? "Bridger" : "Veteran";
 
     // ---------------------------------------------------------------- persistence helpers
 

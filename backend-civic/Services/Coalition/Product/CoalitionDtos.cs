@@ -43,7 +43,10 @@ public sealed record ProvisionSummaryDto(
     double Distance,
     int CoveredBuckets,
     int TotalBuckets,
-    DateTime? Deadline);
+    DateTime? Deadline,
+    double GapWidth,
+    string Difficulty,
+    bool Governance);
 
 public sealed record ProvisionDetailDto(
     Guid Id,
@@ -59,7 +62,43 @@ public sealed record ProvisionDetailDto(
     SpectrumBarDto SpectrumBar,
     OutcomeDto? Outcome,
     string? YourUserId,
-    bool YouJoined);
+    bool YouJoined,
+    double GapWidth,
+    string Difficulty,
+    bool Governance);
+
+// ---- Layer 3 gamification read models ----
+
+public sealed record CampaignRecordDto(
+    int PlanksPassed, int TotalBreadth, double AvgBreadth, int TotalMovedSigners,
+    double GovernanceRatio, double WeightedScore);
+
+public sealed record CadenceDto(double Score, bool[] Last7Days);
+
+public sealed record PlankDto(Guid ProvisionId, string Title, int Breadth, double GapWidth, bool Governance);
+
+public sealed record RecommendedProvisionDto(Guid Id, string Title, string State, double GapWidth, string Difficulty);
+
+public sealed record MeDto(
+    string UserId,
+    double Skill,
+    string SkillLabel,
+    CampaignRecordDto Record,
+    CadenceDto Cadence,
+    string? LeagueId,
+    string? LeagueName,
+    double LeagueGapTier,
+    string Movement,
+    IReadOnlyList<PlankDto> RecentPlanks,
+    IReadOnlyList<RecommendedProvisionDto> Recommended);
+
+public sealed record StandingRowDto(
+    int Rank, string UserId, string DisplayName, bool IsAgent, double Score,
+    int CoalitionsSigned, int TotalBreadth, int MovedCount);
+
+public sealed record LeagueDto(
+    string Id, string Name, double GapTier, string DifficultyLabel,
+    IReadOnlyList<string> Buckets, IReadOnlyList<StandingRowDto> Standings);
 
 public sealed record JoinRequest(string? Bucket);
 public sealed record PositionRequest(string Stance, string Intensity = "Medium", string? Bucket = null, string? ReasoningTag = null);

@@ -91,4 +91,57 @@ public class CoalitionApiTests : IAsyncLifetime
 
     private static bool HasGfExempt(VersionDto v) =>
         v.Positions.TryGetValue("gf", out var label) && string.Equals(label, "exempt", StringComparison.OrdinalIgnoreCase);
+
+    [Fact]
+    public async Task Leagues_ShowBreadthFavoringStandings_AfterAnAgentCoalition()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var ai = provisions!.Single(p => p.Slug == "ai-hiring-disclosure-demo");
+        // provision summaries carry the difficulty/gap badges now
+        ai.Difficulty.Should().NotBeNullOrEmpty();
+        ai.GapWidth.Should().BeGreaterThanOrEqualTo(0);
+
+        var detail = await GetDetailAsync(ai.Id);
+        for (var step = 0; step < 12 && detail.State != "Passed"; step++)
+            detail = await PostAsync($"/api/coalition/provisions/{ai.Id}/agent-step");
+        detail.State.Should().Be("Passed");
+
+        var leagues = await _client.GetFromJsonAsync<List<LeagueDto>>("/api/coalition/leagues");
+        leagues.Should().NotBeNullOrEmpty();
+        var rows = leagues!.SelectMany(l => l.Standings).ToList();
+        rows.Should().Contain(r => r.IsAgent && r.CoalitionsSigned >= 1 && r.TotalBreadth >= 3,
+            "agents who signed the cross-spectrum coalition should appear in the breadth-favoring standings");
+        // breadth-favoring: a signer of a broad coalition outscores a non-signer.
+        var signer = rows.First(r => r.CoalitionsSigned >= 1);
+        signer.Score.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Me_ReflectsSignedPlank_AndLeaguePlacement()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        var detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/positions",
+            new { stance = "carve-out please", intensity = "Medium", bucket = "left" });
+        for (var step = 0; step < 6 && !detail.Versions.Any(HasGfExempt); step++)
+            detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/agent-step");
+        var bridge = detail.Versions.First(HasGfExempt);
+        detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/acceptances",
+            new { versionId = bridge.Id, accept = true, intensity = "Medium" });
+        for (var step = 0; step < 6 && detail.State != "Passed"; step++)
+            detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/agent-step");
+        detail.State.Should().Be("Passed");
+
+        var me = await _client.GetFromJsonAsync<MeDto>("/api/coalition/me");
+        me.Should().NotBeNull();
+        me!.Record.PlanksPassed.Should().BeGreaterThanOrEqualTo(1, "the player co-signed a passed plank");
+        me.Record.TotalBreadth.Should().BeGreaterThanOrEqualTo(2);
+        me.Cadence.Score.Should().BeGreaterThan(0, "the player was active today");
+        me.Cadence.Last7Days.Should().HaveCount(7);
+        me.LeagueId.Should().NotBeNullOrEmpty("the player is auto-placed in a league");
+        me.Recommended.Should().NotBeNull();
+        me.SkillLabel.Should().NotBeNullOrEmpty();
+    }
 }
