@@ -93,11 +93,33 @@ public class CoalitionLifecycleService
         return moved;
     }
 
-    /// <summary>One lifecycle tick: resolve deadlines, top up, then re-balance leagues.</summary>
+    /// <summary>
+    /// Run agent ballast on active provisions (the prod replacement for the dev "Run agents"
+    /// button): a few agent rounds per provision so coalitions can form/seed in thin rooms
+    /// without a human clicking. Stops a provision early once it resolves. Returns rounds run.
+    /// </summary>
+    public async Task<int> StepAgentsAsync(int roundsPerProvision = 2, CancellationToken ct = default)
+    {
+        var ids = await _db.Provisions.Where(p => Active.Contains(p.State)).Select(p => p.Id).ToListAsync(ct);
+        var rounds = 0;
+        foreach (var id in ids)
+        {
+            for (var r = 0; r < roundsPerProvision; r++)
+            {
+                var detail = await _loop.AgentStepAsync(id, currentUserId: null, ct);
+                rounds++;
+                if (detail is null || detail.State is "Passed" or "Forked" or "Died") break;
+            }
+        }
+        return rounds;
+    }
+
+    /// <summary>One lifecycle tick: resolve deadlines, top up, run agent ballast, re-balance leagues.</summary>
     public async Task RunTickAsync(CancellationToken ct = default)
     {
         await ResolveOverdueAsync(ct);
         await TopUpAsync(TargetActiveProvisions, ct);
+        await StepAgentsAsync(roundsPerProvision: 2, ct);
         await ApplyPromotionsAsync(ct);
     }
 }

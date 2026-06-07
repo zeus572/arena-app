@@ -17,12 +17,14 @@ public class CoalitionProvisionsController : ControllerBase
     private readonly CoalitionLoopService _loop;
     private readonly CoalitionSeeder _seeder;
     private readonly ICurrentUserService _user;
+    private readonly IWebHostEnvironment _env;
 
-    public CoalitionProvisionsController(CoalitionLoopService loop, CoalitionSeeder seeder, ICurrentUserService user)
+    public CoalitionProvisionsController(CoalitionLoopService loop, CoalitionSeeder seeder, ICurrentUserService user, IWebHostEnvironment env)
     {
         _loop = loop;
         _seeder = seeder;
         _user = user;
+        _env = env;
     }
 
     [HttpGet]
@@ -94,18 +96,21 @@ public class CoalitionProvisionsController : ControllerBase
         return Ok(new ActResultDto(points, currency));
     }
 
-    /// <summary>Run one round of agent (ballast) acts — agents take positions, decline, propose carve-outs, co-sign.</summary>
+    /// <summary>Manually run one round of agent (ballast) acts. Development-only — in prod the
+    /// lifecycle scheduler runs agent ballast automatically.</summary>
     [HttpPost("{id:guid}/agent-step")]
     public async Task<ActionResult<ProvisionDetailDto>> AgentStep(Guid id, CancellationToken ct)
     {
+        if (!_env.IsDevelopment()) return NotFound();
         var detail = await _loop.AgentStepAsync(id, _user.GetCurrentUserId(), ct);
         return detail is null ? NotFound() : Ok(detail);
     }
 
-    /// <summary>Dev helper: (re)seed the demo provisions.</summary>
+    /// <summary>Dev helper: (re)seed the demo provisions. Development-only.</summary>
     [HttpPost("/api/coalition/seed")]
     public async Task<ActionResult> Seed(CancellationToken ct)
     {
+        if (!_env.IsDevelopment()) return NotFound();
         await _seeder.SeedAsync(ct);
         return Ok(new { seeded = true });
     }
@@ -138,10 +143,12 @@ public class CoalitionProvisionsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<LeagueDto>>> Leagues(CancellationToken ct)
         => Ok(await _loop.GetLeaguesAsync(ct));
 
-    /// <summary>Dev helper: (re)compose leagues from the current player pool.</summary>
+    /// <summary>Dev helper: (re)compose leagues from the current player pool. Development-only
+    /// (the lifecycle scheduler composes/re-balances leagues automatically in prod).</summary>
     [HttpPost("/api/coalition/leagues/compose")]
     public async Task<ActionResult> ComposeLeagues(CancellationToken ct)
     {
+        if (!_env.IsDevelopment()) return NotFound();
         await _loop.ComposeLeaguesAsync(4, ct);
         return Ok(await _loop.GetLeaguesAsync(ct));
     }

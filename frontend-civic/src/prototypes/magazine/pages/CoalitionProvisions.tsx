@@ -136,12 +136,14 @@ export default function CoalitionProvisions() {
         </p>
       </header>
 
-      <div className="mt-6 flex items-center gap-3">
-        <button onClick={reseed} disabled={seeding}
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]">
-          <RefreshCw size={14} className={seeding ? "animate-spin" : ""} /> Seed / recompose demo
-        </button>
-      </div>
+      {import.meta.env.DEV && (
+        <div className="mt-6 flex items-center gap-3">
+          <button onClick={reseed} disabled={seeding}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]">
+            <RefreshCw size={14} className={seeding ? "animate-spin" : ""} /> Seed / recompose demo (dev)
+          </button>
+        </div>
+      )}
 
       {!loaded ? (
         <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>

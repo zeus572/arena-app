@@ -175,15 +175,17 @@ export default function CoalitionProvisionDetail() {
         </div>
       )}
 
-      {/* Agent ballast */}
+      {/* Agent ballast (dev only — in prod the scheduler runs agents automatically) */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button
-          onClick={() => run(() => agentStep(id))}
-          disabled={busy || resolved}
-          className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          <Bot size={16} /> Run agents (one round)
-        </button>
+        {import.meta.env.DEV && (
+          <button
+            onClick={() => run(() => agentStep(id))}
+            disabled={busy || resolved}
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            <Bot size={16} /> Run agents (dev)
+          </button>
+        )}
         {!d.youJoined && !resolved && (
           <div className="inline-flex items-center gap-2">
             <select

@@ -60,6 +60,27 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StepAgents_DrivesAgentOnlyProvisionToCoalition()
+    {
+        // Seed the demo provisions (the AI one has 3 bridgeable agent corners, no humans needed).
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var seeder = s.ServiceProvider.GetRequiredService<CoalitionSeeder>();
+            await seeder.SeedAsync();
+        }
+
+        var (svc, _, scope) = Build();
+        using (scope) await svc.StepAgentsAsync(roundsPerProvision: 6);
+
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
+            var ai = await db.Provisions.SingleAsync(p => p.Slug == "ai-hiring-disclosure-demo");
+            ai.State.Should().Be(ProvisionState.Passed, "the scheduler's agent ballast should form the coalition without any button");
+        }
+    }
+
+    [Fact]
     public async Task TopUp_BirthsProvisionsFromUnusedBriefings()
     {
         var (svc, db, scope) = Build();
