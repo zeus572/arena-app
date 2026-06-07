@@ -157,6 +157,40 @@ public class CoalitionApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PointsEconomy_AwardsReasoningXp_AndScarce_OnPlaythrough()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        var detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/positions", new { stance = "for with carve-out", intensity = "Medium", bucket = "left" });
+        // Decline the base first (bargain in), then propose + co-sign the carve-out -> the player moved.
+        var baseV = detail.Versions.First(v => !HasGfExempt(v));
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/acceptances", new { versionId = baseV.Id, accept = false, intensity = "Medium" });
+        detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/amendments/freeform",
+            new { text = "I'd sign if existing facilities are exempt and it stays large-only." });
+        var bridge = detail.Versions.First(HasGfExempt);
+        detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/acceptances", new { versionId = bridge.Id, accept = true, intensity = "Medium" });
+        for (var step = 0; step < 6 && detail.State != "Passed"; step++)
+            detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/agent-step");
+        detail.State.Should().Be("Passed");
+
+        // A daily reaction-with-reason act earns reasoning XP.
+        var act = await _client.PostAsJsonAsync($"/api/coalition/provisions/{dc.Id}/acts",
+            new { type = "ReactionWithReason", payload = "Workable: the carve-out addresses the marginal-cost problem." });
+        act.EnsureSuccessStatusCode();
+        var actResult = (await act.Content.ReadFromJsonAsync<ActResultDto>())!;
+        actResult.Points.Should().BeGreaterThan(0);
+        actResult.Currency.Should().Be("reasoning");
+
+        var me = await _client.GetFromJsonAsync<MeDto>("/api/coalition/me");
+        me!.ReasoningXp.Should().BeGreaterThan(0, "position + amend + co-sign + reaction earn reasoning XP");
+        me.ScarcePoints.Should().BeGreaterThan(0, "signing a passed coalition pays the scarce premium currency");
+        me.TodayReasoning.Should().BeLessThanOrEqualTo(me.DailyReasoningCap, "the daily reasoning cap holds");
+        me.Record.PlanksPassed.Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
     public async Task Me_ReflectsSignedPlank_AndLeaguePlacement()
     {
         var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");

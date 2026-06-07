@@ -6,6 +6,8 @@ import {
   joinProvision,
   takePosition,
   proposeAmendment,
+  proposeFreeformAmendment,
+  recordAct,
   castAcceptance,
   agentStep,
   type ProvisionDetail,
@@ -49,6 +51,9 @@ export default function CoalitionProvisionDetail() {
   const [stance, setStance] = useState("");
   const [bucket, setBucket] = useState("left");
   const [carveOut, setCarveOut] = useState<Record<string, string>>({});
+  const [freeText, setFreeText] = useState("");
+  const [steelText, setSteelText] = useState("");
+  const [ptsMsg, setPtsMsg] = useState<string | null>(null);
 
   function reload() { void getProvision(id).then(setD); }
   useEffect(reload, [id]);
@@ -56,6 +61,15 @@ export default function CoalitionProvisionDetail() {
   async function run(fn: () => Promise<ProvisionDetail>) {
     setBusy(true);
     try { setD(await fn()); } finally { setBusy(false); }
+  }
+
+  async function act(type: string, payload?: string) {
+    setBusy(true);
+    try {
+      const r = await recordAct(id, type, payload);
+      setPtsMsg(`+${r.points} ${r.currency} pts`);
+      setD(await getProvision(id));
+    } finally { setBusy(false); }
   }
 
   if (!d) return <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>;
@@ -84,6 +98,36 @@ export default function CoalitionProvisionDetail() {
       </header>
 
       <div className="mt-6"><SpectrumBarView d={d} /></div>
+
+      {ptsMsg && (
+        <div className="mt-3 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+          {ptsMsg}
+        </div>
+      )}
+
+      {/* Daily acts — earn reasoning XP */}
+      <div className="mt-4 rounded-2xl border border-[var(--line)] p-4">
+        <h3 className="text-sm font-semibold">Daily acts <span className="text-xs font-normal text-[var(--muted)]">— earn reasoning XP</span></h3>
+        <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {["Workable", "Unworkable", "Addresses the problem", "Dodges it", "Fair tradeoff", "Hidden cost"].map((label) => (
+            <button key={label} onClick={() => act("ReactionWithReason", label)} disabled={busy}
+              className="rounded-full border border-[var(--line)] px-3 py-1 text-xs hover:border-[var(--accent)] disabled:opacity-50">
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3">
+          <label className="text-xs text-[var(--muted)]">Steelman (state the strongest case the other side would accept):</label>
+          <textarea value={steelText} onChange={(e) => setSteelText(e.target.value)} rows={2}
+            className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm" />
+          <button onClick={() => { if (steelText.trim()) { void act("Steelman", steelText); setSteelText(""); } }}
+            disabled={busy || !steelText.trim()}
+            className="mt-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50">
+            Submit steelman
+          </button>
+        </div>
+      </div>
 
       {d.outcome && (
         <div className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -194,7 +238,17 @@ export default function CoalitionProvisionDetail() {
 
           <div className="rounded-2xl border border-[var(--line)] p-4">
             <h3 className="text-sm font-semibold">Propose a carve-out</h3>
-            <p className="mt-1 text-xs text-[var(--muted)]">Pick a position on each sub-question.</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Write it in your own words — it's extracted into positions:</p>
+            <textarea value={freeText} onChange={(e) => setFreeText(e.target.value)} rows={2}
+              placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
+              className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm" />
+            <button
+              onClick={() => { if (freeText.trim()) { void run(() => proposeFreeformAmendment(id, freeText)); setFreeText(""); } }}
+              disabled={busy || !freeText.trim()}
+              className="mt-1 rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+              Propose (free-form)
+            </button>
+            <p className="mt-3 text-xs text-[var(--muted)]">…or pick a position on each sub-question.</p>
             {d.subQuestions.map((sq) => (
               <div key={sq.key} className="mt-2">
                 <label className="text-xs text-[var(--muted)]">{sq.key}</label>

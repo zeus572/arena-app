@@ -106,6 +106,15 @@ export interface Me {
   movement: string;
   recentPlanks: Plank[];
   recommended: Recommended[];
+  reasoningXp: number;
+  scarcePoints: number;
+  todayReasoning: number;
+  dailyReasoningCap: number;
+}
+
+export interface ActResult {
+  points: number;
+  currency: string;
 }
 
 export interface Standing {
@@ -217,5 +226,20 @@ export async function getLeagues(): Promise<League[]> {
 
 export async function composeLeagues(): Promise<League[]> {
   const { data } = await civicApi.post<League[]>("/coalition/leagues/compose");
+  return data;
+}
+
+export async function proposeFreeformAmendment(id: string, text: string): Promise<ProvisionDetail> {
+  const { data } = await civicApi.post<ProvisionDetail>(`${BASE}/${id}/amendments/freeform`, { text });
+  return data;
+}
+
+export async function recordAct(id: string, type: string, payload?: string): Promise<ActResult> {
+  const { data } = await civicApi.post<ActResult>(`${BASE}/${id}/acts`, { type, payload });
+  return data;
+}
+
+export async function birthFromBriefing(briefingId: string): Promise<ProvisionDetail> {
+  const { data } = await civicApi.post<ProvisionDetail>("/coalition/birth", { briefingId });
   return data;
 }

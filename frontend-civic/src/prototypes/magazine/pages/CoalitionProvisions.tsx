@@ -71,6 +71,22 @@ function RecordCard({ me }: { me: Me }) {
         <span className={`flex items-center gap-1 font-semibold ${moveColor}`}><TrendingUp size={13} /> {me.movement}</span>
       </div>
 
+      {/* Two clocks: daily reasoning XP vs scarce coalition currency */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-[var(--line)] p-3">
+          <p className="text-[10px] uppercase tracking-wider text-[var(--muted)]">Daily reasoning XP</p>
+          <p className="text-2xl font-bold">{me.todayReasoning}
+            <span className="text-sm font-normal text-[var(--muted)]">/{me.dailyReasoningCap} today</span>
+          </p>
+          <p className="text-[10px] text-[var(--muted)]">{me.reasoningXp} all-time · diminishing returns</p>
+        </div>
+        <div className="rounded-xl border border-[var(--line)] p-3">
+          <p className="text-[10px] uppercase tracking-wider text-[var(--muted)]">Coalition (scarce)</p>
+          <p className="text-2xl font-bold text-[var(--accent)]">{me.scarcePoints}</p>
+          <p className="text-[10px] text-[var(--muted)]">uncapped · breadth premium</p>
+        </div>
+      </div>
+
       {/* Cadence */}
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs text-[var(--muted)]">

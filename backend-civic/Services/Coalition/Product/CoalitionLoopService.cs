@@ -25,14 +25,16 @@ public class CoalitionLoopService
     private readonly CivicDbContext _db;
     private readonly IExtractionService _extraction;
     private readonly ProvisionBirthService _birth;
+    private readonly Judges.ICoalitionJudge _judge;
     private readonly ProvisionStateMachine _sm = new();
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
-    public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth)
+    public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth, Judges.ICoalitionJudge judge)
     {
         _db = db;
         _extraction = extraction;
         _birth = birth;
+        _judge = judge;
     }
 
     // ---------------------------------------------------------------- reads
@@ -153,7 +155,7 @@ public class CoalitionLoopService
 
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
-        await LogActivityAsync(userId, ct);
+        await RecordActAsync(userId, provisionId, CoalitionActType.Position, req.Stance, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -166,7 +168,8 @@ public class CoalitionLoopService
         await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
-        await LogActivityAsync(userId, ct);
+        await RecordActAsync(userId, provisionId, CoalitionActType.Amend,
+            string.Join("; ", positions.Select(k => $"{k.Key}={k.Value}")), ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -210,7 +213,7 @@ public class CoalitionLoopService
         await _db.SaveChangesAsync(ct);
 
         await RecomputeAndSaveAsync(provisionId, ct);
-        await LogActivityAsync(userId, ct);
+        await RecordActAsync(userId, provisionId, CoalitionActType.Amend, text, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -236,7 +239,7 @@ public class CoalitionLoopService
         await UpsertAcceptanceAsync(provisionId, userId, version.Id, req.Accept, ParseIntensity(req.Intensity), ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
-        await LogActivityAsync(userId, ct);
+        if (req.Accept) await RecordActAsync(userId, provisionId, CoalitionActType.CoSign, null, ct);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -397,11 +400,111 @@ public class CoalitionLoopService
         if (state is null) return;
         var newState = _sm.Evaluate(state);
         var p = await _db.Provisions.FirstAsync(x => x.Id == provisionId, ct);
+        var old = p.State;
         if (p.State != newState)
         {
             p.State = newState;
             await _db.SaveChangesAsync(ct);
         }
+
+        // Deposit payouts on resolution (idempotent).
+        if (newState == ProvisionState.Passed && old != ProvisionState.Passed)
+            await AwardPassRewardsAsync(state, ct);
+        else if (newState == ProvisionState.Died && old != ProvisionState.Died)
+            await AwardDiedPayoutAsync(provisionId, ct);
+    }
+
+    private async Task AwardPassRewardsAsync(ProvisionLoopState state, CancellationToken ct)
+    {
+        var outcome = _sm.ResolvePassOutcome(state);
+        if (outcome?.Plank is null || outcome.Signers is null) return;
+        var pid = Guid.Parse(state.ProvisionId);
+        var breadth = outcome.Breadth?.CoveredBuckets ?? 0;
+        foreach (var signer in outcome.Signers)
+        {
+            if (await _db.CoalitionActs.AnyAsync(a => a.ProvisionId == pid && a.UserId == signer && a.Type == CoalitionActType.CoalitionPassReward, ct))
+                continue;
+            _db.CoalitionActs.Add(new CoalitionAct
+            {
+                Id = Guid.NewGuid(), UserId = signer, ProvisionId = pid, Type = CoalitionActType.CoalitionPassReward,
+                Currency = "scarce", Points = CoalitionPoints.BasePoints(CoalitionActType.CoalitionPassReward) + breadth * 5,
+                GovernanceScore = 70, QualityScore = 70,
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task AwardDiedPayoutAsync(Guid provisionId, CancellationToken ct)
+    {
+        // Dead provisions still pay reasoning points to the humans who engaged (doc 03).
+        var participants = await _db.CoalitionParticipants
+            .Where(c => c.ProvisionId == provisionId && !c.IsAgent).Select(c => c.UserId).ToListAsync(ct);
+        foreach (var u in participants)
+        {
+            if (await _db.CoalitionActs.AnyAsync(a => a.ProvisionId == provisionId && a.UserId == u && a.Type == CoalitionActType.DiedReasoningPayout, ct))
+                continue;
+            _db.CoalitionActs.Add(new CoalitionAct
+            {
+                Id = Guid.NewGuid(), UserId = u, ProvisionId = provisionId, Type = CoalitionActType.DiedReasoningPayout,
+                Currency = "reasoning", Points = CoalitionPoints.BasePoints(CoalitionActType.DiedReasoningPayout),
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Record an act in the ledger and award points: judge governance+quality (LLM in prod,
+    /// heuristic in dev), apply the currency rules + diminishing returns. Returns points awarded.
+    /// </summary>
+    public async Task<(int Points, string Currency)> RecordActAsync(string userId, Guid? provisionId, CoalitionActType type, string? payload, CancellationToken ct = default)
+    {
+        string[] axes = Array.Empty<string>();
+        var provisionText = "";
+        if (provisionId is Guid pid)
+        {
+            var p = await _db.Provisions.FirstOrDefaultAsync(x => x.Id == pid, ct);
+            if (p is not null) { axes = p.RelevantAxes; provisionText = p.NeutralText; }
+        }
+
+        int governance = 50, quality = 50;
+        if (!string.IsNullOrWhiteSpace(payload))
+        {
+            if (type == CoalitionActType.Steelman)
+            {
+                var v = await _judge.JudgeSteelmanAsync(provisionText, payload, ct);
+                quality = v.Quality; governance = 65;
+            }
+            else
+            {
+                var s = await _judge.ScoreContributionAsync(payload, axes, ct);
+                governance = s.Governance; quality = s.ReasoningQuality;
+            }
+        }
+
+        var basePts = CoalitionPoints.BasePoints(type);
+        if (CoalitionPoints.QualityGated(type))
+            basePts = Math.Max(1, (int)Math.Round(basePts * Math.Max(0.2, quality / 100.0)));
+
+        var currency = CoalitionPoints.Currency(type);
+        int points;
+        if (currency == "reasoning")
+        {
+            var today = DateTime.UtcNow.Date;
+            var todays = await _db.CoalitionActs
+                .Where(a => a.UserId == userId && a.Currency == "reasoning" && a.CreatedAt >= today).ToListAsync(ct);
+            points = CoalitionPoints.ApplyDiminishing(basePts, todays.Count, todays.Sum(a => a.Points));
+        }
+        else points = basePts;
+
+        _db.CoalitionActs.Add(new CoalitionAct
+        {
+            Id = Guid.NewGuid(), UserId = userId, ProvisionId = provisionId, Type = type,
+            Payload = payload is null ? null : (payload.Length > 4000 ? payload[..4000] : payload),
+            GovernanceScore = governance, QualityScore = quality, Points = points, Currency = currency,
+        });
+        await _db.SaveChangesAsync(ct);
+        await LogActivityAsync(userId, ct);
+        return (points, currency);
     }
 
     // ---------------------------------------------------------------- Layer 3 gamification
@@ -511,7 +614,15 @@ public class CoalitionLoopService
             .Select(x => new PlankDto(x.w.P.Id, x.w.P.Title, x.plank.Breadth, x.plank.GapWidthAtBirth, x.plank.IsGovernance))
             .ToList();
 
-        return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, leagueId, leagueName, tier, movement, recentPlanks, recommended);
+        // Points ledger totals.
+        var acts = await _db.CoalitionActs.Where(a => a.UserId == userId).ToListAsync(ct);
+        var today = DateTime.UtcNow.Date;
+        var reasoningXp = acts.Where(a => a.Currency == "reasoning").Sum(a => a.Points);
+        var scarce = acts.Where(a => a.Currency == "scarce").Sum(a => a.Points);
+        var todayReasoning = acts.Where(a => a.Currency == "reasoning" && a.CreatedAt >= today).Sum(a => a.Points);
+
+        return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, leagueId, leagueName, tier, movement,
+            recentPlanks, recommended, reasoningXp, scarce, todayReasoning, CoalitionPoints.DailyReasoningCap);
     }
 
     private async Task<CadenceDto> CadenceAsync(string userId, CancellationToken ct)

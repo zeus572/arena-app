@@ -62,6 +62,7 @@ public class CivicDbContext : DbContext
     public DbSet<CoalitionLeague> CoalitionLeagues => Set<CoalitionLeague>();
     public DbSet<CoalitionLeagueMember> CoalitionLeagueMembers => Set<CoalitionLeagueMember>();
     public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
+    public DbSet<CoalitionAct> CoalitionActs => Set<CoalitionAct>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -643,6 +644,14 @@ public class CivicDbContext : DbContext
         {
             e.HasKey(a => a.Id);
             e.HasIndex(a => new { a.UserId, a.Day }).IsUnique();
+        });
+
+        modelBuilder.Entity<CoalitionAct>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => new { a.UserId, a.CreatedAt });
+            e.HasIndex(a => new { a.ProvisionId, a.Type });
+            e.Property(a => a.Type).HasConversion<string>().HasMaxLength(40);
         });
     }
 }

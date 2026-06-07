@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Civic.API.Models;
 using Civic.API.Services;
 using Civic.API.Services.Coalition.Product;
 
@@ -71,6 +72,26 @@ public class CoalitionProvisionsController : ControllerBase
     {
         var detail = await _loop.CastAcceptanceAsync(id, _user.GetCurrentUserId(), req, ct);
         return detail is null ? NotFound() : Ok(detail);
+    }
+
+    /// <summary>Record a daily/scarce act on a provision (reaction-with-reason, steelman, claim-tag, etc.) and earn points.</summary>
+    [HttpPost("{id:guid}/acts")]
+    public async Task<ActionResult<ActResultDto>> Act(Guid id, [FromBody] ActRequest req, CancellationToken ct)
+    {
+        if (!Enum.TryParse<CoalitionActType>(req.Type, ignoreCase: true, out var type))
+            return BadRequest(new { error = "Unknown act type." });
+        var (points, currency) = await _loop.RecordActAsync(_user.GetCurrentUserId(), id, type, req.Payload, ct);
+        return Ok(new ActResultDto(points, currency));
+    }
+
+    /// <summary>Record a non-provision act (e.g. longform, author-a-provision draft) and earn points.</summary>
+    [HttpPost("/api/coalition/acts")]
+    public async Task<ActionResult<ActResultDto>> GlobalAct([FromBody] ActRequest req, CancellationToken ct)
+    {
+        if (!Enum.TryParse<CoalitionActType>(req.Type, ignoreCase: true, out var type))
+            return BadRequest(new { error = "Unknown act type." });
+        var (points, currency) = await _loop.RecordActAsync(_user.GetCurrentUserId(), null, type, req.Payload, ct);
+        return Ok(new ActResultDto(points, currency));
     }
 
     /// <summary>Run one round of agent (ballast) acts — agents take positions, decline, propose carve-outs, co-sign.</summary>

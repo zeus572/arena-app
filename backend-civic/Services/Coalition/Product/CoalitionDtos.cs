@@ -90,7 +90,13 @@ public sealed record MeDto(
     double LeagueGapTier,
     string Movement,
     IReadOnlyList<PlankDto> RecentPlanks,
-    IReadOnlyList<RecommendedProvisionDto> Recommended);
+    IReadOnlyList<RecommendedProvisionDto> Recommended,
+    int ReasoningXp,
+    int ScarcePoints,
+    int TodayReasoning,
+    int DailyReasoningCap);
+
+public sealed record ActResultDto(int Points, string Currency);
 
 public sealed record StandingRowDto(
     int Rank, string UserId, string DisplayName, bool IsAgent, double Score,
@@ -105,4 +111,5 @@ public sealed record PositionRequest(string Stance, string Intensity = "Medium",
 public sealed record AmendmentRequest(Dictionary<string, string> Positions, string? Label = null);
 public sealed record FreeformAmendmentRequest(string Text);
 public sealed record BirthRequest(Guid BriefingId);
+public sealed record ActRequest(string Type, string? Payload = null);
 public sealed record AcceptanceRequest(Guid VersionId, bool Accept, string Intensity = "Medium");
