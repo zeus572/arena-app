@@ -84,6 +84,8 @@ builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopSer
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, Civic.API.Services.Coalition.Judges.CoalitionJudge>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Agents.IAgentProfileMapper, Civic.API.Services.Coalition.Agents.AgentProfileMapper>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLifecycleService>();
+builder.Services.AddHostedService<Civic.API.Services.Coalition.Product.CoalitionLifecycleHostedService>();
 
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();

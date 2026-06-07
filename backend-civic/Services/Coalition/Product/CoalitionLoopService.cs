@@ -414,6 +414,16 @@ public class CoalitionLoopService
             await AwardDiedPayoutAsync(provisionId, ct);
     }
 
+    /// <summary>Recompute + persist a provision's state (e.g. the scheduler resolving deadlines). Public for lifecycle.</summary>
+    public Task ResolveAsync(Guid provisionId, CancellationToken ct = default) => RecomputeAndSaveAsync(provisionId, ct);
+
+    /// <summary>A user's current bridging skill (for promotion/relegation). Public for lifecycle.</summary>
+    public async Task<double> GetUserSkillAsync(string userId, CancellationToken ct = default)
+    {
+        var worlds = await LoadWorldAsync(ct);
+        return UserSkill(userId, worlds);
+    }
+
     private async Task AwardPassRewardsAsync(ProvisionLoopState state, CancellationToken ct)
     {
         var outcome = _sm.ResolvePassOutcome(state);
