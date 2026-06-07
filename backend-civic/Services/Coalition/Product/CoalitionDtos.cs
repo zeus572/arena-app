@@ -103,4 +103,6 @@ public sealed record LeagueDto(
 public sealed record JoinRequest(string? Bucket);
 public sealed record PositionRequest(string Stance, string Intensity = "Medium", string? Bucket = null, string? ReasoningTag = null);
 public sealed record AmendmentRequest(Dictionary<string, string> Positions, string? Label = null);
+public sealed record FreeformAmendmentRequest(string Text);
+public sealed record BirthRequest(Guid BriefingId);
 public sealed record AcceptanceRequest(Guid VersionId, bool Accept, string Intensity = "Medium");

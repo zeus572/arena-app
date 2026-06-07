@@ -3,10 +3,13 @@ using System.Text;
 using System.Text.Json;
 using Civic.API.Data;
 using Civic.API.Models;
+using Arena.Shared.Llm;
+using Civic.API.Services.Coalition;
 using Civic.API.Services.Coalition.Agents;
 using Civic.API.Services.Coalition.Curriculum;
 using Civic.API.Services.Coalition.Geometry;
 using Civic.API.Services.Coalition.Loop;
+using Civic.API.Services.Generation;
 using Microsoft.EntityFrameworkCore;
 
 namespace Civic.API.Services.Coalition.Product;
@@ -20,10 +23,17 @@ namespace Civic.API.Services.Coalition.Product;
 public class CoalitionLoopService
 {
     private readonly CivicDbContext _db;
+    private readonly IExtractionService _extraction;
+    private readonly ProvisionBirthService _birth;
     private readonly ProvisionStateMachine _sm = new();
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
-    public CoalitionLoopService(CivicDbContext db) => _db = db;
+    public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth)
+    {
+        _db = db;
+        _extraction = extraction;
+        _birth = birth;
+    }
 
     // ---------------------------------------------------------------- reads
 
@@ -160,6 +170,61 @@ public class CoalitionLoopService
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
+    /// <summary>
+    /// Free-form amendment (spec A2): the player writes natural-language text; the extraction
+    /// tier maps it to sub-question positions (LLM in prod; heuristic option-matching in dev),
+    /// surfacing any emergent sub-question (A4). The version stores the player's actual prose.
+    /// </summary>
+    public async Task<ProvisionDetailDto?> ProposeFreeformAmendmentAsync(Guid provisionId, string userId, string text, CancellationToken ct = default)
+    {
+        var p = await LoadProvisionAsync(provisionId, ct);
+        if (p is null) return null;
+        await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
+
+        var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provisionId).ToListAsync(ct);
+        ExtractionResult extraction;
+        try { extraction = await _extraction.ExtractAsync(text, subQs, ct); }
+        catch (LlmException) { extraction = HeuristicExtract(text, subQs); }
+
+        var positions = new Dictionary<string, string>(extraction.Positions, StringComparer.OrdinalIgnoreCase);
+        // Fold any newly-surfaced sub-question's position into this version's vector.
+        foreach (var ns in extraction.NewSubQuestions)
+            if (!string.IsNullOrWhiteSpace(ns.Key) && !string.IsNullOrWhiteSpace(ns.PositionInThisText))
+                positions[ns.Key] = ns.PositionInThisText!;
+
+        var version = await FindOrCreateVersionAsync(provisionId, positions, label: "amendment", userId, ct, freeformText: text);
+        await _db.SaveChangesAsync(ct);
+
+        // Persist emergent sub-questions (A4) introduced by this version.
+        var order = subQs.Count;
+        foreach (var ns in extraction.NewSubQuestions)
+        {
+            if (string.IsNullOrWhiteSpace(ns.Key) || subQs.Any(s => Eq(s.Key, ns.Key))) continue;
+            _db.SubQuestions.Add(new SubQuestion
+            {
+                Id = Guid.NewGuid(), ProvisionId = provisionId, Key = ns.Key, Prompt = ns.Prompt,
+                TradeoffDescription = ns.Tradeoff, PositionOptions = ns.PositionOptions,
+                Origin = SubQuestionOrigin.Emergent, IntroducedByVersionId = version.Id, OrderIndex = order++,
+            });
+        }
+        await _db.SaveChangesAsync(ct);
+
+        await RecomputeAndSaveAsync(provisionId, ct);
+        await LogActivityAsync(userId, ct);
+        return await GetDetailAsync(provisionId, userId, ct);
+    }
+
+    /// <summary>Dev fallback when no LLM: match any sub-question option label appearing in the text.</summary>
+    private static ExtractionResult HeuristicExtract(string text, IReadOnlyList<SubQuestion> subQuestions)
+    {
+        var lower = text.ToLowerInvariant();
+        var positions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sq in subQuestions)
+            foreach (var opt in sq.PositionOptions)
+                if (lower.Contains(opt.ToLowerInvariant())) { positions[sq.Key] = opt; break; }
+        return new ExtractionResult { Positions = positions, NewSubQuestions = new() };
+    }
+
     public async Task<ProvisionDetailDto?> CastAcceptanceAsync(Guid provisionId, string userId, AcceptanceRequest req, CancellationToken ct = default)
     {
         if (await LoadProvisionAsync(provisionId, ct) is null) return null;
@@ -173,6 +238,62 @@ public class CoalitionLoopService
         await RecomputeAndSaveAsync(provisionId, ct);
         await LogActivityAsync(userId, ct);
         return await GetDetailAsync(provisionId, userId, ct);
+    }
+
+    // ---------------------------------------------------------------- birth from a briefing
+
+    /// <summary>
+    /// Birth a provision from a briefing (system-extracted path). Uses the extraction-tier LLM
+    /// (ProvisionBirthService) in prod; on no-key falls back to a heuristic provision built from
+    /// the briefing's fields so the catalog still produces playable provisions in dev. Adds a base
+    /// version and a single agent counterpart so it's immediately engageable.
+    /// </summary>
+    public async Task<ProvisionDetailDto?> BirthFromBriefingAsync(Guid briefingId, string? currentUserId, CancellationToken ct = default)
+    {
+        var briefing = await _db.Briefings.FirstOrDefaultAsync(b => b.Id == briefingId, ct);
+        if (briefing is null) return null;
+
+        Provision provision;
+        try { provision = await _birth.BirthFromBriefingAsync(briefing, ct); }
+        catch (LlmException) { provision = await _birth.MapAndPersistAsync(HeuristicBirthDto(briefing), briefing, ct); }
+
+        var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provision.Id).OrderBy(s => s.OrderIndex).ToListAsync(ct);
+        if (subQs.Count > 0)
+        {
+            var basePositions = subQs.ToDictionary(s => s.Key, s => s.PositionOptions.FirstOrDefault() ?? "default", StringComparer.OrdinalIgnoreCase);
+            await FindOrCreateVersionAsync(provision.Id, basePositions, "base", null, ct);
+
+            // One agent counterpart (opposite end) so a human has someone to bridge with.
+            var rightRegion = subQs.Where(s => s.PositionOptions.Length > 0)
+                .ToDictionary(s => s.Key, s => new[] { s.PositionOptions[^1] });
+            _db.CoalitionParticipants.Add(new CoalitionParticipant
+            {
+                Id = Guid.NewGuid(), ProvisionId = provision.Id, UserId = "agent:counterpoint",
+                SpectrumBucket = "right", IsAgent = true,
+                RegionJson = RegionToJson(rightRegion),
+                IntensitiesJson = IntensitiesToJson(subQs.ToDictionary(s => s.Key, _ => "Medium")),
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+
+        await RecomputeAndSaveAsync(provision.Id, ct);
+        return await GetDetailAsync(provision.Id, currentUserId, ct);
+    }
+
+    private static GeneratedProvisionDto HeuristicBirthDto(Briefing b)
+    {
+        var axes = b.ValuesInConflict.Take(2).Select(v => Slugify.From(v)).Where(s => s.Length > 0).ToArray();
+        return new GeneratedProvisionDto
+        {
+            Title = b.Headline.Length > 90 ? b.Headline[..90] : b.Headline,
+            NeutralText = string.IsNullOrWhiteSpace(b.Summary30) ? b.WhatChanged : b.Summary30,
+            RelevantAxes = axes.Length > 0 ? axes : new[] { "governance" },
+            SubQuestions =
+            {
+                new GeneratedSubQuestionDto { Key = "scope", Prompt = "Who/what is covered?", PositionOptions = new[] { "narrow", "broad" } },
+                new GeneratedSubQuestionDto { Key = "authority", Prompt = "Who should decide?", PositionOptions = new[] { "local", "national" } },
+            },
+        };
     }
 
     // ---------------------------------------------------------------- writes (agent ballast)
@@ -578,7 +699,7 @@ public class CoalitionLoopService
 
     private async Task<ProvisionVersion> FindOrCreateVersionAsync(
         Guid provisionId, Dictionary<string, string> positions, string? label, string? authorUserId,
-        CancellationToken ct, Dictionary<string, ProvisionVersion>? cache = null)
+        CancellationToken ct, Dictionary<string, ProvisionVersion>? cache = null, string? freeformText = null)
     {
         var canon = Canonical(positions);
         if (cache is not null && cache.TryGetValue(canon, out var cached)) return cached;
@@ -588,7 +709,9 @@ public class CoalitionLoopService
         var match = loaded.FirstOrDefault(v => Canonical(v.ExtractedPositions) == canon);
         if (match is not null) { cache?.TryAdd(canon, match); return match; }
 
-        var text = "Version — " + string.Join("; ", positions.OrderBy(k => k.Key).Select(k => $"{k.Key} = {k.Value}"));
+        var text = !string.IsNullOrWhiteSpace(freeformText)
+            ? freeformText.Trim()
+            : "Version — " + string.Join("; ", positions.OrderBy(k => k.Key).Select(k => $"{k.Key} = {k.Value}"));
         var version = new ProvisionVersion
         {
             Id = Guid.NewGuid(), ProvisionId = provisionId, AuthorUserId = authorUserId, Label = label,

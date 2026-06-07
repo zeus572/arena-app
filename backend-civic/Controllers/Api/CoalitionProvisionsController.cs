@@ -57,6 +57,15 @@ public class CoalitionProvisionsController : ControllerBase
         return detail is null ? NotFound() : Ok(detail);
     }
 
+    /// <summary>Free-form amendment: write natural-language text; extraction maps it to positions.</summary>
+    [HttpPost("{id:guid}/amendments/freeform")]
+    public async Task<ActionResult<ProvisionDetailDto>> AmendFreeform(Guid id, [FromBody] FreeformAmendmentRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Text)) return BadRequest(new { error = "Text is required." });
+        var detail = await _loop.ProposeFreeformAmendmentAsync(id, _user.GetCurrentUserId(), req.Text, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
     [HttpPost("{id:guid}/acceptances")]
     public async Task<ActionResult<ProvisionDetailDto>> Accept(Guid id, [FromBody] AcceptanceRequest req, CancellationToken ct)
     {
@@ -78,6 +87,14 @@ public class CoalitionProvisionsController : ControllerBase
     {
         await _seeder.SeedAsync(ct);
         return Ok(new { seeded = true });
+    }
+
+    /// <summary>Birth a new provision from a briefing (system-extracted; LLM in prod, heuristic fallback in dev).</summary>
+    [HttpPost("/api/coalition/birth")]
+    public async Task<ActionResult<ProvisionDetailDto>> Birth([FromBody] BirthRequest req, CancellationToken ct)
+    {
+        var detail = await _loop.BirthFromBriefingAsync(req.BriefingId, _user.GetCurrentUserId(), ct);
+        return detail is null ? NotFound(new { error = "Briefing not found." }) : Ok(detail);
     }
 
     // ---- Layer 3 gamification ----

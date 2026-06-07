@@ -82,6 +82,8 @@ builder.Services.AddScoped<
 // Coalition game (Layer 2/2H/3): the playable loop + seeding.
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopService>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, Civic.API.Services.Coalition.Judges.CoalitionJudge>();
+builder.Services.AddScoped<Civic.API.Services.Coalition.Agents.IAgentProfileMapper, Civic.API.Services.Coalition.Agents.AgentProfileMapper>();
 
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();

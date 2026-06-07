@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Civic.API.Services.Coalition.Product;
 using Civic.ApiTests;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -91,6 +92,45 @@ public class CoalitionApiTests : IAsyncLifetime
 
     private static bool HasGfExempt(VersionDto v) =>
         v.Positions.TryGetValue("gf", out var label) && string.Equals(label, "exempt", StringComparison.OrdinalIgnoreCase);
+
+    [Fact]
+    public async Task BirthFromBriefing_CreatesPlayableProvision()
+    {
+        Guid briefingId;
+        using (var scope = _fx.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Civic.API.Data.CivicDbContext>();
+            briefingId = (await db.Briefings.OrderBy(b => b.IssueOrder).FirstAsync()).Id;
+        }
+
+        var detail = await PostAsync("/api/coalition/birth", new { briefingId });
+
+        detail.SubQuestions.Should().NotBeEmpty("a born provision has sub-questions to position on");
+        detail.Versions.Should().Contain(v => v.Label == "base", "birth seeds a base version");
+        detail.Participants.Should().Contain(p => p.IsAgent, "an agent counterpart is seeded so it's engageable");
+        detail.Difficulty.Should().NotBeNullOrEmpty();
+        new[] { "Open", "Contested" }.Should().Contain(detail.State);
+    }
+
+    [Fact]
+    public async Task FreeformAmendment_ExtractsPositions_FromNaturalLanguage()
+    {
+        // No API key in tests -> extraction falls back to heuristic option-matching, which
+        // still picks up the "exempt" / "large-only" labels in the player's prose.
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/positions", new { stance = "for with carve-out", intensity = "Medium", bucket = "left" });
+
+        var detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/amendments/freeform",
+            new { text = "I'd sign it if existing facilities are exempt and it stays large-only." });
+
+        var v = detail.Versions.First(HasGfExempt);
+        v.Positions["gf"].Should().Be("exempt");
+        v.Positions["scope"].Should().Be("large-only");
+        v.Text.Should().Contain("exempt", "the version stores the player's actual prose");
+    }
 
     [Fact]
     public async Task Leagues_ShowBreadthFavoringStandings_AfterAnAgentCoalition()
