@@ -35,9 +35,11 @@ function SpectrumBarView({ d }: { d: ProvisionDetail }) {
           </div>
         ))}
       </div>
+      <p className="mt-3 text-xs font-semibold text-[var(--accent)]">{bar.callToAction}</p>
       {bar.deadline && (
-        <p className="mt-3 text-xs text-[var(--muted)]">
+        <p className="mt-1 text-xs text-[var(--muted)]">
           deadline {new Date(bar.deadline).toLocaleString()}
+          {bar.daysLeft != null && ` · ${bar.daysLeft} day${bar.daysLeft === 1 ? "" : "s"} left`}
         </p>
       )}
     </div>
@@ -102,6 +104,22 @@ export default function CoalitionProvisionDetail() {
       {ptsMsg && (
         <div className="mt-3 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
           {ptsMsg}
+        </div>
+      )}
+
+      {!resolved && d.probes.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-[var(--accent)] p-4">
+          <h3 className="text-sm font-semibold">Bridge probes</h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">Precomputed variants near the gap — would you also co-sign?</p>
+          {d.probes.map((pr) => (
+            <div key={pr.versionId} className="mt-2 flex items-center justify-between gap-3 text-sm">
+              <span>{pr.prompt}</span>
+              <button onClick={() => run(() => castAcceptance(id, pr.versionId, true))} disabled={busy}
+                className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                Co-sign
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

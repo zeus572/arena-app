@@ -39,7 +39,7 @@ public class CoalitionProvisionsController : ControllerBase
     [HttpPost("{id:guid}/join")]
     public async Task<ActionResult<ProvisionDetailDto>> Join(Guid id, [FromBody] JoinRequest req, CancellationToken ct)
     {
-        await _loop.JoinAsync(id, _user.GetCurrentUserId(), req.Bucket, ct);
+        await _loop.JoinAsync(id, _user.GetCurrentUserId(), req.Bucket, req.AgeBand, ct);
         var detail = await _loop.GetDetailAsync(id, _user.GetCurrentUserId(), ct);
         return detail is null ? NotFound() : Ok(detail);
     }

@@ -10,7 +10,10 @@ public sealed record SpectrumBarDto(
     int TotalBuckets,
     double Distance,
     DateTime? Deadline,
-    Guid? LeadingVersionId);
+    Guid? LeadingVersionId,
+    IReadOnlyList<string> UncoveredBuckets,
+    int? DaysLeft,
+    string CallToAction);
 
 public sealed record SubQuestionDto(string Key, string Prompt, string? Tradeoff, string[] Options, string Origin);
 
@@ -65,7 +68,11 @@ public sealed record ProvisionDetailDto(
     bool YouJoined,
     double GapWidth,
     string Difficulty,
-    bool Governance);
+    bool Governance,
+    IReadOnlyList<ProbeDto> Probes);
+
+/// <summary>A bounded "would you also accept this variant?" probe (doc 06 precomputed-choices).</summary>
+public sealed record ProbeDto(Guid VersionId, string Prompt, int Supporters);
 
 // ---- Layer 3 gamification read models ----
 
@@ -106,7 +113,7 @@ public sealed record LeagueDto(
     string Id, string Name, double GapTier, string DifficultyLabel,
     IReadOnlyList<string> Buckets, IReadOnlyList<StandingRowDto> Standings);
 
-public sealed record JoinRequest(string? Bucket);
+public sealed record JoinRequest(string? Bucket, string? AgeBand = null);
 public sealed record PositionRequest(string Stance, string Intensity = "Medium", string? Bucket = null, string? ReasoningTag = null);
 public sealed record AmendmentRequest(Dictionary<string, string> Positions, string? Label = null);
 public sealed record FreeformAmendmentRequest(string Text);

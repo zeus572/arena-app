@@ -218,4 +218,55 @@ public class CoalitionApiTests : IAsyncLifetime
         me.Recommended.Should().NotBeNull();
         me.SkillLabel.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public async Task SpectrumBar_HasDirectionalCallToAction_AndUncoveredCorners()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+        var detail = await GetDetailAsync(dc.Id);
+
+        detail.SpectrumBar.CallToAction.Should().NotBeNullOrEmpty();
+        detail.SpectrumBar.DaysLeft.Should().NotBeNull();
+        detail.SpectrumBar.UncoveredBuckets.Should().NotBeEmpty("at least one corner is dark before a coalition forms");
+    }
+
+    [Fact]
+    public async Task Probes_SurfaceVariantsForTheCurrentPlayer()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        var detail = await GetDetailAsync(dc.Id);
+        for (var step = 0; step < 6 && !detail.Versions.Any(HasGfExempt); step++)
+            detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/agent-step");
+
+        detail = await GetDetailAsync(dc.Id);
+        detail.Probes.Should().NotBeEmpty("the player should be offered variants to co-sign");
+        detail.Probes.Should().Contain(pr => pr.Prompt.Contains("co-sign", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DiedProvision_LeavesNoBridgeArtifact()
+    {
+        var id = Guid.NewGuid();
+        using (var scope = _fx.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Civic.API.Data.CivicDbContext>();
+            db.Provisions.Add(new Civic.API.Models.Provision
+            {
+                Id = id, Slug = $"died-{id:N}", Title = "Past-deadline provision",
+                NeutralText = "x", State = Civic.API.Models.ProvisionState.Open,
+                Deadline = DateTime.UtcNow.AddDays(-1),
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var detail = await PostAsync($"/api/coalition/provisions/{id}/positions",
+            new { stance = "for", intensity = "Medium", bucket = "left" });
+
+        detail.State.Should().Be("Died");
+        detail.Outcome!.DiedReason.Should().Contain("No bridge");
+    }
 }

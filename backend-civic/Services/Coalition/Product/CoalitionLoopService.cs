@@ -92,11 +92,14 @@ public class CoalitionLoopService
         }
         else if (p.State == ProvisionState.Died)
         {
-            outcome = new OutcomeDto("Died", null, null, 0, 0, 0, "no spanning coalition by the deadline");
+            // The "no-bridge issue this week" artifact (doc 03 §6) — an honest civic data point.
+            outcome = new OutcomeDto("Died", null, null, 0, 0, 0,
+                "No bridge this week: no version spanned the spectrum before the deadline. Participants kept their earned reasoning points.");
         }
 
         var barDto = ToBarDto(bar);
         var (gap, gov) = await ProvisionMetaAsync(p, ct);
+        var probes = BuildProbes(state!, currentUserId);
 
         return new ProvisionDetailDto(
             p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(), p.RelevantAxes, p.Deadline,
@@ -106,7 +109,37 @@ public class CoalitionLoopService
             barDto, outcome,
             currentUserId,
             currentUserId is not null && participants.Any(c => string.Equals(c.UserId, currentUserId, StringComparison.OrdinalIgnoreCase)),
-            gap, DifficultyLabel(gap), gov);
+            gap, DifficultyLabel(gap), gov, probes);
+    }
+
+    /// <summary>
+    /// Precomputed-choices probing (doc 06): for the current player on an active provision,
+    /// surface up to 2 toothful versions they could co-sign that they haven't yet — "would you
+    /// also accept this variant?" — preferring the broadest (most-supported).
+    /// </summary>
+    private static IReadOnlyList<ProbeDto> BuildProbes(ProvisionLoopState state, string? currentUserId)
+    {
+        if (currentUserId is null ||
+            state.State is not (ProvisionState.Open or ProvisionState.Contested or ProvisionState.NearCoalition))
+            return Array.Empty<ProbeDto>();
+
+        var me = state.PlayerOrNull(currentUserId);
+        if (me is null) return Array.Empty<ProbeDto>();
+
+        return state.Versions
+            .Where(v => v.Specificity >= state.Config.MinTeethSpecificity)
+            .Where(v => me.Region.Contains(v) && state.LatestAcceptance(currentUserId, v) != true)
+            .OrderByDescending(v => OverlapCalculator.SupportCount(state.Players, v))
+            .ThenByDescending(v => v.Specificity)
+            .Take(2)
+            .Select(v =>
+            {
+                var sup = OverlapCalculator.SupportCount(state.Players, v);
+                var vid = Guid.TryParse(v.Id, out var g) ? g : Guid.Empty;
+                return new ProbeDto(vid, $"Would you also co-sign this variant? ({sup} would)", sup);
+            })
+            .Where(pr => pr.VersionId != Guid.Empty)
+            .ToList();
     }
 
     private async Task<(double gap, bool governance)> ProvisionMetaAsync(Provision p, CancellationToken ct)
@@ -127,14 +160,22 @@ public class CoalitionLoopService
         Guid? leading = bar.LeadingVersionId is not null && Guid.TryParse(bar.LeadingVersionId, out var g) ? g : null;
         return new SpectrumBarDto(
             bar.Cells.Select(c => new SpectrumCellDto(c.Bucket, c.Covered)).ToList(),
-            bar.CoveredBuckets, bar.TotalBuckets, bar.Distance, bar.Deadline, leading);
+            bar.CoveredBuckets, bar.TotalBuckets, bar.Distance, bar.Deadline, leading,
+            bar.UncoveredBuckets, bar.DaysLeft, bar.CallToAction);
     }
 
     // ---------------------------------------------------------------- writes (human)
 
-    public async Task JoinAsync(Guid provisionId, string userId, string? bucket, CancellationToken ct = default)
+    public async Task JoinAsync(Guid provisionId, string userId, string? bucket, string? ageBand, CancellationToken ct = default)
     {
-        await EnsureParticipantAsync(provisionId, userId, bucket ?? "center", isAgent: false, ct);
+        await EnsureParticipantAsync(provisionId, userId, bucket ?? "center", isAgent: false, ct, ageBand ?? "Adult");
+        // Update bucket/age-band if the participant already existed.
+        var existing = await _db.CoalitionParticipants.FirstOrDefaultAsync(c => c.ProvisionId == provisionId && c.UserId == userId, ct);
+        if (existing is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(bucket)) existing.SpectrumBucket = bucket;
+            if (!string.IsNullOrWhiteSpace(ageBand)) existing.AgeBand = ageBand;
+        }
         await _db.SaveChangesAsync(ct);
         await LogActivityAsync(userId, ct);
     }
@@ -682,7 +723,8 @@ public class CoalitionLoopService
         var pool = participants
             .GroupBy(c => c.UserId, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
-            .Select(c => new LeagueMemberSpec(c.UserId, c.SpectrumBucket, AgeBand.Adult))
+            .Select(c => new LeagueMemberSpec(c.UserId, c.SpectrumBucket,
+                Enum.TryParse<AgeBand>(c.AgeBand, ignoreCase: true, out var ab) ? ab : AgeBand.Adult))
             .ToList();
         if (pool.Count == 0) return;
 
@@ -856,13 +898,13 @@ public class CoalitionLoopService
         else { existing.Accept = accept; existing.Intensity = intensity; }
     }
 
-    public async Task EnsureParticipantAsync(Guid provisionId, string userId, string bucket, bool isAgent, CancellationToken ct)
+    public async Task EnsureParticipantAsync(Guid provisionId, string userId, string bucket, bool isAgent, CancellationToken ct, string ageBand = "Adult")
     {
         var exists = await _db.CoalitionParticipants.AnyAsync(c => c.ProvisionId == provisionId && c.UserId == userId, ct);
         if (!exists)
             _db.CoalitionParticipants.Add(new CoalitionParticipant
             {
-                Id = Guid.NewGuid(), ProvisionId = provisionId, UserId = userId, SpectrumBucket = bucket, IsAgent = isAgent,
+                Id = Guid.NewGuid(), ProvisionId = provisionId, UserId = userId, SpectrumBucket = bucket, IsAgent = isAgent, AgeBand = ageBand,
             });
     }
 

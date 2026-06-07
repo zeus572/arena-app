@@ -17,7 +17,10 @@ public sealed record SpectrumBarView(
     int TotalBuckets,
     double Distance,
     DateTime? Deadline,
-    string? LeadingVersionId);
+    string? LeadingVersionId,
+    IReadOnlyList<string> UncoveredBuckets,
+    int? DaysLeft,
+    string CallToAction);
 
 /// <summary>
 /// Phase 2H.1 — builds the spectrum bar from geometry (pure, no LLM). "Covered"
@@ -43,6 +46,10 @@ public static class SpectrumBarBuilder
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var cells = s.Spectrum.Buckets.Select(b => new SpectrumCell(b, covered.Contains(b))).ToList();
+        var uncovered = cells.Where(c => !c.Covered).Select(c => c.Bucket).ToList();
+
+        int? daysLeft = s.Deadline is { } dl ? Math.Max(0, (int)Math.Ceiling((dl - s.Now).TotalDays)) : null;
+        var cta = BuildCallToAction(s.State, covered.Count, s.Spectrum.TotalBuckets, uncovered, daysLeft, best.BestVersion is not null);
 
         return new SpectrumBarView(
             cells,
@@ -50,6 +57,23 @@ public static class SpectrumBarBuilder
             s.Spectrum.TotalBuckets,
             best.Normalized,
             s.Deadline,
-            best.BestVersion?.Id);
+            best.BestVersion?.Id,
+            uncovered,
+            daysLeft,
+            cta);
+    }
+
+    /// <summary>The directional call-to-action (doc 06 surfacing): which corner is missing + clock.</summary>
+    private static string BuildCallToAction(Civic.API.Models.ProvisionState state, int covered, int total,
+        IReadOnlyList<string> uncovered, int? daysLeft, bool hasSpanningVersion)
+    {
+        var clock = daysLeft is { } d ? (d <= 0 ? "deadline reached" : $"{d} day{(d == 1 ? "" : "s")} left") : "";
+        if (state is Civic.API.Models.ProvisionState.Passed) return "Coalition passed — it spans the spectrum.";
+        if (state is Civic.API.Models.ProvisionState.Forked) return "Forked into two governable answers.";
+        if (state is Civic.API.Models.ProvisionState.Died) return "No bridge this week — the spectrum was too far apart.";
+        if (uncovered.Count == 0 && hasSpanningVersion) return $"A spanning version is on the table — get it co-signed. {clock}".Trim();
+        if (uncovered.Count == 0) return $"Engaged across the spectrum — now find a version with teeth. {clock}".Trim();
+        if (uncovered.Count == total) return $"No coalition yet — table a carve-out. {clock}".Trim();
+        return $"The {uncovered[0]} corner hasn't signed — one bridge to go. {clock}".Trim();
     }
 }

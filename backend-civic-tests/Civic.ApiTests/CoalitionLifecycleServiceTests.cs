@@ -73,6 +73,38 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ComposeLeagues_NeverMixesAgeBands()
+    {
+        var pid = Guid.NewGuid();
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
+            db.Provisions.Add(new Provision { Id = pid, Slug = $"ab-{pid:N}", Title = "x", NeutralText = "x", State = ProvisionState.Open });
+            db.CoalitionParticipants.Add(new CoalitionParticipant { Id = Guid.NewGuid(), ProvisionId = pid, UserId = "adult1", SpectrumBucket = "left", AgeBand = "Adult", IsAgent = true });
+            db.CoalitionParticipants.Add(new CoalitionParticipant { Id = Guid.NewGuid(), ProvisionId = pid, UserId = "adult2", SpectrumBucket = "right", AgeBand = "Adult", IsAgent = true });
+            db.CoalitionParticipants.Add(new CoalitionParticipant { Id = Guid.NewGuid(), ProvisionId = pid, UserId = "minor1", SpectrumBucket = "left", AgeBand = "Minor", IsAgent = false });
+            await db.SaveChangesAsync();
+        }
+
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var loop = s.ServiceProvider.GetRequiredService<CoalitionLoopService>();
+            await loop.ComposeLeaguesAsync(4);
+        }
+
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
+            var members = await db.CoalitionLeagueMembers.ToListAsync();
+            members.Should().NotBeEmpty();
+            members.GroupBy(m => m.LeagueId)
+                .Should().OnlyContain(g => g.Select(m => m.AgeBand).Distinct().Count() == 1,
+                    "a league must never mix adults and minors (A8)");
+            members.Single(m => m.UserId == "minor1").AgeBand.Should().Be("Minor");
+        }
+    }
+
+    [Fact]
     public async Task ApplyPromotions_RelegatesAnOverTieredMember()
     {
         var lowId = Guid.NewGuid();

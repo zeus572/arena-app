@@ -12,6 +12,15 @@ export interface SpectrumBar {
   distance: number;
   deadline: string | null;
   leadingVersionId: string | null;
+  uncoveredBuckets: string[];
+  daysLeft: number | null;
+  callToAction: string;
+}
+
+export interface Probe {
+  versionId: string;
+  prompt: string;
+  supporters: number;
 }
 
 export interface CoalitionSubQuestion {
@@ -155,6 +164,7 @@ export interface ProvisionDetail {
   gapWidth: number;
   difficulty: string;
   governance: boolean;
+  probes: Probe[];
 }
 
 const BASE = "/coalition/provisions";

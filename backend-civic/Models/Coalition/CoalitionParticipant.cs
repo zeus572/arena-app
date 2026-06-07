@@ -25,6 +25,10 @@ public class CoalitionParticipant
     [Required, MaxLength(40)]
     public string SpectrumBucket { get; set; } = "";
 
+    /// <summary>Age band for the age-banding safety layer (A8): "Adult" | "Minor". Default Adult.</summary>
+    [Required, MaxLength(20)]
+    public string AgeBand { get; set; } = "Adult";
+
     public bool IsAgent { get; set; }
 
     /// <summary>Agent acceptance region as jsonb: map of sub-question key -> acceptable labels.</summary>
