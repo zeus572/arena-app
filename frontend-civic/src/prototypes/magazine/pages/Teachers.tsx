@@ -45,7 +45,7 @@ export default function MagazineTeachers() {
           Built for the classroom and the dinner table.
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-[var(--fg-soft)]">
-          Public Lab is designed to make current events teachable without making
+          Civersify is designed to make current events teachable without making
           them partisan. Here's how we approach sourcing, perspective, and
           age-appropriateness.
         </p>

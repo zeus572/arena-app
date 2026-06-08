@@ -43,7 +43,7 @@ public class ProvisionBirthService
     /// sub-questions), and returns it. Throws <see cref="LlmException"/> if the
     /// extraction call fails (e.g. no API key configured).
     /// </summary>
-    public async Task<Provision> BirthFromBriefingAsync(Briefing briefing, CancellationToken ct = default)
+    public async Task<(Provision Provision, GeneratedProvisionDto Dto)> BirthFromBriefingAsync(Briefing briefing, CancellationToken ct = default)
     {
         _policy?.EnsureAllowed(); // gate: only premium users trigger live birth (else caller falls back to heuristic)
         var (sys, user) = CoalitionPrompts.ProvisionBirth(briefing);
@@ -54,9 +54,9 @@ public class ProvisionBirthService
 
         var provision = await MapAndPersistAsync(dto, briefing, ct);
         _log.LogInformation(
-            "Provision born from briefing {Slug}: {ProvisionSlug} ({SubQ} sub-questions, axes: {Axes})",
-            briefing.Slug, provision.Slug, provision.SubQuestions.Count, string.Join(",", provision.RelevantAxes));
-        return provision;
+            "Provision born from briefing {Slug}: {ProvisionSlug} ({SubQ} sub-questions, {Proposals} core proposals, axes: {Axes})",
+            briefing.Slug, provision.Slug, provision.SubQuestions.Count, dto.CoreProposals?.Count ?? 0, string.Join(",", provision.RelevantAxes));
+        return (provision, dto);
     }
 
     /// <summary>

@@ -20,7 +20,7 @@ public static class CivicPrompts
     public static (string System, string User) Briefing(NewsItem n) =>
     (
         $$"""
-        You write civic briefings for a current-events product called Public Lab. Each briefing reduces a news story to a clear, balanced explainer that helps a reader understand what happened, who acted, and what values are in tension. {{SharedRules}}
+        You write civic briefings for a current-events product called Civersify. Each briefing reduces a news story to a clear, balanced explainer that helps a reader understand what happened, who acted, and what values are in tension. {{SharedRules}}
 
         Output JSON shape (all fields required unless noted; empty arrays are fine when a field doesn't apply):
         {
@@ -129,7 +129,7 @@ public static class CivicPrompts
     public static (string System, string User) ContentJudge(NewsItem n, GeneratedBriefingDto briefing) =>
     (
         $$"""
-        You are a frugal editor deciding whether a news story warrants a new evergreen Concept entry (institutional/process explainer) or a new Quiz question (factual checkpoint) on the Public Lab civic platform.
+        You are a frugal editor deciding whether a news story warrants a new evergreen Concept entry (institutional/process explainer) or a new Quiz question (factual checkpoint) on the Civersify civic platform.
 
         Default to NO. Only return shouldGenerateConcept=true when the story names an institution, process, or doctrine that a reader would benefit from a standalone explainer about (e.g. 'committee markup', 'universal injunction', 'agency rulemaking'). Only return shouldGenerateQuiz=true when the story has a concrete, unambiguous, testable fact about how government works (not a partisan claim or contested empirical question).
 

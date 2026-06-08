@@ -48,6 +48,17 @@ public static class CoalitionPrompts
         (slug-style, e.g. "liberty-vs-order", "market-vs-regulation", "local-vs-national",
         "individual-vs-collective", "change-vs-tradition"). These measure breadth later.
 
+        Finally, draft 2-3 DISTINCT CORE PROPOSALS: concrete, plain-language ways this provision
+        could actually be written, each taking a clearly DIFFERENT combination of positions on the
+        sub-questions (span the realistic range from minimal to expansive). These are the options
+        players co-sign or amend. For each proposal:
+          - "label": a 2-4 word name for the approach (e.g. "Disclosure only", "Review on request").
+          - "text": 1-2 sentences stating CONCRETELY what this version does — the proposal itself,
+            NOT an argument for or against it, and not value-laden.
+          - "positions": an object mapping each sub-question "key" to the option this version takes
+            (use one of that sub-question's positionOptions). Resolve every sub-question.
+        Make the proposals genuinely different from one another (different position vectors).
+
         {{SharedRules}}
 
         Output JSON shape:
@@ -61,6 +72,13 @@ public static class CoalitionPrompts
               "prompt": "<the crux phrased as a question>",
               "tradeoff": "<one line naming what each side gives up>",
               "positionOptions": ["<2-4 short discrete position labels, slug-style>"]
+            }
+          ],
+          "coreProposals": [
+            {
+              "label": "<2-4 word name for the approach>",
+              "text": "<1-2 sentence concrete proposal in plain language>",
+              "positions": { "<subQuestionKey>": "<one of that sub-question's positionOptions>" }
             }
           ]
         }

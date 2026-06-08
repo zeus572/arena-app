@@ -33,9 +33,9 @@ export default function MagazineLogin() {
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
         Account
       </p>
-      <h1 className="display mt-2 text-4xl">Sign in to Public Lab</h1>
+      <h1 className="display mt-2 text-4xl">Sign in to Civersify</h1>
       <p className="mt-3 text-sm text-[var(--fg-soft)]">
-        One account gets you Public Lab civics and the Debate Arena debate
+        One account gets you Civersify civics and the Debate Arena debate
         floor. Sign in with the same email and password you use there.
       </p>
 
@@ -90,7 +90,7 @@ export default function MagazineLogin() {
           to={`/register?redirect=${encodeURIComponent(redirect)}`}
           className="text-[var(--accent)] underline"
         >
-          Create a Public Lab account
+          Create a Civersify account
         </Link>
         .
       </p>

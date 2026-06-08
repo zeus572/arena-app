@@ -302,7 +302,7 @@ export default function MagazineHome() {
           <p className="mt-1 text-sm text-[var(--fg-soft)]">
             {isAuthenticated
               ? "Jump into a debate on the Debate Arena floor with the same login."
-              : "Create a Public Lab account and use the same login on the Debate Arena debate floor — your civic profile follows you."}
+              : "Create a Civersify account and use the same login on the Debate Arena debate floor — your civic profile follows you."}
           </p>
         </div>
         {isAuthenticated ? (

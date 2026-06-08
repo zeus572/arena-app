@@ -1,4 +1,5 @@
 using Arena.Shared.Llm;
+using Microsoft.Extensions.Hosting;
 
 namespace Civic.API.Services.Coalition;
 
@@ -22,11 +23,21 @@ public interface ILlmAccessPolicy
 public class PremiumLlmAccessPolicy : ILlmAccessPolicy
 {
     private readonly IHttpContextAccessor _http;
+    private readonly IHostEnvironment _env;
 
-    public PremiumLlmAccessPolicy(IHttpContextAccessor http) => _http = http;
+    public PremiumLlmAccessPolicy(IHttpContextAccessor http, IHostEnvironment env)
+    {
+        _http = http;
+        _env = env;
+    }
 
     public bool CanUseLlm()
     {
+        // DEV-ONLY override: in Development any caller may use the LLM (with a key set) so the
+        // coalition flow can be exercised interactively without a Premium JWT. The Premium gate
+        // below remains the only path in Production.
+        if (_env.IsDevelopment()) return true;
+
         var ctx = _http.HttpContext;
         // No request context = a trusted background/system caller (e.g. the lifecycle
         // scheduler birthing provisions). Those may use the LLM; the rule below targets

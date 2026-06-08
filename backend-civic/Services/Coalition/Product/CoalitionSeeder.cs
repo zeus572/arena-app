@@ -46,10 +46,26 @@ public class CoalitionSeeder
             {
                 new ProvisionVersion
                 {
-                    Id = Guid.NewGuid(), Label = "base",
-                    Text = "Large data centers pay a grid-cost fee; no carve-out for existing facilities.",
+                    Id = Guid.NewGuid(), Label = "As proposed",
+                    Text = "Large data centers pay a grid-cost fee reflecting the load they add to the grid, with no carve-out for facilities already running.",
                     TextHash = Guid.NewGuid().ToString("N"),
                     ExtractedPositions = new() { ["scope"] = "large-only", ["gf"] = "none" },
+                    IsExtracted = true, ExtractionModel = "seed",
+                },
+                new ProvisionVersion
+                {
+                    Id = Guid.NewGuid(), Label = "Phase-in for existing sites",
+                    Text = "Large data centers pay the grid-cost fee, but facilities already operating are grandfathered in so the cost doesn't land retroactively.",
+                    TextHash = Guid.NewGuid().ToString("N"),
+                    ExtractedPositions = new() { ["scope"] = "large-only", ["gf"] = "exempt" },
+                    IsExtracted = true, ExtractionModel = "seed",
+                },
+                new ProvisionVersion
+                {
+                    Id = Guid.NewGuid(), Label = "Apply to every data center",
+                    Text = "Every data center pays a grid-cost fee reflecting the load it adds — no size threshold and no carve-outs.",
+                    TextHash = Guid.NewGuid().ToString("N"),
+                    ExtractedPositions = new() { ["scope"] = "all", ["gf"] = "none" },
                     IsExtracted = true, ExtractionModel = "seed",
                 },
             },
@@ -90,10 +106,26 @@ public class CoalitionSeeder
             {
                 new ProvisionVersion
                 {
-                    Id = Guid.NewGuid(), Label = "base",
-                    Text = "AI hiring tools must disclose use; no human-review guarantee.",
+                    Id = Guid.NewGuid(), Label = "Disclosure only",
+                    Text = "Employers must disclose when an AI tool screens candidates, but there's no guarantee a human reviews the result.",
                     TextHash = Guid.NewGuid().ToString("N"),
                     ExtractedPositions = new() { ["review"] = "none" },
+                    IsExtracted = true, ExtractionModel = "seed",
+                },
+                new ProvisionVersion
+                {
+                    Id = Guid.NewGuid(), Label = "Review on request",
+                    Text = "Employers must disclose AI screening and grant a human review whenever a rejected candidate asks for one.",
+                    TextHash = Guid.NewGuid().ToString("N"),
+                    ExtractedPositions = new() { ["review"] = "on-request" },
+                    IsExtracted = true, ExtractionModel = "seed",
+                },
+                new ProvisionVersion
+                {
+                    Id = Guid.NewGuid(), Label = "Review every rejection",
+                    Text = "Every AI-driven rejection gets a human second look before it's final — disclosure plus a guaranteed review.",
+                    TextHash = Guid.NewGuid().ToString("N"),
+                    ExtractedPositions = new() { ["review"] = "every-rejection" },
                     IsExtracted = true, ExtractionModel = "seed",
                 },
             },

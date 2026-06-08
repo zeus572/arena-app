@@ -7,6 +7,10 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>Civic.API</RootNamespace>
     <AssemblyName>Civic.API</AssemblyName>
+    <!-- Shares the debate-arena (Arena.API) user-secrets store so the local Anthropic:ApiKey
+         is read in Development without duplicating the key. WebApplication.CreateBuilder loads
+         user secrets automatically in the Development environment when this id is present. -->
+    <UserSecretsId>beeda685-1d1c-404c-bbc5-f6fe99608c72</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

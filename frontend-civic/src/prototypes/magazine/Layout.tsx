@@ -124,7 +124,7 @@ export default function MagazineLayout() {
               className="display text-lg tracking-tight text-[var(--accent)] md:hidden"
               data-testid="masthead-mobile"
             >
-              Public Lab
+              Civersify
             </Link>
             <TopNav />
             <AuthStrip />
@@ -134,7 +134,7 @@ export default function MagazineLayout() {
             className="display mt-6 hidden text-center text-5xl tracking-tight md:block md:text-6xl"
             data-testid="masthead"
           >
-            Public Lab
+            Civersify
           </Link>
           <p className="mt-2 hidden text-center text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)] md:block">
             Civics for the world you actually live in
@@ -148,7 +148,7 @@ export default function MagazineLayout() {
 
       <footer className="hidden border-t border-[var(--border)] bg-[var(--bg)] py-10 md:block">
         <div className="mx-auto max-w-5xl px-8 text-center">
-          <p className="display text-2xl text-[var(--accent)]">Public Lab</p>
+          <p className="display text-2xl text-[var(--accent)]">Civersify</p>
           <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
             Civics for the world you actually live in
           </p>

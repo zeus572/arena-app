@@ -22,6 +22,25 @@ public class GeneratedProvisionDto
 
     /// <summary>The initial latent dimensions of disagreement.</summary>
     public List<GeneratedSubQuestionDto> SubQuestions { get; set; } = new();
+
+    /// <summary>
+    /// 2-3 distinct concrete core proposals players can co-sign or amend — each a
+    /// plain-language wording that lands on a different combination of sub-question
+    /// positions. Empty when the model omits them (caller falls back to a heuristic set).
+    /// </summary>
+    public List<GeneratedCoreProposalDto> CoreProposals { get; set; } = new();
+}
+
+public class GeneratedCoreProposalDto
+{
+    /// <summary>Short name for the approach, e.g. "Disclosure only".</summary>
+    public string Label { get; set; } = "";
+
+    /// <summary>1-2 sentence concrete proposal in plain language (what it does, not an argument for it).</summary>
+    public string Text { get; set; } = "";
+
+    /// <summary>This proposal's position on each sub-question: map of sub-question key -> chosen option.</summary>
+    public Dictionary<string, string> Positions { get; set; } = new();
 }
 
 public class GeneratedSubQuestionDto

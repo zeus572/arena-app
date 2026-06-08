@@ -1,43 +1,74 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Bot, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Sparkles } from "lucide-react";
 import {
-  getProvision,
   getFramings,
   joinProvision,
-  takePosition,
-  proposeAmendment,
-  proposeFreeformAmendment,
   recordAct,
   castAcceptance,
   agentStep,
   type ProvisionDetail,
   type Framings,
 } from "@/api/coalition";
+import { useProvision } from "../hooks/useProvision";
+
+const REASON_LABELS = [
+  "Workable",
+  "Unworkable",
+  "Addresses the problem",
+  "Dodges it",
+  "Fair tradeoff",
+  "Hidden cost",
+];
 
 function SpectrumBarView({ d }: { d: ProvisionDetail }) {
   const bar = d.spectrumBar;
+  const empty = bar.coveredBuckets === 0;
   return (
     <div className="rounded-2xl border border-[var(--line)] p-4">
-      <div className="mb-2 flex items-center justify-between text-xs text-[var(--muted)]">
-        <span>Coalition reach across the spectrum</span>
-        <span>distance {(bar.distance * 100).toFixed(0)}% · breadth {bar.coveredBuckets}/{bar.totalBuckets}</span>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)]">
+        <span className="font-semibold uppercase tracking-wider">Coalition status</span>
+        <span>
+          distance {(bar.distance * 100).toFixed(0)}% · breadth {bar.coveredBuckets}/{bar.totalBuckets}
+        </span>
       </div>
+
       <div className="flex gap-1.5">
         {bar.cells.map((c) => (
-          <div key={c.bucket} className="flex-1 text-center">
+          <div key={c.bucket} className="flex flex-1 flex-col items-center gap-1">
             <div
-              className="h-6 rounded"
+              className="h-7 w-full rounded"
               style={{ background: c.covered ? "var(--accent)" : "var(--line)" }}
-              title={c.bucket}
+              title={`${c.bucket} — ${c.covered ? "covered" : "open"}`}
             />
-            <span className="mt-1 block text-[10px] uppercase tracking-wider text-[var(--muted)]">
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
               {c.bucket}
+            </span>
+            <span className={`text-[9px] uppercase tracking-wider ${c.covered ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>
+              {c.covered ? "covered" : "open"}
             </span>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs font-semibold text-[var(--accent)]">{bar.callToAction}</p>
+
+      {/* Legend */}
+      <div className="mt-3 flex items-center gap-4 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded" style={{ background: "var(--accent)" }} /> covered
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded" style={{ background: "var(--line)" }} /> open
+        </span>
+      </div>
+
+      {empty ? (
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          No coalition reach yet — take a position to start covering the spectrum.
+        </p>
+      ) : (
+        <p className="mt-3 text-xs font-semibold text-[var(--accent)]">{bar.callToAction}</p>
+      )}
+
       {bar.deadline && (
         <p className="mt-1 text-xs text-[var(--muted)]">
           deadline {new Date(bar.deadline).toLocaleString()}
@@ -50,32 +81,24 @@ function SpectrumBarView({ d }: { d: ProvisionDetail }) {
 
 export default function CoalitionProvisionDetail() {
   const { id = "" } = useParams();
-  const [d, setD] = useState<ProvisionDetail | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [stance, setStance] = useState("");
+  const { d, reload, run, busy } = useProvision(id);
   const [bucket, setBucket] = useState("left");
-  const [carveOut, setCarveOut] = useState<Record<string, string>>({});
-  const [freeText, setFreeText] = useState("");
+  const [steelOpen, setSteelOpen] = useState(false);
   const [steelText, setSteelText] = useState("");
-  const [ptsMsg, setPtsMsg] = useState<string | null>(null);
   const [framings, setFramings] = useState<Framings | null>(null);
+  // The most recently awarded act — drives the "dim until earned, then light up" XP hints.
+  const [lastAward, setLastAward] = useState<{ key: string; points: number; currency: string } | null>(null);
 
-  function reload() { void getProvision(id).then(setD); }
-  useEffect(reload, [id]);
   useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
 
-  async function run(fn: () => Promise<ProvisionDetail>) {
-    setBusy(true);
-    try { setD(await fn()); } finally { setBusy(false); }
-  }
-
-  async function act(type: string, payload?: string) {
-    setBusy(true);
+  async function act(type: string, key: string, payload?: string) {
     try {
       const r = await recordAct(id, type, payload);
-      setPtsMsg(`+${r.points} ${r.currency} pts`);
-      setD(await getProvision(id));
-    } finally { setBusy(false); }
+      setLastAward({ key, points: r.points, currency: r.currency });
+      reload();
+    } catch {
+      /* swallow — busy guard handled per-button */
+    }
   }
 
   if (!d) return <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>;
@@ -103,6 +126,7 @@ export default function CoalitionProvisionDetail() {
         </div>
       </header>
 
+      {/* Framing */}
       {framings && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4">
@@ -116,14 +140,25 @@ export default function CoalitionProvisionDetail() {
         </div>
       )}
 
+      {/* Coalition status */}
       <div className="mt-6"><SpectrumBarView d={d} /></div>
 
-      {ptsMsg && (
-        <div className="mt-3 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-          {ptsMsg}
-        </div>
+      {/* Participate CTA */}
+      {!resolved && (
+        <Link
+          to={`/coalition/${id}/participate`}
+          data-testid="participate-cta"
+          className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4 transition hover:bg-[var(--accent)]/10"
+        >
+          <div>
+            <p className="text-sm font-semibold text-[var(--accent)]">Take part in this coalition</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">Answer the sub-questions, co-sign versions, take a position, or propose a carve-out.</p>
+          </div>
+          <ArrowRight size={18} className="shrink-0 text-[var(--accent)]" />
+        </Link>
       )}
 
+      {/* Bridge probes */}
       {!resolved && d.probes.length > 0 && (
         <div className="mt-4 rounded-2xl border border-[var(--accent)] p-4">
           <h3 className="text-sm font-semibold">Bridge probes</h3>
@@ -140,30 +175,99 @@ export default function CoalitionProvisionDetail() {
         </div>
       )}
 
-      {/* Daily acts — earn reasoning XP */}
+      {/* Daily acts — gamified */}
       <div className="mt-4 rounded-2xl border border-[var(--line)] p-4">
-        <h3 className="text-sm font-semibold">Daily acts <span className="text-xs font-normal text-[var(--muted)]">— earn reasoning XP</span></h3>
-        <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {["Workable", "Unworkable", "Addresses the problem", "Dodges it", "Fair tradeoff", "Hidden cost"].map((label) => (
-            <button key={label} onClick={() => act("ReactionWithReason", label)} disabled={busy}
-              className="rounded-full border border-[var(--line)] px-3 py-1 text-xs hover:border-[var(--accent)] disabled:opacity-50">
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Sparkles size={16} className="text-[var(--accent)]" /> Daily acts
+          </h3>
+          <span className="rounded-full bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+            earn reasoning XP
+          </span>
         </div>
-        <div className="mt-3">
-          <label className="text-xs text-[var(--muted)]">Steelman (state the strongest case the other side would accept):</label>
-          <textarea value={steelText} onChange={(e) => setSteelText(e.target.value)} rows={2}
-            className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm" />
-          <button onClick={() => { if (steelText.trim()) { void act("Steelman", steelText); setSteelText(""); } }}
-            disabled={busy || !steelText.trim()}
-            className="mt-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50">
-            Submit steelman
-          </button>
+        <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {REASON_LABELS.map((label) => {
+            const lit = lastAward?.key === label;
+            return (
+              <button
+                key={label}
+                onClick={() => act("ReactionWithReason", label, label)}
+                disabled={busy}
+                className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:opacity-50 ${
+                  lit ? "border-emerald-400 bg-emerald-50" : "border-[var(--line)] hover:border-[var(--accent)]"
+                }`}
+              >
+                <span>{label}</span>
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                    lit ? "text-emerald-600" : "text-[var(--muted)]"
+                  }`}
+                >
+                  {lit ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Steelman — collapsed until requested */}
+        <div className="mt-3 border-t border-[var(--line)] pt-3">
+          {!steelOpen ? (
+            <button
+              onClick={() => setSteelOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--accent)]"
+            >
+              Add a steelman
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">+ XP</span>
+            </button>
+          ) : (
+            <div>
+              <label className="text-xs text-[var(--muted)]">
+                Steelman (state the strongest case the other side would accept):
+              </label>
+              <textarea
+                value={steelText}
+                onChange={(e) => setSteelText(e.target.value)}
+                rows={3}
+                autoFocus
+                className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (steelText.trim()) {
+                      void act("Steelman", "steelman", steelText);
+                      setSteelText("");
+                      setSteelOpen(false);
+                    }
+                  }}
+                  disabled={busy || !steelText.trim()}
+                  className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  Submit steelman
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-wider ${
+                      lastAward?.key === "steelman" ? "text-white" : "text-white/70"
+                    }`}
+                  >
+                    {lastAward?.key === "steelman" ? `+${lastAward.points} XP` : "+ XP"}
+                  </span>
+                </button>
+                <button
+                  onClick={() => { setSteelOpen(false); setSteelText(""); }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Outcome */}
       {d.outcome && (
         <div className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
           <strong>{d.outcome.finalState}.</strong>{" "}
@@ -175,7 +279,7 @@ export default function CoalitionProvisionDetail() {
         </div>
       )}
 
-      {/* Agent ballast (dev only — in prod the scheduler runs agents automatically) */}
+      {/* Join + agent ballast */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {import.meta.env.DEV && (
           <button
@@ -206,127 +310,22 @@ export default function CoalitionProvisionDetail() {
         )}
       </div>
 
-      {/* Sub-questions */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Sub-questions</h2>
-      <ul className="mt-2 grid gap-2">
-        {d.subQuestions.map((sq) => (
-          <li key={sq.key} className="rounded-xl border border-[var(--line)] p-3 text-sm">
-            <p className="font-medium">{sq.prompt}</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              {sq.key} · options: {sq.options.join(" / ") || "(free)"}
-            </p>
-          </li>
-        ))}
-      </ul>
-
-      {/* Versions */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Versions</h2>
-      <ul className="mt-2 grid gap-2">
-        {d.versions.map((v) => (
-          <li key={v.id} className="rounded-xl border border-[var(--line)] p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{v.label ?? "version"}</span>
-              <span className="text-xs text-[var(--muted)]">✓ {v.accepts} · ✕ {v.declines}</span>
-            </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              {Object.entries(v.positions).map(([k, val]) => `${k} = ${val}`).join("; ") || "(no positions)"}
-            </p>
-            {!resolved && (
-              <div className="mt-2 flex gap-2">
-                <button
-                  onClick={() => run(() => castAcceptance(id, v.id, true))}
-                  disabled={busy}
-                  className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
-                >
-                  <Check size={12} /> Co-sign
-                </button>
-                <button
-                  onClick={() => run(() => castAcceptance(id, v.id, false))}
-                  disabled={busy}
-                  className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50"
-                >
-                  <X size={12} /> Decline
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {/* Acts */}
-      {!resolved && (
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--line)] p-4">
-            <h3 className="text-sm font-semibold">Take a position</h3>
-            <input
-              value={stance}
-              onChange={(e) => setStance(e.target.value)}
-              placeholder="e.g. for, but only with a carve-out"
-              className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-            />
-            <button
-              onClick={() => run(() => takePosition(id, { stance, intensity: "Medium", bucket }))}
-              disabled={busy || !stance.trim()}
-              className="mt-3 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Post position
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--line)] p-4">
-            <h3 className="text-sm font-semibold">Propose a carve-out</h3>
-            <p className="mt-1 text-xs text-[var(--muted)]">Write it in your own words — it's extracted into positions:</p>
-            <textarea value={freeText} onChange={(e) => setFreeText(e.target.value)} rows={2}
-              placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
-              className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm" />
-            <button
-              onClick={() => { if (freeText.trim()) { void run(() => proposeFreeformAmendment(id, freeText)); setFreeText(""); } }}
-              disabled={busy || !freeText.trim()}
-              className="mt-1 rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-              Propose (free-form)
-            </button>
-            <p className="mt-3 text-xs text-[var(--muted)]">…or pick a position on each sub-question.</p>
-            {d.subQuestions.map((sq) => (
-              <div key={sq.key} className="mt-2">
-                <label className="text-xs text-[var(--muted)]">{sq.key}</label>
-                <select
-                  value={carveOut[sq.key] ?? ""}
-                  onChange={(e) => setCarveOut({ ...carveOut, [sq.key]: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-[var(--line)] px-2 py-1.5 text-sm"
-                >
-                  <option value="">(leave silent)</option>
-                  {sq.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const positions = Object.fromEntries(
-                  Object.entries(carveOut).filter(([, v]) => v),
-                );
-                if (Object.keys(positions).length > 0)
-                  void run(() => proposeAmendment(id, positions, "carve-out"));
-              }}
-              disabled={busy}
-              className="mt-3 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
-            >
-              Propose amendment
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Participants */}
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Participants</h2>
-      <ul className="mt-2 flex flex-wrap gap-2">
-        {d.participants.map((p) => (
-          <li key={p.userId} className="rounded-full border border-[var(--line)] px-3 py-1 text-xs">
-            {p.isAgent ? <Bot size={11} className="mr-1 inline" /> : null}
-            {p.isAgent ? p.userId.replace("agent:", "") : "you"} · {p.bucket}
-            {p.hasPositioned ? " ✓" : ""}
-          </li>
-        ))}
-      </ul>
+      {d.participants.length === 0 ? (
+        <p className="mt-2 text-sm text-[var(--muted)]">No one has joined yet.</p>
+      ) : (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {d.participants.map((p) => (
+            <li key={p.userId} className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs">
+              {p.isAgent ? <Bot size={11} className="inline" /> : null}
+              <span className="font-medium">{p.isAgent ? p.userId.replace("agent:", "") : "you"}</span>
+              <span className="text-[var(--muted)]">· joined as {p.bucket}</span>
+              {p.hasPositioned && <span className="text-emerald-600">✓</span>}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

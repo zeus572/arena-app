@@ -5,6 +5,7 @@ using Civic.API.Services.Coalition.Judges;
 using Civic.ApiTests.Fakes;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -26,14 +27,33 @@ public class LlmAccessGateTests
         new(new ClaimsIdentity(new[] { new Claim("plan", "Free") }, authenticationType: "jwt"));
     private static ClaimsPrincipal Anonymous() => new(new ClaimsIdentity()); // not authenticated
 
+    private static IHostEnvironment Env(string name) => new StubHostEnvironment { EnvironmentName = name };
+
     [Fact]
     public void Policy_AllowsPremium_DeniesFreeAndAnonymous()
     {
-        new PremiumLlmAccessPolicy(Accessor(Premium())).CanUseLlm().Should().BeTrue();
-        new PremiumLlmAccessPolicy(Accessor(Free())).CanUseLlm().Should().BeFalse();
-        new PremiumLlmAccessPolicy(Accessor(Anonymous())).CanUseLlm().Should().BeFalse();
+        var prod = Env(Environments.Production);
+        new PremiumLlmAccessPolicy(Accessor(Premium()), prod).CanUseLlm().Should().BeTrue();
+        new PremiumLlmAccessPolicy(Accessor(Free()), prod).CanUseLlm().Should().BeFalse();
+        new PremiumLlmAccessPolicy(Accessor(Anonymous()), prod).CanUseLlm().Should().BeFalse();
         // No request context = trusted background/system caller (scheduler) -> allowed.
-        new PremiumLlmAccessPolicy(new HttpContextAccessor { HttpContext = null }).CanUseLlm().Should().BeTrue();
+        new PremiumLlmAccessPolicy(new HttpContextAccessor { HttpContext = null }, prod).CanUseLlm().Should().BeTrue();
+    }
+
+    [Fact]
+    public void Policy_InDevelopment_AllowsAnyCaller()
+    {
+        var dev = Env(Environments.Development);
+        new PremiumLlmAccessPolicy(Accessor(Anonymous()), dev).CanUseLlm().Should().BeTrue();
+        new PremiumLlmAccessPolicy(Accessor(Free()), dev).CanUseLlm().Should().BeTrue();
+    }
+
+    private sealed class StubHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+        public string ApplicationName { get; set; } = "Tests";
+        public string ContentRootPath { get; set; } = "";
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = null!;
     }
 
     [Fact]

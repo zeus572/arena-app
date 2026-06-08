@@ -86,7 +86,7 @@ public class ProvisionBirthServiceTests : IAsyncLifetime
 
         using var scope = _fx.Factory.Services.CreateScope();
         var svc = BuildSvc(scope, llm);
-        var born = await svc.BirthFromBriefingAsync(briefing);
+        var (born, _) = await svc.BirthFromBriefingAsync(briefing);
 
         // Birth used the extraction call exactly once, on the Sonnet tier.
         llm.Calls.Should().ContainSingle(c => c.Type == nameof(GeneratedProvisionDto))
@@ -135,7 +135,7 @@ public class ProvisionBirthServiceTests : IAsyncLifetime
         var llm = new StubLlmClient().WithJson<GeneratedProvisionDto>(json);
 
         using var scope = _fx.Factory.Services.CreateScope();
-        var born = await BuildSvc(scope, llm).BirthFromBriefingAsync(briefing);
+        var (born, _) = await BuildSvc(scope, llm).BirthFromBriefingAsync(briefing);
 
         using var verifyScope = _fx.Factory.Services.CreateScope();
         var db = verifyScope.ServiceProvider.GetRequiredService<CivicDbContext>();

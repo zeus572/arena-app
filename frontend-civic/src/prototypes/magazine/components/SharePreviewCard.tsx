@@ -12,7 +12,7 @@ export function SharePreviewCard({ briefing }: { briefing: CivicBriefing }) {
         }}
       >
         <p className="display text-xs font-semibold uppercase tracking-[0.3em]">
-          Public Lab · Briefing
+          Civersify · Briefing
         </p>
         <p className="display mt-3 text-3xl">{briefing.headline}</p>
         <p className="mt-3 text-sm leading-relaxed text-white/90">
