@@ -100,6 +100,15 @@ export default function CoalitionProvisionParticipate() {
         )}
         {d.versions.map((v) => {
           const positions = Object.entries(v.positions);
+          // Auto-generated versions store a "Version — key = val; …" dump in `text`, which just
+          // repeats the spelled-out breakdown below. Show a short summary instead; only render
+          // `text` verbatim when it's a real freeform proposal.
+          const isAutoText = !v.text || v.text.trimStart().startsWith("Version —");
+          const summary = isAutoText
+            ? positions.length > 0
+              ? `A position on ${positions.length} question${positions.length === 1 ? "" : "s"}`
+              : null
+            : v.text;
           return (
             <li key={v.id} className="rounded-2xl border border-[var(--line)] p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
@@ -112,8 +121,13 @@ export default function CoalitionProvisionParticipate() {
                 </span>
               </div>
 
-              {/* The core proposal, in plain language from the story. */}
-              {v.text && <p className="mt-2 text-[15px] font-medium leading-snug">{v.text}</p>}
+              {/* Freeform proposals render verbatim; synthetic versions get a short summary,
+                  since the full breakdown is spelled out under "Where this version lands". */}
+              {summary && (
+                <p className={`mt-2 leading-snug ${isAutoText ? "text-[13px] text-[var(--muted)]" : "text-[15px] font-medium"}`}>
+                  {summary}
+                </p>
+              )}
 
               {positions.length > 0 && (
                 <>
