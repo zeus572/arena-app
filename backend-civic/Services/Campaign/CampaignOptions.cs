@@ -28,4 +28,10 @@ public class CampaignOptions
 
     /// <summary>Briefings published within this many hours are eligible triggers.</summary>
     public int BriefingLookbackHours { get; set; } = 48;
+
+    /// <summary>
+    /// Max length (chars) of an auto-generated bot feed post. Longer than a tweet so the candidate
+    /// feed shows real reasoning (a few sentences citing a plank), not one-line slogans.
+    /// </summary>
+    public int BotPostMaxChars { get; set; } = 400;
 }

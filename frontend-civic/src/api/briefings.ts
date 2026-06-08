@@ -1,8 +1,20 @@
 import { civicApi } from "./client";
 import type { CivicBriefing, CivicBriefingSummary } from "./types";
 
-export async function getBriefings(): Promise<CivicBriefingSummary[]> {
-  const { data } = await civicApi.get<CivicBriefingSummary[]>("/briefings");
+export type BriefingPage = {
+  items: CivicBriefingSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function getBriefings(
+  page = 1,
+  pageSize = 20,
+): Promise<BriefingPage> {
+  const { data } = await civicApi.get<BriefingPage>("/briefings", {
+    params: { page, pageSize },
+  });
   return data;
 }
 

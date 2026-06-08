@@ -6,7 +6,7 @@ namespace Civic.API.Services.Campaign;
 
 /// <summary>
 /// Post-generation enforcement for campaign post bodies. Strips markdown,
-/// collapses whitespace, caps emoji, and enforces the 160-char hard rule by
+/// collapses whitespace, caps emoji, and enforces the caller's char limit by
 /// truncating at the last sentence boundary (then word boundary) when needed.
 /// Pure functions — no I/O — so the enforcement rules are unit-testable.
 /// </summary>
@@ -22,9 +22,9 @@ public static class CampaignContentSanitizer
 
     /// <summary>
     /// Cleans and length-enforces a raw model body. Returns the final body
-    /// (always ≤ <see cref="MaxBodyLength"/>) and whether truncation occurred.
+    /// (always ≤ <paramref name="maxLength"/>) and whether truncation occurred.
     /// </summary>
-    public static (string Body, bool Truncated) Clean(string raw)
+    public static (string Body, bool Truncated) Clean(string raw, int maxLength = MaxBodyLength)
     {
         if (string.IsNullOrWhiteSpace(raw)) return ("", false);
 
@@ -40,13 +40,13 @@ public static class CampaignContentSanitizer
 
         text = CapEmoji(text, MaxEmoji);
 
-        if (text.Length <= MaxBodyLength) return (text, false);
+        if (text.Length <= maxLength) return (text, false);
 
-        return (Truncate(text, MaxBodyLength), true);
+        return (Truncate(text, maxLength), true);
     }
 
     /// <summary>Whether a raw body would need shortening (used to decide a re-prompt).</summary>
-    public static bool ExceedsLimit(string raw) => Clean(raw).Truncated;
+    public static bool ExceedsLimit(string raw, int maxLength = MaxBodyLength) => Clean(raw, maxLength).Truncated;
 
     private static string Truncate(string text, int max)
     {

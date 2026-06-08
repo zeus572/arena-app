@@ -131,21 +131,22 @@ public class CampaignPostGenerationService : BackgroundService
         var planks = RankPlanks(candidate, issueTags);
         var sources = RankSources(candidate, issueTags);
 
-        // Generate, then enforce the 160-char rule (re-prompt once, then truncate).
-        var (sys, user) = CampaignPrompts.CampaignPost(candidate, tone, intensity, issueTags, planks, sources, briefing);
-        var dto = await _llm.GenerateStructuredAsync<GeneratedCampaignPostDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 400, ct: ct);
+        // Generate, then enforce the length rule (re-prompt once, then truncate).
+        var maxChars = _opts.CurrentValue.BotPostMaxChars;
+        var (sys, user) = CampaignPrompts.CampaignPost(candidate, tone, intensity, issueTags, planks, sources, briefing, maxChars);
+        var dto = await _llm.GenerateStructuredAsync<GeneratedCampaignPostDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 600, ct: ct);
         var raw = dto.Body;
         var cited = dto.CitedReference;
 
-        if (CampaignContentSanitizer.ExceedsLimit(raw))
+        if (CampaignContentSanitizer.ExceedsLimit(raw, maxChars))
         {
-            var (sys2, user2) = CampaignPrompts.CampaignPost(candidate, tone, intensity, issueTags, planks, sources, briefing, lengthReminder: true);
-            var dto2 = await _llm.GenerateStructuredAsync<GeneratedCampaignPostDto>(sys2, user2, LlmModelTier.Sonnet, maxTokens: 400, ct: ct);
+            var (sys2, user2) = CampaignPrompts.CampaignPost(candidate, tone, intensity, issueTags, planks, sources, briefing, maxChars, lengthReminder: true);
+            var dto2 = await _llm.GenerateStructuredAsync<GeneratedCampaignPostDto>(sys2, user2, LlmModelTier.Sonnet, maxTokens: 600, ct: ct);
             raw = dto2.Body;
             cited = dto2.CitedReference ?? cited;
         }
 
-        var (body, _) = CampaignContentSanitizer.Clean(raw);
+        var (body, _) = CampaignContentSanitizer.Clean(raw, maxChars);
         if (string.IsNullOrWhiteSpace(body)) return null;
 
         cited ??= planks.FirstOrDefault()?.Title ?? sources.FirstOrDefault()?.Title;

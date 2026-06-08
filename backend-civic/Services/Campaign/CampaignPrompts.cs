@@ -11,15 +11,24 @@ namespace Civic.API.Services.Campaign;
 /// </summary>
 public static class CampaignPrompts
 {
-    private const string HardRules = """
+    private static string HardRules(int maxChars) => $"""
         Hard rules (non-negotiable):
         - This is a FICTIONAL candidate in a civic-education simulation. Never claim to be a real person.
-        - Body MUST be 160 characters or fewer. Shorter is better.
+        - Body MUST be {maxChars} characters or fewer. Aim for {Math.Max(120, maxChars - 150)}-{maxChars} — substantive, not a one-liner.
         - Reference at least one of the candidate's platform planks or source-library items (by its idea, not a citation footnote).
         - Even at high intensity: no slurs, no targeting or naming of real individuals, no endorsement of violence, no calls to register or vote that could be mistaken for real-election guidance.
         - Plain text only. No markdown, no hashtags spam (one topical hashtag max), at most 2 emoji.
         - Stay in character and on the candidate's platform. Sharp, never cruel.
         - Respond with ONLY a single JSON object, no prose or fences.
+        """;
+
+    private const string SubstanceGuide = """
+        Substance (IMPORTANT — don't write a slogan or a bare tweet):
+        - Write THREE TO FOUR full sentences that build a real argument: a hook reacting to the
+          topic, a concrete claim with a specific reason or example, the candidate's position tied
+          to a named plank, and a sharp closing line.
+        - Name specifics — avoid generic filler that could apply to any candidate or any issue.
+        - This is a punchy mini-statement with real reasoning, NOT a one-line hot take.
         """;
 
     public static (string System, string User) CampaignPost(
@@ -30,6 +39,7 @@ public static class CampaignPrompts
         IReadOnlyList<PlatformPlank> planks,
         IReadOnlyList<CandidateSource> sources,
         Briefing? briefing,
+        int maxChars,
         bool lengthReminder = false)
     {
         var office = candidate.Office switch
@@ -41,16 +51,18 @@ public static class CampaignPrompts
         };
 
         var system = $$"""
-            You are writing a single short campaign post AS a fictional candidate for a civic-literacy platform.
+            You are writing a single campaign post AS a fictional candidate for a civic-literacy platform.
 
             Candidate: {{candidate.Name}} ({{candidate.Party}}), {{office}}.
             Background: {{candidate.Background}}
 
-            {{HardRules}}
+            {{SubstanceGuide}}
+
+            {{HardRules(maxChars)}}
 
             Output JSON shape:
             {
-              "body": "<the post, <= 160 chars, in the requested tone>",
+              "body": "<the post, 3-4 sentences, <= {{maxChars}} chars, in the requested tone>",
               "citedReference": "<title of the plank or source you drew on>"
             }
             """;
@@ -97,7 +109,7 @@ public static class CampaignPrompts
 
         if (lengthReminder)
         {
-            sb.AppendLine("REMINDER: your previous attempt was too long. The body MUST be 160 characters or fewer. Count carefully and cut hard.");
+            sb.AppendLine($"REMINDER: your previous attempt was too long. The body MUST be {maxChars} characters or fewer. Count carefully and tighten.");
             sb.AppendLine();
         }
 

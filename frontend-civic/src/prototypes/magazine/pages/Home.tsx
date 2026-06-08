@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Megaphone } from "lucide-react";
+import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
 import type { CivicBriefingSummary, Concept } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
 import { getConcepts } from "@/api/concepts";
@@ -10,20 +10,61 @@ import { CoverStory } from "../components/CoverStory";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PullQuote } from "../components/PullQuote";
 
+// Two-column grid → 10 rows max per page. The cover takes one slot on page 1,
+// so page 1 shows the cover + (PAGE_SIZE - 1) explainers; later pages show a
+// full PAGE_SIZE of explainers.
+const PAGE_SIZE = 20;
+
+function formatStoryDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function MagazineHome() {
   const { user, isAuthenticated } = useAuth();
-  const [briefings, setBriefings] = useState<CivicBriefingSummary[]>([]);
+  const [cover, setCover] = useState<CivicBriefingSummary | null>(null);
+  const [explainers, setExplainers] = useState<CivicBriefingSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [concept, setConcept] = useState<Concept | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const explainersRef = useRef<HTMLElement>(null);
+  const didMountRef = useRef(false);
+
   useEffect(() => {
-    void getBriefings()
-      .then(setBriefings)
+    void getBriefings(page, PAGE_SIZE)
+      .then((p) => {
+        setTotal(p.total);
+        if (page === 1) {
+          setCover(p.items[0] ?? null);
+          setExplainers(p.items.slice(1));
+        } else {
+          setExplainers(p.items);
+        }
+      })
       .finally(() => setLoaded(true));
+  }, [page]);
+
+  // On page change (not the first load), bring the explainers section into view.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    explainersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [page]);
+
+  useEffect(() => {
     void getConcepts().then((cs) => setConcept(cs[0] ?? null));
   }, []);
 
-  const cover = briefings[0];
-  const rest = briefings.slice(1);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rest = explainers;
 
   return (
     <div>
@@ -32,7 +73,7 @@ export default function MagazineHome() {
           Loading the issue…
         </p>
       )}
-      {loaded && briefings.length === 0 && (
+      {loaded && total === 0 && (
         <p
           className="py-12 text-base text-[var(--muted)]"
           data-testid="empty-issue"
@@ -65,7 +106,7 @@ export default function MagazineHome() {
 
       {cover && <CoverStory briefing={cover} />}
 
-      <section className="mt-14" data-testid="explainers-section">
+      <section ref={explainersRef} className="mt-14 scroll-mt-24" data-testid="explainers-section">
         <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
           Inside this issue
         </p>
@@ -97,10 +138,43 @@ export default function MagazineHome() {
                 <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   Key concept · {b.keyConcept}
                 </p>
+                <p className="mt-1 text-xs uppercase tracking-wider text-[var(--muted)]/70">
+                  {formatStoryDate(b.createdAt)}
+                </p>
               </Link>
             </li>
           ))}
         </ul>
+
+        {totalPages > 1 && (
+          <nav
+            className="mt-8 flex items-center justify-center gap-4"
+            data-testid="explainers-pagination"
+            aria-label="Story pages"
+          >
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex items-center gap-1 rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[var(--border)] disabled:hover:text-[var(--fg)]"
+              data-testid="explainers-prev"
+            >
+              <ChevronLeft className="h-4 w-4" /> Prev
+            </button>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex items-center gap-1 rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[var(--border)] disabled:hover:text-[var(--fg)]"
+              data-testid="explainers-next"
+            >
+              Next <ChevronRight className="h-4 w-4" />
+            </button>
+          </nav>
+        )}
       </section>
 
       <section

@@ -121,20 +121,28 @@ export default function MagazineLayout() {
           <div className="flex items-center justify-between gap-4">
             <Link
               to="/"
-              className="display text-lg tracking-tight text-[var(--accent)] md:hidden"
+              className="display flex items-center text-lg tracking-tight text-[var(--accent)] md:hidden"
               data-testid="masthead-mobile"
             >
-              Civersify
+              <img src="/brand-mark.png" alt="C" className="-mr-1 h-6 w-6 object-contain" />
+              <span>iversify</span>
             </Link>
             <TopNav />
             <AuthStrip />
           </div>
           <Link
             to="/"
-            className="display mt-6 hidden text-center text-5xl tracking-tight md:block md:text-6xl"
+            className="mt-6 hidden items-center justify-center md:flex"
             data-testid="masthead"
           >
-            Civersify
+            <img
+              src="/brand-mark.png"
+              alt="C"
+              className="-mr-1.5 h-14 w-14 object-contain md:-mr-2 md:h-[4.25rem] md:w-[4.25rem]"
+            />
+            <span className="display text-5xl tracking-tight md:text-6xl">
+              iversify
+            </span>
           </Link>
           <p className="mt-2 hidden text-center text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)] md:block">
             Civics for the world you actually live in

@@ -62,7 +62,7 @@ public class CampaignGenerationApiTests : IAsyncLifetime
         var post = await BuildSvc(llm).GenerateForCandidateAsync(candidateId, null, PostTrigger.Platform, force: true);
 
         post.Should().NotBeNull();
-        post!.Body.Length.Should().BeLessThanOrEqualTo(160);
+        post!.Body.Length.Should().BeLessThanOrEqualTo(400);
         post.Fragments.Should().NotBeEmpty();
         post.CitedReference.Should().Be("Safety Standards for Powerful AI");
         post.Trigger.Should().Be(PostTrigger.Platform);
@@ -76,7 +76,7 @@ public class CampaignGenerationApiTests : IAsyncLifetime
     [Fact]
     public async Task GenerateForCandidate_OverLimit_RepromptsThenTruncates()
     {
-        var tooLong = new string('x', 50) + ". " + string.Join(" ", Enumerable.Repeat("policy", 40));
+        var tooLong = new string('x', 50) + ". " + string.Join(" ", Enumerable.Repeat("policy", 90));
         var llm = new StubLlmClient().WithJson("GeneratedCampaignPostDto",
             $"{{\"body\":\"{tooLong}\",\"citedReference\":\"A Tax Code on a Postcard\"}}");
         var candidateId = await CandidateIdAsync("marcus-reed");
@@ -84,7 +84,7 @@ public class CampaignGenerationApiTests : IAsyncLifetime
         var post = await BuildSvc(llm).GenerateForCandidateAsync(candidateId, null, PostTrigger.Platform, force: true);
 
         post.Should().NotBeNull();
-        post!.Body.Length.Should().BeLessThanOrEqualTo(160);
+        post!.Body.Length.Should().BeLessThanOrEqualTo(400);
         // Over-limit output triggers exactly one re-prompt before the hard truncate.
         llm.Calls.Should().HaveCount(2);
     }

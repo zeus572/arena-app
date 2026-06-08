@@ -21,9 +21,10 @@ public enum ReactionType
 }
 
 /// <summary>
-/// The core content unit: a short (≤160 char) campaign post by a candidate,
-/// with a deterministic tone/intensity and 1-3 issue tags. The body is the
-/// only LLM-generated field; everything else is decided before the call.
+/// The core content unit: a campaign post by a candidate (a few sentences of
+/// reasoning; see CivicCampaignOptions.BotPostMaxChars), with a deterministic
+/// tone/intensity and 1-3 issue tags. The body is the only LLM-generated field;
+/// everything else is decided before the call.
 /// </summary>
 public class CampaignPost
 {

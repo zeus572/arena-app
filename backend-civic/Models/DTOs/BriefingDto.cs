@@ -18,6 +18,16 @@ public class BriefingSummaryDto
     public string KeyConcept { get; set; } = "";
     public string[] Tags { get; set; } = Array.Empty<string>();
     public string Summary30 { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>A single page of briefing summaries plus the total count for paging UI.</summary>
+public class BriefingPageDto
+{
+    public List<BriefingSummaryDto> Items { get; set; } = new();
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
 }
 
 public class BriefingDto : BriefingSummaryDto

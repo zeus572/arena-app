@@ -135,7 +135,7 @@ public class CampaignReactionApiTests
         dto!.Fragments.Should().NotBeEmpty();
         dto.Candidate.Should().NotBeNull();
         dto.Candidate!.IsFictional.Should().BeTrue();
-        dto.Body.Length.Should().BeLessThanOrEqualTo(160);
+        dto.Body.Length.Should().BeLessThanOrEqualTo(400);
     }
 
     [Fact]

@@ -23,6 +23,7 @@ export type CivicBriefingSummary = {
   keyConcept: string;
   tags: string[];
   summary30: string;
+  createdAt: string;
 };
 
 export type CivicBriefing = CivicBriefingSummary & {

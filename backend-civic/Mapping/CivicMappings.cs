@@ -17,6 +17,7 @@ public static class CivicMappings
         KeyConcept = b.KeyConcept,
         Tags = b.Tags,
         Summary30 = b.Summary30,
+        CreatedAt = b.CreatedAt,
     };
 
     /// <summary>
@@ -36,6 +37,7 @@ public static class CivicMappings
         KeyConcept = b.KeyConcept,
         Tags = b.Tags,
         Summary30 = b.Summary30,
+        CreatedAt = b.CreatedAt,
         Summary3Min = b.Summary3Min,
         Summary10Min = b.Summary10Min,
         WhoActed = b.WhoActed,

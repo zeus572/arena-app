@@ -272,7 +272,10 @@ function RoundPanel({
   const active = league.activeRound;
 
   useEffect(() => {
-    if (isOwner && !active) void getBriefings().then(setBriefings).catch(() => setBriefings([]));
+    if (isOwner && !active)
+      void getBriefings(1, 100)
+        .then((p) => setBriefings(p.items))
+        .catch(() => setBriefings([]));
   }, [isOwner, active]);
 
   async function onOpen() {

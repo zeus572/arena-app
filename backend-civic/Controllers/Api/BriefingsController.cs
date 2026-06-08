@@ -20,13 +20,29 @@ public class BriefingsController : ControllerBase
     public BriefingsController(CivicDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BriefingSummaryDto>>> List()
+    public async Task<ActionResult<BriefingPageDto>> List(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var items = await _db.Briefings
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
+
+        var query = _db.Briefings
             .OrderBy(b => b.IssueOrder)
-            .ThenByDescending(b => b.CreatedAt)
+            .ThenByDescending(b => b.CreatedAt);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
-        return Ok(items.Select(b => b.ToSummaryDto()));
+
+        return Ok(new BriefingPageDto
+        {
+            Items = items.Select(b => b.ToSummaryDto()).ToList(),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        });
     }
 
     [HttpGet("{slug}")]
