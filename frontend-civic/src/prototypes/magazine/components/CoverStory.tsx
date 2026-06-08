@@ -19,14 +19,14 @@ export function CoverStory({ briefing }: { briefing: CivicBriefingSummary }) {
           Cover story
           <ArrowUpRight className="h-4 w-4 transition group-hover:rotate-45" />
         </div>
-        <div className="max-w-3xl">
+        <div className="min-w-0 max-w-3xl">
           <p className="display text-xs font-semibold uppercase tracking-[0.3em]">
             {briefing.institution} · {briefing.status}
           </p>
-          <h2 className="display mt-3 text-3xl md:text-6xl">
+          <h2 className="display mt-3 text-3xl [overflow-wrap:anywhere] hyphens-auto md:text-6xl">
             {briefing.headline}
           </h2>
-          <p className="mt-3 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/90 md:mt-4 md:line-clamp-none md:text-base">
+          <p className="mt-3 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/90 [overflow-wrap:anywhere] md:mt-4 md:line-clamp-2 md:text-base">
             {briefing.summary30}
           </p>
         </div>

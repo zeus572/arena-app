@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Bot, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Compass, Sparkles, ScrollText } from "lucide-react";
 import {
   getFramings,
   joinProvision,
@@ -10,6 +10,8 @@ import {
   type ProvisionDetail,
   type Framings,
 } from "@/api/coalition";
+import { getMyProfile, type Profile } from "@/api/profile";
+import { deriveCompassPosition, prettyBucket } from "@/lib/compass";
 import { useProvision } from "../hooks/useProvision";
 
 const REASON_LABELS = [
@@ -82,14 +84,15 @@ function SpectrumBarView({ d }: { d: ProvisionDetail }) {
 export default function CoalitionProvisionDetail() {
   const { id = "" } = useParams();
   const { d, reload, run, busy } = useProvision(id);
-  const [bucket, setBucket] = useState("left");
   const [steelOpen, setSteelOpen] = useState(false);
   const [steelText, setSteelText] = useState("");
   const [framings, setFramings] = useState<Framings | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   // The most recently awarded act — drives the "dim until earned, then light up" XP hints.
   const [lastAward, setLastAward] = useState<{ key: string; points: number; currency: string } | null>(null);
 
   useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
+  useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
   async function act(type: string, key: string, payload?: string) {
     try {
@@ -104,6 +107,24 @@ export default function CoalitionProvisionDetail() {
   if (!d) return <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>;
 
   const resolved = ["Passed", "Forked", "Died"].includes(d.state);
+
+  // The position this person speaks for now comes from their Civic Compass, not a
+  // left/center/right self-label.
+  const compass = deriveCompassPosition(profile);
+
+  // The current prevailing coalition wording: the leading version (by coalition reach),
+  // falling back to the highest net-cosigned version, then the neutral starting text.
+  const leadingVersion =
+    d.versions.find((v) => v.id === d.spectrumBar.leadingVersionId) ??
+    [...d.versions].sort(
+      (a, b) => b.accepts - b.declines - (a.accepts - a.declines),
+    )[0] ??
+    null;
+  const hasAgreedWording =
+    !!leadingVersion &&
+    !!leadingVersion.text &&
+    !leadingVersion.text.trimStart().startsWith("Version —");
+  const prevailingText = hasAgreedWording ? leadingVersion!.text.trim() : d.neutralText;
 
   return (
     <section data-testid="coalition-detail" className="max-w-3xl">
@@ -139,6 +160,29 @@ export default function CoalitionProvisionDetail() {
           </div>
         </div>
       )}
+
+      {/* Current prevailing coalition position */}
+      <div
+        className="mt-6 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4"
+        data-testid="prevailing-position"
+      >
+        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+          <ScrollText size={14} /> Prevailing coalition position
+        </p>
+        <p className="mt-1.5 text-[15px] font-medium leading-snug text-[var(--fg)]">
+          {prevailingText}
+        </p>
+        {hasAgreedWording ? (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            Leading wording · {leadingVersion!.accepts} co-sign{leadingVersion!.accepts === 1 ? "" : "s"}
+            {leadingVersion!.declines > 0 && ` · ${leadingVersion!.declines} decline${leadingVersion!.declines === 1 ? "" : "s"}`}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            No agreed wording yet — this is the neutral starting point. Take a position to move it.
+          </p>
+        )}
+      </div>
 
       {/* Coalition status */}
       <div className="mt-6"><SpectrumBarView d={d} /></div>
@@ -291,21 +335,35 @@ export default function CoalitionProvisionDetail() {
           </button>
         )}
         {!d.youJoined && !resolved && (
-          <div className="inline-flex items-center gap-2">
-            <select
-              value={bucket}
-              onChange={(e) => setBucket(e.target.value)}
-              className="rounded-full border border-[var(--line)] px-3 py-1.5 text-sm"
-            >
-              {["left", "center", "right"].map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <button
-              onClick={() => run(() => joinProvision(id, bucket))}
-              disabled={busy}
-              className="rounded-full border border-[var(--line)] px-4 py-1.5 text-sm font-semibold"
-            >
-              Join as {bucket}
-            </button>
+          <div
+            className="flex flex-col gap-2 rounded-2xl border border-[var(--line)] p-3 sm:flex-row sm:items-center sm:gap-3"
+            data-testid="compass-join"
+          >
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+                <Compass size={13} /> Your Civic Compass position
+              </p>
+              <p className="text-sm font-semibold" data-testid="compass-join-label">{compass.label}</p>
+              <p className="text-xs text-[var(--muted)]">{compass.detail}</p>
+            </div>
+            {compass.hasData ? (
+              <button
+                onClick={() => run(() => joinProvision(id, compass.bucket))}
+                disabled={busy}
+                className="shrink-0 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                data-testid="compass-join-button"
+              >
+                Join with this position
+              </button>
+            ) : (
+              <Link
+                to="/onboarding"
+                className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2 text-center text-sm font-semibold text-[var(--accent)]"
+                data-testid="compass-join-build"
+              >
+                Build your Compass →
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -320,7 +378,7 @@ export default function CoalitionProvisionDetail() {
             <li key={p.userId} className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs">
               {p.isAgent ? <Bot size={11} className="inline" /> : null}
               <span className="font-medium">{p.isAgent ? p.userId.replace("agent:", "") : "you"}</span>
-              <span className="text-[var(--muted)]">· joined as {p.bucket}</span>
+              <span className="text-[var(--muted)]">· {prettyBucket(p.bucket)}</span>
               {p.hasPositioned && <span className="text-emerald-600">✓</span>}
             </li>
           ))}
