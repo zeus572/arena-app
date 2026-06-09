@@ -46,5 +46,102 @@
     "correctAnswerIndex": 0,
     "explanation": "Phone restrictions may support classroom focus but limit student independence or flexibility.",
     "order": 4
+  },
+  {
+    "externalId": "q-005",
+    "topic": "Who decides?",
+    "question": "A state sets its own rules for data centers while there is no federal law on the topic. What power is the state using?",
+    "options": [
+      "Reserved powers under federalism",
+      "Judicial review",
+      "The presidential veto",
+      "Treaty power"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "When the federal government hasn't acted, states often govern under powers reserved to them — the core idea of federalism.",
+    "order": 5
+  },
+  {
+    "externalId": "q-006",
+    "topic": "Checks and balances",
+    "question": "Congress passes a bill but the president refuses to sign it and sends it back. What is this called?",
+    "options": ["A filibuster", "A veto", "An injunction", "A recess appointment"],
+    "correctAnswerIndex": 1,
+    "explanation": "A veto is the president's formal rejection of a bill. Congress can still override it with a two-thirds vote in both chambers.",
+    "order": 6
+  },
+  {
+    "externalId": "q-007",
+    "topic": "Who interprets the law?",
+    "question": "A court strikes down a law because it conflicts with the Constitution. This power is known as:",
+    "options": [
+      "Judicial review",
+      "Executive privilege",
+      "Cloture",
+      "Logrolling"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Judicial review lets courts decide whether a law is constitutional — established in the U.S. by Marbury v. Madison.",
+    "order": 7
+  },
+  {
+    "externalId": "q-008",
+    "topic": "Reading a claim",
+    "question": "\"Most people in the city support the new transit plan.\" To trust this, what would you most want to see?",
+    "options": [
+      "A poll with its sample and method",
+      "A louder headline",
+      "A celebrity endorsement",
+      "More exclamation points"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "A claim about what 'most people' think is only as good as the evidence behind it — how many were asked, and how.",
+    "order": 8
+  },
+  {
+    "externalId": "q-009",
+    "topic": "Levels of government",
+    "question": "Potholes on a neighborhood street are usually handled by which level of government?",
+    "options": ["Local", "State", "Federal", "International"],
+    "correctAnswerIndex": 0,
+    "explanation": "Local governments typically handle day-to-day services like roads, trash, and zoning in your immediate area.",
+    "order": 9
+  },
+  {
+    "externalId": "q-010",
+    "topic": "Rights vs. rules",
+    "question": "A town bans a peaceful protest in a public park because officials dislike its message. Which protection is most relevant?",
+    "options": [
+      "Freedom of speech and assembly",
+      "The right to a jury trial",
+      "Protection from unreasonable searches",
+      "The right to bear arms"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Government generally can't ban peaceful protest based on its viewpoint — speech and assembly are protected.",
+    "order": 10
+  },
+  {
+    "externalId": "q-011",
+    "topic": "How money becomes policy",
+    "question": "When a government decides how to spend tax revenue across schools, roads, and defense, it is setting a:",
+    "options": ["Budget", "Verdict", "Treaty", "Subpoena"],
+    "correctAnswerIndex": 0,
+    "explanation": "A budget is where values become concrete: trade-offs about what to fund show what a government actually prioritizes.",
+    "order": 11
+  },
+  {
+    "externalId": "q-012",
+    "topic": "Spotting a trade-off",
+    "question": "A proposal speeds up building permits by reducing environmental review. What is the core trade-off?",
+    "options": [
+      "Faster construction vs. environmental safeguards",
+      "Taxes vs. courts",
+      "Free speech vs. voting",
+      "Local vs. international law"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Most policy is trade-offs. Here, speed and cost are weighed against environmental protection — reasonable people weigh them differently.",
+    "order": 12
   }
 ]

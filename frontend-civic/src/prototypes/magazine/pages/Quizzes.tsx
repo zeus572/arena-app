@@ -1,21 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, X, Trophy } from "lucide-react";
-import { getQuizQuestions, type QuizQuestion } from "@/api/quiz";
+import { Check, X, Trophy, Users } from "lucide-react";
+import {
+  getQuizQuestions,
+  submitQuizResponse,
+  type QuizQuestion,
+  type QuizPollResult,
+} from "@/api/quiz";
 
 export default function MagazineQuizzes() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
+  const [poll, setPoll] = useState<QuizPollResult | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
+  function loadQuestions() {
+    setLoaded(false);
     void getQuizQuestions()
       .then((qs) => setQuestions(qs))
       .finally(() => setLoaded(true));
-  }, []);
+  }
+
+  useEffect(loadQuestions, []);
 
   if (!loaded) {
     return (
@@ -49,7 +58,7 @@ export default function MagazineQuizzes() {
           You got <strong>{correctCount}</strong> of {total} right.
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          You've earned the "Branch spotter" badge.
+          Your answers feed the global poll — a 60-day moving average of how everyone's doing.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <button
@@ -57,13 +66,16 @@ export default function MagazineQuizzes() {
             onClick={() => {
               setIndex(0);
               setPicked(null);
+              setPoll(null);
               setCorrectCount(0);
               setDone(false);
+              // Pull a fresh, reshuffled set so "try again" isn't the same quiz.
+              loadQuestions();
             }}
             className="rounded-full border border-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--accent)]"
             data-testid="quiz-restart"
           >
-            Try again
+            New questions
           </button>
           <Link
             to="/"
@@ -84,6 +96,21 @@ export default function MagazineQuizzes() {
     if (answered) return;
     setPicked(i);
     if (i === q.correctAnswerIndex) setCorrectCount((c) => c + 1);
+    // Record into the global poll and show the updated 60-day moving average.
+    void submitQuizResponse(q.id, i)
+      .then(setPoll)
+      .catch(() => {
+        // Fall back to the snapshot stats from the initial load if the write fails.
+        setPoll({
+          questionId: q.id,
+          correctAnswerIndex: q.correctAnswerIndex,
+          isCorrect: i === q.correctAnswerIndex,
+          responseCount: q.responseCount,
+          correctCount: Math.round(q.correctRate * q.responseCount),
+          correctRate: q.correctRate,
+          windowDays: 60,
+        });
+      });
   };
 
   const onNext = () => {
@@ -92,6 +119,7 @@ export default function MagazineQuizzes() {
     } else {
       setIndex((v) => v + 1);
       setPicked(null);
+      setPoll(null);
     }
   };
 
@@ -105,7 +133,7 @@ export default function MagazineQuizzes() {
         className="mt-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]"
         data-testid="quiz-progress"
       >
-        Question {index + 1} of {questions.length}
+        Question {index + 1} of {questions.length} · fresh set every time
       </p>
 
       <section
@@ -162,6 +190,38 @@ export default function MagazineQuizzes() {
                 </Link>
               </p>
             )}
+          </div>
+        )}
+
+        {/* Global poll: how everyone is doing on this question (60-day moving average). */}
+        {answered && poll && (
+          <div
+            className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4"
+            data-testid="quiz-poll"
+          >
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              <span className="flex items-center gap-1.5">
+                <Users size={13} /> Global poll
+              </span>
+              <span data-testid="quiz-poll-count">
+                {poll.responseCount} answer{poll.responseCount === 1 ? "" : "s"} · 60-day avg
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span
+                className="display text-3xl text-[var(--accent)]"
+                data-testid="quiz-poll-rate"
+              >
+                {Math.round(poll.correctRate * 100)}%
+              </span>
+              <span className="text-sm text-[var(--fg-soft)]">got this right</span>
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded bg-[var(--bg-elev)]">
+              <div
+                className="h-2 rounded bg-[var(--accent)]"
+                style={{ width: `${Math.round(poll.correctRate * 100)}%` }}
+              />
+            </div>
           </div>
         )}
 

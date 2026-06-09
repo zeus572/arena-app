@@ -21,6 +21,7 @@ builder.Services.AddScoped<IProfileScoringService, ProfileScoringService>();
 builder.Services.AddScoped<IContradictionDetectionService, ContradictionDetectionService>();
 builder.Services.AddScoped<IExplanationService, RuleBasedExplanationService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
+builder.Services.AddScoped<IZeitgeistService, ZeitgeistService>();
 
 // News ingestion + civic content generation. Both backends register the
 // same RssNewsSource pieces from Arena.Shared so the RSS fetch is one

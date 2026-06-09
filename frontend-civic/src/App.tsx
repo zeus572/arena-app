@@ -31,6 +31,8 @@ import MagazineLeagues from "@/prototypes/magazine/pages/Leagues";
 import MagazineLeagueDetail from "@/prototypes/magazine/pages/LeagueDetail";
 import MagazineLeagueJoin from "@/prototypes/magazine/pages/LeagueJoin";
 import MagazineLeagueRound from "@/prototypes/magazine/pages/LeagueRound";
+import MagazineAbout from "@/prototypes/magazine/pages/About";
+import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
 
 function App() {
   return (
@@ -67,6 +69,8 @@ function App() {
             <Route path="leagues/join/:code" element={<MagazineLeagueJoin />} />
             <Route path="leagues/:id" element={<MagazineLeagueDetail />} />
             <Route path="leagues/:id/rounds/:roundId" element={<MagazineLeagueRound />} />
+            <Route path="about" element={<MagazineAbout />} />
+            <Route path="zeitgeist" element={<MagazineZeitgeist />} />
           </Route>
         </Routes>
       </AuthProvider>

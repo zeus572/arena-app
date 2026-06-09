@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, X, Flag, Scissors } from "lucide-react";
+import { ArrowLeft, Check, X, Flag, Scissors, Compass } from "lucide-react";
 import {
   takePosition,
   proposeAmendment,
@@ -9,6 +9,8 @@ import {
   type CoalitionSubQuestion,
   type ProvisionDetail,
 } from "@/api/coalition";
+import { getMyProfile, type Profile } from "@/api/profile";
+import { deriveCompassPosition } from "@/lib/compass";
 import { useProvision } from "../hooks/useProvision";
 import Flyout from "../components/Flyout";
 
@@ -19,11 +21,16 @@ export default function CoalitionProvisionParticipate() {
   const [positionOpen, setPositionOpen] = useState(false);
   const [carveOpen, setCarveOpen] = useState(false);
   const [stance, setStance] = useState("");
-  const [bucket, setBucket] = useState("left");
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [freeText, setFreeText] = useState("");
   const [carveOut, setCarveOut] = useState<Record<string, string>>({});
 
+  useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
+
   if (!d) return <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>;
+
+  // Speak for the position discovered through your Civic Compass, not a partisan label.
+  const compass = deriveCompassPosition(profile);
 
   const resolved = ["Passed", "Forked", "Died"].includes(d.state);
   // key -> prompt, so versions can spell out each position the way sub-questions do.
@@ -181,19 +188,27 @@ export default function CoalitionProvisionParticipate() {
           className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
         />
 
-        <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Speaking for</label>
-        <select
-          value={bucket}
-          onChange={(e) => setBucket(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
+        <p className="mt-4 block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Speaking for</p>
+        <div
+          className="mt-1 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2"
+          data-testid="participate-compass"
         >
-          {["left", "center", "right"].map((b) => <option key={b} value={b}>{b}</option>)}
-        </select>
+          <Compass size={15} className="shrink-0 text-[var(--accent)]" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">{compass.label}</p>
+            <p className="text-[11px] text-[var(--muted)]">{compass.detail}</p>
+          </div>
+        </div>
+        {!compass.hasData && (
+          <Link to="/onboarding" className="mt-1 inline-block text-xs font-semibold text-[var(--accent)]">
+            Build your Civic Compass →
+          </Link>
+        )}
 
         <button
           onClick={() =>
             runAndClose(
-              () => takePosition(id, { stance, intensity: "Medium", bucket }),
+              () => takePosition(id, { stance, intensity: "Medium", bucket: compass.bucket }),
               () => { setPositionOpen(false); setStance(""); },
             )
           }

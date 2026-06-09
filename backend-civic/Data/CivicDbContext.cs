@@ -22,6 +22,7 @@ public class CivicDbContext : DbContext
     public DbSet<ValuesReceipt> ValuesReceipts => Set<ValuesReceipt>();
     public DbSet<Election> Elections => Set<Election>();
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
+    public DbSet<QuizResponse> QuizResponses => Set<QuizResponse>();
     public DbSet<BillTimelineStep> BillTimelineSteps => Set<BillTimelineStep>();
     public DbSet<NewsItem> NewsItems => Set<NewsItem>();
     public DbSet<VirtualCandidate> VirtualCandidates => Set<VirtualCandidate>();
@@ -176,6 +177,17 @@ public class CivicDbContext : DbContext
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.ExternalId).IsUnique();
             e.HasIndex(x => x.Order);
+        });
+
+        modelBuilder.Entity<QuizResponse>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // The poll groups by question and filters by recency for the 60-day moving average.
+            e.HasIndex(x => new { x.QuestionId, x.CreatedAt });
+            e.HasOne(x => x.Question)
+                .WithMany()
+                .HasForeignKey(x => x.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<BillTimelineStep>(e =>

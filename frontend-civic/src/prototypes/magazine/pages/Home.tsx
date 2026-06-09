@@ -221,19 +221,6 @@ export default function MagazineHome() {
         />
       </section>
 
-      <section className="mt-16">
-        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
-          Reflection
-        </p>
-        <Link
-          to="/think-deeper/student-data-privacy"
-          className="display mt-3 block text-3xl hover:text-[var(--accent)]"
-        >
-          Think deeper → When should student privacy rules be national, and
-          when should schools or states decide?
-        </Link>
-      </section>
-
       {concept && (
         <section
           className="mt-16 border border-[var(--border)] bg-[var(--bg-elev)] p-8"
