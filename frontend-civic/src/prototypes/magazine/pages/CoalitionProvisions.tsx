@@ -169,7 +169,7 @@ export default function CoalitionProvisions() {
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">All provisions</h3>
               {items.length === 0 ? (
-                <p className="py-8 text-sm text-[var(--muted)]">No provisions yet — click “Seed / recompose demo”.</p>
+                <p className="py-8 text-sm text-[var(--muted)]">No active provisions right now. Check back soon.</p>
               ) : (
                 <ul className="mt-2 grid gap-3">
                   {items.map((p) => (
