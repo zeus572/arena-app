@@ -105,9 +105,12 @@ resource civicWeb 'Microsoft.Web/sites@2023-12-01' = {
       // by the ASP.NET `UseCors()` middleware (reads Cors:Origins below). Setting
       // App Service platform CORS *and* app CORS makes the platform intercept the
       // OPTIONS preflight and return 400 before the app's policy runs. One layer only.
+      // NOTE: deliberately NOT setting WEBSITE_RUN_FROM_PACKAGE. With it set to '1' the running
+      // worker stays pinned to the previously-mounted package, so a CI zip deploy uploads the new
+      // build (job goes green) but the app keeps serving the OLD code until a manual restart. The
+      // debate App Service omits it and its deploys auto-restart; civic now matches.
       appSettings: [
         { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
-        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
         { name: 'ConnectionStrings__DefaultConnection', value: civicConnString }
         { name: 'Jwt__Issuer', value: 'arena-api' }
         { name: 'Jwt__Audience', value: 'arena-app' }
