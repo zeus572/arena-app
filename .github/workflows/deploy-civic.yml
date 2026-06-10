@@ -33,6 +33,27 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_CIVIC }}
           package: backend-civic/publish
 
+  # The civic app runs from package (WEBSITE_RUN_FROM_PACKAGE=1 — required; see infra/civic.bicep).
+  # A zip deploy uploads the new package but the worker keeps serving the OLD one until restarted,
+  # so this step recycles it. Auth is OIDC (federated credential on the `release` branch); the
+  # service principal has Website Contributor on ONLY the civic app. No long-lived secret.
+  restart-backend-civic:
+    needs: deploy-backend-civic
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Restart so the new package is loaded
+        run: az webapp restart --name ${{ vars.CIVIC_APP_NAME }} --resource-group rg-arena
+
   deploy-frontend-civic:
     runs-on: ubuntu-latest
     steps:
