@@ -13,6 +13,7 @@ import {
 import { TONE_META } from "@/lib/campaignVisuals";
 import { CampaignPostCard } from "../components/CampaignPostCard";
 import { CandidateAvatar } from "../components/CandidateAvatar";
+import { Button } from "../components/Button";
 
 const SORTS: { key: NonNullable<FeedFilters["sort"]>; label: string }[] = [
   { key: "recent", label: "Recent" },
@@ -153,14 +154,13 @@ export default function CampaignFeed() {
 
       {cursor && (
         <div className="mt-6 text-center">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={loadMore}
-            className="rounded-full border border-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent)]"
             data-testid="feed-load-more"
           >
             Load more
-          </button>
+          </Button>
         </div>
       )}
     </div>

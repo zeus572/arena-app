@@ -484,6 +484,8 @@ public class CivicDbContext : DbContext
             e.HasKey(i => i.Id);
             e.HasIndex(i => i.Code).IsUnique();
             e.HasIndex(i => i.LeagueId);
+            // Look up a pending personal invite by recipient within a league (dedupe on re-invite).
+            e.HasIndex(i => new { i.LeagueId, i.Email });
         });
 
         modelBuilder.Entity<LeagueRound>(e =>

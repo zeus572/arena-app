@@ -18,6 +18,12 @@ public class CreateInviteRequest
     public int? MaxUses { get; set; }
 }
 
+/// <summary>Invite one or more friends by email. Each address gets its own single-use personal invite.</summary>
+public class InviteByEmailRequest
+{
+    public List<string> Emails { get; set; } = new();
+}
+
 public class JoinLeagueRequest
 {
     public string? DisplayName { get; set; }
@@ -128,11 +134,25 @@ public class LeagueInviteDto
     public string Code { get; set; } = "";
     /// <summary>App-relative path the FE turns into a full URL, e.g. /leagues/join/ABCD1234.</summary>
     public string JoinPath { get; set; } = "";
+    /// <summary>Set when this is a personal email invite; null for an open share link.</summary>
+    public string? Email { get; set; }
+    /// <summary>True when a personal invite's recipient has already joined the league.</summary>
+    public bool Accepted { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public int? MaxUses { get; set; }
     public int UseCount { get; set; }
     public bool IsValid { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Per-address outcome of an "invite by email" batch, so the UI can report each one.</summary>
+public class EmailInviteResultDto
+{
+    public string Email { get; set; } = "";
+    /// <summary>invited | already_member | already_invited | invalid</summary>
+    public string Status { get; set; } = "";
+    /// <summary>The invite to share (for invited/already_invited); null for member/invalid.</summary>
+    public LeagueInviteDto? Invite { get; set; }
 }
 
 public class LeagueInvitePreviewDto

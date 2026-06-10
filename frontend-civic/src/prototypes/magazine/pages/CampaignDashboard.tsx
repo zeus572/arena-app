@@ -13,6 +13,7 @@ import {
 } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function CampaignDashboard() {
   const { id } = useParams();
@@ -270,16 +271,16 @@ export default function CampaignDashboard() {
                 </div>
               )}
 
-              <button
-                type="button"
+              <Button
                 data-testid="advance-day"
                 disabled={busy}
                 onClick={onAdvance}
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                fullWidth
+                className="mt-5"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 {campaign.currentDay >= campaign.totalDays ? "Hold the election" : "Advance to next day"}
-              </button>
+              </Button>
             </>
           )}
 

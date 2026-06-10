@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ButtonLink } from "../components/Button";
 import { type CandidateMatches, type CandidateMatchItem, getCandidateMatches } from "@/api/campaign";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { DisclaimerBadge } from "../components/DisclaimerBadge";
@@ -74,12 +75,9 @@ export default function MatchMe() {
           <p className="mt-2 text-sm text-[var(--fg-soft)]">
             Answer ten quick questions and we'll match you against the field — no party labels.
           </p>
-          <Link
-            to="/onboarding"
-            className="mt-5 inline-block rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
-          >
+          <ButtonLink to="/onboarding" className="mt-5">
             Start the questions
-          </Link>
+          </ButtonLink>
         </div>
       )}
 

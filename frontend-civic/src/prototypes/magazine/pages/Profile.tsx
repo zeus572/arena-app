@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button, ButtonLink } from "../components/Button";
 import { getMyProfile, type Profile, type AxisScore } from "@/api/profile";
 import { buildReceipt } from "@/api/receipts";
 
@@ -106,13 +107,12 @@ export default function MagazineProfile() {
         </p>
         {!hasAnswers && (
           <div className="mt-6">
-            <Link
+            <ButtonLink
               to="/onboarding"
-              className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
               data-testid="start-onboarding-link"
             >
               Start the questions
-            </Link>
+            </ButtonLink>
           </div>
         )}
       </header>
@@ -189,14 +189,14 @@ export default function MagazineProfile() {
           <p className="text-sm text-[var(--fg-soft)]">
             Want a plain-English summary of what we learned today?
           </p>
-          <button
+          <Button
             onClick={generateReceipt}
             disabled={buildingReceipt}
             data-testid="generate-receipt"
-            className="mt-3 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-40"
+            className="mt-3"
           >
             {buildingReceipt ? "Building…" : "Generate Values Receipt"}
-          </button>
+          </Button>
         </section>
       )}
     </article>

@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Users, Copy, Check, Trophy, Crown, Plus, LogOut } from "lucide-react";
+import { Users, Copy, Check, Trophy, Crown, Plus, LogOut, Mail, Link2, Send } from "lucide-react";
 import {
   getLeague,
   createInvite,
   listInvites,
   revokeInvite,
+  inviteByEmail,
   linkCampaign,
   leaveLeague,
   openRound,
   type LeagueDetail as LeagueDetailT,
   type LeagueInvite,
+  type EmailInviteResult,
   type LeagueStanding,
 } from "@/api/leagues";
 import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
@@ -19,6 +21,7 @@ import type { CivicBriefingSummary } from "@/api/types";
 import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function LeagueDetail() {
   const { id = "" } = useParams();
@@ -74,17 +77,17 @@ export default function LeagueDetail() {
           </p>
         </div>
         {!isOwner && (
-          <button
-            type="button"
+          <Button
+            variant="danger"
+            size="sm"
             onClick={async () => {
               await leaveLeague(id);
               navigate("/leagues");
             }}
             data-testid="leave-league"
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1.5 text-sm font-semibold text-[var(--fg-soft)] hover:border-red-400 hover:text-red-600"
           >
             <LogOut className="h-4 w-4" /> Leave
-          </button>
+          </Button>
         )}
       </header>
 
@@ -239,15 +242,9 @@ function LinkCampaignPanel({ league, onLinked }: { league: LeagueDetailT; onLink
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={onLink}
-            disabled={!selected || busy}
-            data-testid="link-campaign-submit"
-            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
+          <Button onClick={onLink} disabled={!selected || busy} data-testid="link-campaign-submit">
             {busy ? "Linking…" : "Link campaign"}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -330,15 +327,9 @@ function RoundPanel({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={onOpen}
-              disabled={!slug || busy}
-              data-testid="open-round-submit"
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
+            <Button onClick={onOpen} disabled={!slug || busy} data-testid="open-round-submit">
               <Plus className="h-4 w-4" /> {busy ? "Opening…" : "Open round"}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -380,9 +371,13 @@ function labelForStatus(status: string): string {
 
 // ---------------------------------------------------------------- Invites
 
+function joinUrl(code: string): string {
+  return `${window.location.origin}/leagues/join/${code}`;
+}
+
 function InvitePanel({ leagueId }: { leagueId: string }) {
   const [invites, setInvites] = useState<LeagueInvite[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"link" | "email">("link");
   const [copied, setCopied] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -391,21 +386,9 @@ function InvitePanel({ leagueId }: { leagueId: string }) {
 
   useEffect(load, [load]);
 
-  async function generate() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await createInvite(leagueId, {});
-      load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function copy(code: string) {
-    const url = `${window.location.origin}/leagues/join/${code}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(joinUrl(code));
       setCopied(code);
       setTimeout(() => setCopied((c) => (c === code ? null : c)), 1500);
     } catch {
@@ -413,67 +396,299 @@ function InvitePanel({ leagueId }: { leagueId: string }) {
     }
   }
 
-  const active = invites.filter((i) => i.isValid);
+  async function revoke(inviteId: string) {
+    await revokeInvite(leagueId, inviteId);
+    load();
+  }
 
   return (
     <div className="border border-[var(--border)] bg-[var(--bg-elev)] p-4" data-testid="invite-panel">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--accent)]">Invite friends</h2>
-        <button
-          type="button"
-          onClick={generate}
-          disabled={busy}
-          data-testid="generate-invite"
-          className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" /> New link
-        </button>
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--accent)]">Invite friends</h2>
+
+      <div className="mt-3 inline-flex rounded-full border border-[var(--border)] p-0.5" role="tablist">
+        <TabButton active={tab === "link"} onClick={() => setTab("link")} testId="invite-tab-link">
+          <Link2 className="h-3.5 w-3.5" /> Share a link
+        </TabButton>
+        <TabButton active={tab === "email"} onClick={() => setTab("email")} testId="invite-tab-email">
+          <Mail className="h-3.5 w-3.5" /> By email
+        </TabButton>
       </div>
 
-      {active.length === 0 ? (
+      {tab === "link" ? (
+        <LinkInvites
+          leagueId={leagueId}
+          invites={invites}
+          copied={copied}
+          onCopy={copy}
+          onRevoke={revoke}
+          onChanged={load}
+        />
+      ) : (
+        <EmailInvites
+          leagueId={leagueId}
+          invites={invites}
+          copied={copied}
+          onCopy={copy}
+          onRevoke={revoke}
+          onChanged={load}
+        />
+      )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  testId,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  testId: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      data-testid={testId}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition [&_svg]:h-3 [&_svg]:w-3 ${
+        active ? "bg-[var(--accent)] text-white" : "text-[var(--fg-soft)] hover:text-[var(--fg)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ---- Link invites: open, shareable codes ----
+
+function LinkInvites({
+  leagueId,
+  invites,
+  copied,
+  onCopy,
+  onRevoke,
+  onChanged,
+}: {
+  leagueId: string;
+  invites: LeagueInvite[];
+  copied: string | null;
+  onCopy: (code: string) => void;
+  onRevoke: (inviteId: string) => Promise<void>;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const links = invites.filter((i) => i.email === null && i.isValid);
+
+  async function generate() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await createInvite(leagueId, {});
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-[var(--fg-soft)]">
+          Anyone with the link can join — share it in your group chat.
+        </p>
+        <Button onClick={generate} disabled={busy} data-testid="generate-invite" className="shrink-0">
+          <Plus className="h-4 w-4" /> New link
+        </Button>
+      </div>
+
+      {links.length === 0 ? (
         <p className="mt-3 text-sm text-[var(--muted)]">
           No active invite links. Generate one and share it with your friends.
         </p>
       ) : (
         <ul className="mt-3 space-y-2" data-testid="invite-list">
-          {active.map((i) => (
+          {links.map((i) => (
             <li
               key={i.id}
               className="flex flex-wrap items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
             >
               <code className="font-mono text-sm text-[var(--fg)]" data-testid="invite-code">
-                {`${window.location.origin}/leagues/join/${i.code}`}
+                {joinUrl(i.code)}
               </code>
               <span className="text-xs text-[var(--muted)]">
                 {i.useCount} use{i.useCount === 1 ? "" : "s"}
                 {i.maxUses != null && ` / ${i.maxUses}`}
               </span>
               <div className="ml-auto flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => copy(i.code)}
-                  data-testid="copy-invite"
-                  className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--fg-soft)] hover:border-[var(--accent)]"
-                >
-                  {copied === i.code ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied === i.code ? "Copied" : "Copy"}
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await revokeInvite(leagueId, i.id);
-                    load();
-                  }}
-                  data-testid="revoke-invite"
-                  className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--fg-soft)] hover:border-red-400 hover:text-red-600"
-                >
-                  Revoke
-                </button>
+                <CopyButton code={i.code} copied={copied} onCopy={onCopy} />
+                <RevokeButton onClick={() => onRevoke(i.id)} />
               </div>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+// ---- Email invites: personal, single-use invites by address ----
+
+function EmailInvites({
+  leagueId,
+  invites,
+  copied,
+  onCopy,
+  onRevoke,
+  onChanged,
+}: {
+  leagueId: string;
+  invites: LeagueInvite[];
+  copied: string | null;
+  onCopy: (code: string) => void;
+  onRevoke: (inviteId: string) => Promise<void>;
+  onChanged: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState<EmailInviteResult[] | null>(null);
+
+  // Personal invites (email-targeted): keep pending + accepted, drop revoked ones (isValid false
+  // with no acceptance). Accepted invites sort to the bottom.
+  const personal = invites
+    .filter((i) => i.email !== null && (i.accepted || i.isValid))
+    .sort((a, b) => Number(a.accepted) - Number(b.accepted));
+
+  function parseEmails(raw: string): string[] {
+    return raw
+      .split(/[\s,;]+/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+  }
+
+  const parsed = parseEmails(text);
+
+  async function send() {
+    if (busy || parsed.length === 0) return;
+    setBusy(true);
+    try {
+      const res = await inviteByEmail(leagueId, parsed);
+      setResults(res);
+      // Clear the addresses we successfully invited; keep any invalid ones for fixing.
+      const invalid = res.filter((r) => r.status === "invalid").map((r) => r.email);
+      setText(invalid.join("\n"));
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="text-sm text-[var(--fg-soft)]">
+        Invite friends by email — each gets a personal, single-use join link to copy and send.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder="friend@example.com, another@example.com"
+        data-testid="email-invite-input"
+        className="mt-2 w-full resize-y border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--accent)]"
+      />
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-[var(--muted)]">
+          {parsed.length > 0 ? `${parsed.length} address${parsed.length === 1 ? "" : "es"}` : "Separate with commas or new lines"}
+        </span>
+        <Button onClick={send} disabled={busy || parsed.length === 0} data-testid="email-invite-submit">
+          <Send className="h-4 w-4" /> {busy ? "Inviting…" : "Create invites"}
+        </Button>
+      </div>
+
+      {results && results.length > 0 && (
+        <ul className="mt-3 space-y-1" data-testid="email-invite-results">
+          {results.map((r, idx) => (
+            <li key={`${r.email}-${idx}`} className="flex items-center gap-2 text-sm">
+              <ResultBadge status={r.status} />
+              <span className="text-[var(--fg-soft)]">{r.email}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {personal.length > 0 && (
+        <ul className="mt-4 space-y-2" data-testid="email-invite-list">
+          {personal.map((i) => (
+            <li
+              key={i.id}
+              className="flex flex-wrap items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-semibold text-[var(--fg)]" data-testid="email-invite-address">
+                  {i.email}
+                </span>
+                {i.accepted ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-semibold text-green-600">
+                    <Check className="h-3 w-3" /> Joined
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--fg-soft)]">
+                    Pending
+                  </span>
+                )}
+              </span>
+              {!i.accepted && (
+                <div className="ml-auto flex items-center gap-1">
+                  <CopyButton code={i.code} copied={copied} onCopy={onCopy} label="Copy link" />
+                  <RevokeButton onClick={() => onRevoke(i.id)} />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ResultBadge({ status }: { status: EmailInviteResult["status"] }) {
+  const map: Record<EmailInviteResult["status"], { label: string; cls: string }> = {
+    invited: { label: "Invited", cls: "bg-green-500/10 text-green-600" },
+    already_invited: { label: "Already invited", cls: "bg-[var(--accent)]/10 text-[var(--accent)]" },
+    already_member: { label: "Already a member", cls: "bg-[var(--border)] text-[var(--fg-soft)]" },
+    invalid: { label: "Invalid", cls: "bg-red-500/10 text-red-600" },
+  };
+  const { label, cls } = map[status];
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>;
+}
+
+function CopyButton({
+  code,
+  copied,
+  onCopy,
+  label = "Copy",
+}: {
+  code: string;
+  copied: string | null;
+  onCopy: (code: string) => void;
+  label?: string;
+}) {
+  return (
+    <Button variant="ghost" size="sm" onClick={() => onCopy(code)} data-testid="copy-invite">
+      {copied === code ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied === code ? "Copied" : label}
+    </Button>
+  );
+}
+
+function RevokeButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button variant="danger" size="sm" onClick={onClick} data-testid="revoke-invite">
+      Revoke
+    </Button>
   );
 }

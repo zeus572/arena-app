@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button, ButtonLink } from "../components/Button";
 import { getQuestions, type Question } from "@/api/questions";
 import {
   submitAnswer,
@@ -98,19 +99,15 @@ export default function MagazineOnboarding() {
           will reflect them.
         </p>
         <div className="mt-8 flex justify-center gap-4">
-          <button
+          <Button
             onClick={() => navigate("/profile")}
-            className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
             data-testid="see-profile"
           >
             See your profile
-          </button>
-          <Link
-            to="/"
-            className="rounded-full border border-[var(--border)] px-6 py-3 text-sm font-semibold text-[var(--fg)]"
-          >
+          </Button>
+          <ButtonLink to="/" variant="ghost">
             Back to the issue
-          </Link>
+          </ButtonLink>
         </div>
       </article>
     );
@@ -228,14 +225,13 @@ export default function MagazineOnboarding() {
             ? "Pick A or B to continue."
             : "Adjust confidence/intensity if you'd like, then continue."}
         </p>
-        <button
+        <Button
           onClick={next}
           disabled={choiceKey === null || submitting}
           data-testid="next-button"
-          className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           {index + 1 === questions.length ? "Finish" : "Next question"}
-        </button>
+        </Button>
       </div>
     </article>
   );

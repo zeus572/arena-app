@@ -19,11 +19,17 @@ public static class LeagueMappings
         JoinedAt = DateTime.SpecifyKind(m.JoinedAt, DateTimeKind.Utc),
     };
 
-    public static LeagueInviteDto ToDto(this LeagueInvite i, DateTime now) => new()
+    /// <summary>
+    /// Invite → DTO. <paramref name="accepted"/> is supplied by the caller for personal email invites
+    /// (true once the recipient has joined); it can't be derived from the invite row alone.
+    /// </summary>
+    public static LeagueInviteDto ToDto(this LeagueInvite i, DateTime now, bool accepted = false) => new()
     {
         Id = i.Id,
         Code = i.Code,
         JoinPath = $"/leagues/join/{i.Code}",
+        Email = i.Email,
+        Accepted = accepted,
         ExpiresAt = i.ExpiresAt,
         MaxUses = i.MaxUses,
         UseCount = i.UseCount,

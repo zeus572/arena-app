@@ -5,6 +5,7 @@ import { listCampaigns, getRaces, type CivicCampaignSummary, type CivicRace } fr
 import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { ButtonLink } from "../components/Button";
 
 export default function Campaigns() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,14 +41,10 @@ export default function Campaigns() {
           </p>
         </div>
         {isAuthenticated && (
-          <Link
-            to="/campaigns/new"
-            data-testid="new-campaign"
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-          >
+          <ButtonLink to="/campaigns/new" data-testid="new-campaign">
             <Megaphone className="h-4 w-4" />
             New campaign
-          </Link>
+          </ButtonLink>
         )}
       </header>
 
@@ -108,12 +105,9 @@ export default function Campaigns() {
           <p className="mt-1 text-sm text-[var(--fg-soft)]">
             Start your first campaign and try to take a candidate all the way to victory.
           </p>
-          <Link
-            to="/campaigns/new"
-            className="mt-5 inline-block rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-          >
+          <ButtonLink to="/campaigns/new" className="mt-5">
             Start a campaign
-          </Link>
+          </ButtonLink>
         </div>
       ) : (
         <ul className="mt-8 grid gap-4 md:grid-cols-2">

@@ -6,6 +6,7 @@ import { getBriefings } from "@/api/briefings";
 import { getConcepts } from "@/api/concepts";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
+import { ButtonLink } from "../components/Button";
 import { CoverStory } from "../components/CoverStory";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PullQuote } from "../components/PullQuote";
@@ -322,12 +323,9 @@ export default function MagazineHome() {
               up where you left off.
             </p>
           </div>
-          <Link
-            to="/profile"
-            className="rounded-full bg-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-white"
-          >
+          <ButtonLink to="/profile">
             View my Civic Compass
-          </Link>
+          </ButtonLink>
         </section>
       ) : (
         <section
@@ -341,12 +339,9 @@ export default function MagazineHome() {
               later.
             </p>
           </div>
-          <Link
-            to="/onboarding"
-            className="rounded-full bg-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-white"
-          >
+          <ButtonLink to="/onboarding">
             Start the questions
-          </Link>
+          </ButtonLink>
         </section>
       )}
 
@@ -377,13 +372,13 @@ export default function MagazineHome() {
             Open Debate Arena
           </a>
         ) : (
-          <Link
+          <ButtonLink
             to="/register"
-            className="rounded-full border border-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-[var(--accent)]"
+            variant="secondary"
             data-testid="signup-cta-register-link"
           >
             Sign up
-          </Link>
+          </ButtonLink>
         )}
       </section>
     </div>

@@ -15,6 +15,7 @@ import type { ReactionType } from "@/api/campaign";
 import { useAuth } from "@/auth/AuthContext";
 import { CampaignPostCard } from "../components/CampaignPostCard";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function LeagueRound() {
   const { id = "", roundId = "" } = useParams();
@@ -115,25 +116,21 @@ export default function LeagueRound() {
         <div className="flex flex-wrap items-center gap-2 border border-[var(--border)] bg-[var(--bg-elev)] p-3" data-testid="owner-controls">
           <span className="text-sm font-semibold text-[var(--fg-soft)]">Owner controls:</span>
           {round.status === "OpenForResponses" ? (
-            <button
-              type="button"
+            <Button
               onClick={() => withBusy(async () => { await startVoting(id, roundId); await refresh(); })}
               disabled={busy}
               data-testid="start-voting"
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
             >
               <Vote className="h-4 w-4" /> Start voting
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
+            <Button
               onClick={() => withBusy(async () => { await closeRound(id, roundId); await refresh(); })}
               disabled={busy}
               data-testid="close-round"
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
             >
               <Lock className="h-4 w-4" /> Close round & score
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -264,15 +261,14 @@ function SubmitForm({
           </li>
         ))}
       </ul>
-      <button
-        type="button"
+      <Button
         onClick={() => selected && onSubmit(selected)}
         disabled={!selected || busy}
         data-testid="submit-entry"
-        className="mt-4 inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="mt-4"
       >
         {busy ? "Submitting…" : "Submit response"}
-      </button>
+      </Button>
     </div>
   );
 }

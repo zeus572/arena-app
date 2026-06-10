@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
+import { ButtonLink } from "./Button";
 
 /**
  * A sign-in promotion card shown where a signed-out visitor hits an action that needs an account.
@@ -27,20 +28,19 @@ export function SignInPrompt({
       <p className={`mt-2 font-semibold text-[var(--fg)] ${compact ? "text-base" : "text-lg"}`}>{title}</p>
       <p className="mt-1 text-sm text-[var(--fg-soft)]">{message}</p>
       <div className="mt-4 flex items-center justify-center gap-2">
-        <Link
+        <ButtonLink
           to={`/login?redirect=${redirect}`}
           data-testid="sign-in-prompt-login"
-          className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
         >
           Sign in
-        </Link>
-        <Link
+        </ButtonLink>
+        <ButtonLink
           to={`/register?redirect=${redirect}`}
           data-testid="sign-in-prompt-register"
-          className="rounded-full border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--fg-soft)]"
+          variant="ghost"
         >
           Create account
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

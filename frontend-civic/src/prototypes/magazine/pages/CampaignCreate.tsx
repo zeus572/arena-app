@@ -6,6 +6,7 @@ import { getCandidate, type CandidateSummary, type CandidateDetail } from "@/api
 import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 const DIFFICULTIES: { key: CivicCampaignDifficulty; label: string; blurb: string }[] = [
   { key: "Easy", label: "Easy", blurb: "Opponents campaign gently." },
@@ -121,19 +122,18 @@ export default function CampaignCreate() {
             )}
 
             {isAuthenticated ? (
-              <button
-                type="button"
+              <Button
                 data-testid="start-campaign"
                 disabled={!selected || submitting}
                 onClick={start}
-                className="mt-6 rounded-full bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-6"
               >
                 {submitting
                   ? "Starting…"
                   : selected
                     ? `Manage ${selected.name}`
                     : "Select a candidate"}
-              </button>
+              </Button>
             ) : (
               <div className="mt-6">
                 <SignInPrompt
@@ -241,13 +241,9 @@ function CandidateOption({
                   </ul>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={onSelect}
-                className="text-sm font-semibold text-[var(--accent)] hover:underline"
-              >
+              <Button variant="link" size="sm" onClick={onSelect}>
                 {selected ? "Selected ✓" : `Manage ${candidate.name} →`}
-              </button>
+              </Button>
             </div>
           ) : (
             <p className="text-sm text-[var(--muted)]">Profile unavailable.</p>

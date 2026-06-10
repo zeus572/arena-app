@@ -13,6 +13,7 @@ import { deriveCompassPosition } from "@/lib/compass";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { useProvision } from "../hooks/useProvision";
+import { Button } from "../components/Button";
 
 /** How well a version matches the answers the user has chosen so far. */
 function closeness(answers: Record<string, string>, v: CoalitionVersion) {
@@ -85,7 +86,7 @@ export default function CoalitionProvisionParticipate() {
         <h1 className="display text-3xl">Take your position</h1>
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
       </header>
-      <p className="mt-2 text-sm text-[var(--fg-soft)]">
+      <p className="mt-2 text-base text-[var(--fg-soft)]">
         Answer each question below to say where you stand. When you save, we'll show you which existing
         versions are closest — and let you put your own on the table.
       </p>
@@ -106,8 +107,8 @@ export default function CoalitionProvisionParticipate() {
       <ul className="mt-2 grid gap-3" data-testid="subquestion-cards">
         {d.subQuestions.map((sq) => (
           <li key={sq.key} className="rounded-2xl border border-[var(--line)] p-4">
-            <p className="font-medium">{sq.prompt}</p>
-            {sq.tradeoff && <p className="mt-1 text-xs text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
+            <p className="text-lg font-semibold">{sq.prompt}</p>
+            {sq.tradeoff && <p className="mt-1 text-sm text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
             {sq.options.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {sq.options.map((o) => {
@@ -120,7 +121,7 @@ export default function CoalitionProvisionParticipate() {
                       onClick={() => pick(sq.key, o)}
                       data-testid={`opt-${sq.key}-${o}`}
                       aria-pressed={selected}
-                      className={`rounded-full border-2 px-4 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
                         selected
                           ? "border-[var(--accent)] bg-[var(--accent)] text-white"
                           : "border-[var(--line)] bg-[var(--bg-elev)] text-[var(--fg)] hover:border-[var(--accent)]"
@@ -132,7 +133,7 @@ export default function CoalitionProvisionParticipate() {
                 })}
               </div>
             ) : (
-              <p className="mt-2 text-[11px] text-[var(--muted)]">Open question — describe your take in your own words below.</p>
+              <p className="mt-2 text-xs text-[var(--muted)]">Open question — describe your take in your own words below.</p>
             )}
           </li>
         ))}
@@ -153,15 +154,14 @@ export default function CoalitionProvisionParticipate() {
       {!resolved && isAuthenticated && (
         <div className="mt-5">
           {!saved ? (
-            <button
-              type="button"
+            <Button
+              fullWidth
               onClick={() => setSaved(true)}
               disabled={answeredKeys.length === 0}
               data-testid="save-answers"
-              className="w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-white disabled:opacity-50"
             >
               Save my answers & see where I land
-            </button>
+            </Button>
           ) : (
             <div className="rounded-2xl border border-[var(--line)] p-4" data-testid="compare-panel">
               <div className="flex items-center gap-2">
@@ -192,34 +192,37 @@ export default function CoalitionProvisionParticipate() {
                         <span className="shrink-0 text-xs text-[var(--muted)]">✓ {v.accepts} · ✕ {v.declines}</span>
                       </div>
                       <div className="mt-2 flex gap-2">
-                        <button
+                        <Button
+                          variant="positive"
+                          size="sm"
                           onClick={() => run(() => castAcceptance(id, v.id, true))}
                           disabled={busy}
-                          className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
                         >
                           <Check size={12} /> Co-sign
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
                           onClick={() => run(() => castAcceptance(id, v.id, false))}
                           disabled={busy}
-                          className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50"
                         >
                           <X size={12} /> Decline
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
 
-              <button
+              <Button
+                fullWidth
                 onClick={present}
                 disabled={busy || answeredKeys.length === 0}
                 data-testid="present-version"
-                className="mt-4 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-4"
               >
                 {noOneHasPresented ? "Present this as the bill" : "Propose this as a carve-out"}
-              </button>
+              </Button>
               <p className="mt-1.5 text-center text-[11px] text-[var(--muted)]">
                 Puts your answers on the table as a version others can co-sign.
               </p>
@@ -251,7 +254,8 @@ export default function CoalitionProvisionParticipate() {
                 className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
               />
               <div className="mt-2 flex items-center gap-2">
-                <button
+                <Button
+                  size="sm"
                   onClick={async () => {
                     if (!freeText.trim()) return;
                     await run(() => proposeFreeformAmendment(id, freeText));
@@ -259,16 +263,16 @@ export default function CoalitionProvisionParticipate() {
                     setFreeOpen(false);
                   }}
                   disabled={busy || !freeText.trim()}
-                  className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                 >
                   Present in my words
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => { setFreeOpen(false); setFreeText(""); }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -298,13 +302,15 @@ export default function CoalitionProvisionParticipate() {
                   </div>
                 )}
                 {!resolved && isAuthenticated && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => run(() => castAcceptance(id, v.id, true))}
                     disabled={busy}
-                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold hover:border-[var(--accent)] disabled:opacity-50"
+                    className="mt-2"
                   >
                     <Check size={12} /> Co-sign this draft
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}

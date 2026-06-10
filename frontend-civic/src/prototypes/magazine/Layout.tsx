@@ -2,19 +2,10 @@ import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
+import { MobileMenu } from "./components/MobileMenu";
+import { ButtonLink } from "./components/Button";
+import { NAV_LINKS } from "./nav";
 import "./theme.css";
-
-const NAV_LINKS = [
-  { to: "/", label: "Home", end: true },
-  { to: "/candidates", label: "Feed" },
-  { to: "/campaigns", label: "Campaign" },
-  { to: "/leagues", label: "Leagues" },
-  { to: "/coalition", label: "Coalition" },
-  { to: "/cohort", label: "Cohort" },
-  { to: "/zeitgeist", label: "Zeitgeist" },
-  { to: "/quizzes", label: "Quizzes" },
-  { to: "/about", label: "About" },
-];
 
 function TopNav() {
   return (
@@ -102,13 +93,14 @@ function AuthStrip() {
       >
         Sign in
       </Link>
-      <Link
+      <ButtonLink
         to="/register"
-        className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-white"
+        size="sm"
+        className="uppercase tracking-wider"
         data-testid="auth-strip-signup-link"
       >
         Sign up
-      </Link>
+      </ButtonLink>
     </div>
   );
 }
@@ -122,14 +114,17 @@ export default function MagazineLayout() {
       >
         <div className="mx-auto max-w-5xl px-4 py-3 md:px-8 md:py-8">
           <div className="flex items-center justify-between gap-4">
-            <Link
-              to="/"
-              className="display flex items-center text-lg tracking-tight text-[var(--accent)] md:hidden"
-              data-testid="masthead-mobile"
-            >
-              <img src="/brand-mark.png" alt="C" className="-mr-1 h-6 w-6 object-contain" />
-              <span>iversify</span>
-            </Link>
+            <div className="flex items-center gap-1.5 md:hidden">
+              <MobileMenu />
+              <Link
+                to="/"
+                className="display flex items-center text-lg tracking-tight text-[var(--accent)]"
+                data-testid="masthead-mobile"
+              >
+                <img src="/brand-mark.png" alt="C" className="-mr-1 h-6 w-6 object-contain" />
+                <span>iversify</span>
+              </Link>
+            </div>
             <TopNav />
             <AuthStrip />
           </div>

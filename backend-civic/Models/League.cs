@@ -117,6 +117,13 @@ public class LeagueInvite
     [Required, MaxLength(120)]
     public string CreatedByUserId { get; set; } = "";
 
+    /// <summary>
+    /// When set, this invite is targeted at a specific friend's email (a single-use personal invite).
+    /// Null means it's an open share link anyone can use. Stored lowercased.
+    /// </summary>
+    [MaxLength(200)]
+    public string? Email { get; set; }
+
     /// <summary>Null = never expires.</summary>
     public DateTime? ExpiresAt { get; set; }
 

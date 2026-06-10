@@ -1,5 +1,6 @@
 import { Share2 } from "lucide-react";
 import type { CivicBriefing } from "@/api/types";
+import { Button } from "./Button";
 
 export function SharePreviewCard({ briefing }: { briefing: CivicBriefing }) {
   return (
@@ -23,9 +24,9 @@ export function SharePreviewCard({ briefing }: { briefing: CivicBriefing }) {
         <p className="text-xs font-semibold text-[var(--muted)]">
           Share as a post — preview only
         </p>
-        <button className="flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white">
+        <Button>
           <Share2 className="h-4 w-4" /> Share
-        </button>
+        </Button>
       </div>
     </div>
   );

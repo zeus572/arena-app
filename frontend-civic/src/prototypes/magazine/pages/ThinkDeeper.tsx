@@ -4,6 +4,7 @@ import type { ThinkDeeper } from "@/api/types";
 import { getThinkDeeperBySlug } from "@/api/thinkDeepers";
 import { ValueChip } from "../components/ValueChip";
 import { PullQuote } from "../components/PullQuote";
+import { Button } from "../components/Button";
 
 export default function MagazineThinkDeeper() {
   const { slug } = useParams();
@@ -156,9 +157,9 @@ export default function MagazineThinkDeeper() {
               ? "(none yet)"
               : Array.from(selected).join(", ")}
           </span>
-          <button className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+          <Button>
             Save reflection (mock)
-          </button>
+          </Button>
         </div>
       </section>
     </article>
