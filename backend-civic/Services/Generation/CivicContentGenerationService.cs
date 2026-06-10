@@ -37,6 +37,9 @@ public class CivicContentGenerationService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Reset any items left in Generating from a previous crashed/restarted instance.
+        await ResetStuckItemsAsync(stoppingToken);
+
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ContinueWith(_ => { }, TaskScheduler.Default);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -278,6 +281,19 @@ public class CivicContentGenerationService : BackgroundService
         GenerationSource = CivicGenerationSource.News,
         SourceNewsItemId = source.Id,
     };
+
+    private async Task ResetStuckItemsAsync(CancellationToken ct)
+    {
+        using var scope = _scopes.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var stuck = await db.NewsItems
+            .Where(n => n.Status == NewsItemStatus.Generating)
+            .ToListAsync(ct);
+        if (stuck.Count == 0) return;
+        foreach (var item in stuck) item.Status = NewsItemStatus.Ingested;
+        await db.SaveChangesAsync(ct);
+        _log.LogWarning("CivicContentGenerationService: reset {Count} stuck Generating items to Ingested", stuck.Count);
+    }
 
     private static async Task<string> UniqueConceptSlugAsync(CivicDbContext db, string title, string hint, CancellationToken ct)
     {
