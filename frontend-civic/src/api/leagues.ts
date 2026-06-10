@@ -87,11 +87,23 @@ export type LeagueInvite = {
   id: string;
   code: string;
   joinPath: string;
+  /** Set when this is a personal email invite; null for an open share link. */
+  email: string | null;
+  /** True once a personal invite's recipient has joined. */
+  accepted: boolean;
   expiresAt: string | null;
   maxUses: number | null;
   useCount: number;
   isValid: boolean;
   createdAt: string;
+};
+
+export type EmailInviteStatus = "invited" | "already_member" | "already_invited" | "invalid";
+
+export type EmailInviteResult = {
+  email: string;
+  status: EmailInviteStatus;
+  invite: LeagueInvite | null;
 };
 
 export type LeagueInvitePreview = {
@@ -220,6 +232,11 @@ export async function createInvite(id: string, body: CreateInviteBody = {}): Pro
 
 export async function listInvites(id: string): Promise<LeagueInvite[]> {
   const { data } = await civicApi.get<LeagueInvite[]>(`${BASE}/${id}/invites`);
+  return data;
+}
+
+export async function inviteByEmail(id: string, emails: string[]): Promise<EmailInviteResult[]> {
+  const { data } = await civicApi.post<EmailInviteResult[]>(`${BASE}/${id}/invites/email`, { emails });
   return data;
 }
 

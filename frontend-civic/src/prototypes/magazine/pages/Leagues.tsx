@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Users, Trophy, Plus } from "lucide-react";
+import { Users, Trophy, Plus, ArrowRight } from "lucide-react";
 import { listMyLeagues, createLeague, type LeagueSummary } from "@/api/leagues";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
@@ -168,9 +168,60 @@ export default function Leagues() {
                 You'll get a shareable invite link to send your friends right after.
               </p>
             </form>
+
+            <JoinByCode />
           </aside>
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------- Join by code
+
+function JoinByCode() {
+  const navigate = useNavigate();
+  const [code, setCode] = useState("");
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Accept either a raw code or a full join URL the friend pasted in.
+    const raw = code.trim();
+    if (!raw) return;
+    const match = raw.match(/join\/([A-Za-z0-9]+)/);
+    const value = (match ? match[1] : raw).toUpperCase();
+    navigate(`/leagues/join/${value}`);
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 border border-[var(--border)] bg-[var(--bg-elev)] p-5"
+      data-testid="join-by-code-form"
+    >
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--accent)]">
+        Have an invite code?
+      </h2>
+      <p className="mt-1 text-xs text-[var(--muted)]">
+        Paste the code (or link) a friend sent you to join their league.
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="ABCD2345"
+          data-testid="join-code-input"
+          className="w-full border border-[var(--border)] bg-[var(--bg)] px-3 py-2 font-mono uppercase tracking-wider text-[var(--fg)] outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-[var(--accent)]"
+        />
+        <button
+          type="submit"
+          disabled={!code.trim()}
+          data-testid="join-code-submit"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          Go <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+    </form>
   );
 }

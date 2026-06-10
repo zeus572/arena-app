@@ -136,8 +136,14 @@ public class LeagueService
             ExpiresAt = req.ExpiresAt,
             MaxUses = req.MaxUses,
         };
+        await SaveInviteWithUniqueCodeAsync(invite, ct);
 
-        // Generate a unique code, tolerating a collision on the unique index.
+        return invite.ToDto(DateTime.UtcNow);
+    }
+
+    /// <summary>Assigns a unique code and persists the invite, tolerating a collision on the unique index.</summary>
+    private async Task SaveInviteWithUniqueCodeAsync(LeagueInvite invite, CancellationToken ct)
+    {
         for (var attempt = 0; ; attempt++)
         {
             invite.Code = GenerateCode();
@@ -152,8 +158,6 @@ public class LeagueService
                 _db.Entry(invite).State = EntityState.Detached;
             }
         }
-
-        return invite.ToDto(DateTime.UtcNow);
     }
 
     public async Task<List<LeagueInviteDto>> ListInvitesAsync(string userId, Guid leagueId, CancellationToken ct = default)
@@ -167,7 +171,85 @@ public class LeagueService
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(ct);
 
-        return invites.Select(i => i.ToDto(now)).ToList();
+        // A personal invite counts as "accepted" once a member with that email exists.
+        var memberEmails = league.Members
+            .Where(m => m.Email is not null)
+            .Select(m => m.Email!.ToLowerInvariant())
+            .ToHashSet();
+
+        return invites
+            .Select(i => i.ToDto(now, accepted: i.Email is not null && memberEmails.Contains(i.Email)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Invite friends by email. Each address becomes its own single-use personal invite. Addresses
+    /// already in the league are skipped (already_member), and re-inviting a pending address returns
+    /// the existing invite (already_invited) rather than piling up duplicates.
+    /// </summary>
+    public async Task<List<EmailInviteResultDto>> CreateEmailInvitesAsync(string userId, Guid leagueId, InviteByEmailRequest req, CancellationToken ct = default)
+    {
+        var league = await LoadLeagueAsync(leagueId, ct);
+        RequireOwner(league, userId);
+
+        // Normalize, validate, and de-duplicate the requested addresses (order-preserving).
+        var seen = new HashSet<string>();
+        var requested = new List<(string raw, string? normalized)>();
+        foreach (var raw in req.Emails ?? new List<string>())
+        {
+            var trimmed = (raw ?? "").Trim();
+            if (trimmed.Length == 0) continue;
+            var normalized = NormalizeEmail(trimmed);
+            if (normalized is not null && !seen.Add(normalized)) continue; // drop dup within the batch
+            requested.Add((trimmed, normalized));
+        }
+
+        var now = DateTime.UtcNow;
+        var memberEmails = league.Members
+            .Where(m => m.Email is not null)
+            .Select(m => m.Email!.ToLowerInvariant())
+            .ToHashSet();
+        var existing = await _db.LeagueInvites
+            .Where(i => i.LeagueId == leagueId && i.Email != null && !i.IsRevoked)
+            .ToListAsync(ct);
+        var existingByEmail = existing
+            .Where(i => i.Email is not null)
+            .GroupBy(i => i.Email!)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(i => i.CreatedAt).First());
+
+        var results = new List<EmailInviteResultDto>();
+        foreach (var (raw, normalized) in requested)
+        {
+            if (normalized is null)
+            {
+                results.Add(new EmailInviteResultDto { Email = raw, Status = "invalid" });
+                continue;
+            }
+            if (memberEmails.Contains(normalized))
+            {
+                results.Add(new EmailInviteResultDto { Email = normalized, Status = "already_member" });
+                continue;
+            }
+            if (existingByEmail.TryGetValue(normalized, out var prior) && prior.IsValid(now))
+            {
+                results.Add(new EmailInviteResultDto { Email = normalized, Status = "already_invited", Invite = prior.ToDto(now) });
+                continue;
+            }
+
+            var invite = new LeagueInvite
+            {
+                Id = Guid.NewGuid(),
+                LeagueId = league.Id,
+                CreatedByUserId = userId,
+                Email = normalized,
+                MaxUses = 1, // a personal invite is meant for one friend
+            };
+            await SaveInviteWithUniqueCodeAsync(invite, ct);
+            existingByEmail[normalized] = invite;
+            results.Add(new EmailInviteResultDto { Email = normalized, Status = "invited", Invite = invite.ToDto(now) });
+        }
+
+        return results;
     }
 
     public async Task RevokeInviteAsync(string userId, Guid leagueId, Guid inviteId, CancellationToken ct = default)
@@ -383,6 +465,19 @@ public class LeagueService
         var e = (email ?? "").Trim();
         if (string.IsNullOrWhiteSpace(e)) return null;
         return e.Length > 200 ? e[..200] : e;
+    }
+
+    /// <summary>Validates and lowercases an email for use as an invite key. Returns null if it isn't a plausible address.</summary>
+    private static string? NormalizeEmail(string? email)
+    {
+        var e = (email ?? "").Trim().ToLowerInvariant();
+        if (e.Length is 0 or > 200) return null;
+        // Lightweight shape check: exactly one @, non-empty local part, and a dotted domain.
+        var at = e.IndexOf('@');
+        if (at <= 0 || at != e.LastIndexOf('@')) return null;
+        var domain = e[(at + 1)..];
+        if (domain.Length < 3 || !domain.Contains('.') || domain.StartsWith('.') || domain.EndsWith('.')) return null;
+        return e;
     }
 
     private static string InvalidReason(LeagueInvite invite, DateTime now)

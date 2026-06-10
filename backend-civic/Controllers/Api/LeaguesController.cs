@@ -64,6 +64,10 @@ public class LeaguesController : ControllerBase
     public Task<IActionResult> ListInvites(Guid id, CancellationToken ct)
         => Execute(() => _leagues.ListInvitesAsync(RequireUserId(), id, ct));
 
+    [HttpPost("{id:guid}/invites/email")]
+    public Task<IActionResult> InviteByEmail(Guid id, [FromBody] InviteByEmailRequest req, CancellationToken ct)
+        => Execute(() => _leagues.CreateEmailInvitesAsync(RequireUserId(), id, req ?? new InviteByEmailRequest(), ct));
+
     [HttpDelete("{id:guid}/invites/{inviteId:guid}")]
     public Task<IActionResult> RevokeInvite(Guid id, Guid inviteId, CancellationToken ct)
         => Execute(() => _leagues.RevokeInviteAsync(RequireUserId(), id, inviteId, ct));
