@@ -1,44 +1,74 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, X, Flag, Scissors, Compass } from "lucide-react";
+import { ArrowLeft, Check, X, Compass, ScrollText, Sparkles, PenLine } from "lucide-react";
 import {
-  takePosition,
   proposeAmendment,
   proposeFreeformAmendment,
   castAcceptance,
-  type CoalitionSubQuestion,
-  type ProvisionDetail,
+  joinProvision,
+  type CoalitionVersion,
 } from "@/api/coalition";
 import { getMyProfile, type Profile } from "@/api/profile";
 import { deriveCompassPosition } from "@/lib/compass";
 import { useProvision } from "../hooks/useProvision";
-import Flyout from "../components/Flyout";
+
+/** How well a version matches the answers the user has chosen so far. */
+function closeness(answers: Record<string, string>, v: CoalitionVersion) {
+  const keys = Object.keys(answers).filter((k) => answers[k]);
+  let matches = 0;
+  for (const k of keys) {
+    const vp = v.positions[k];
+    if (vp && vp.toLowerCase() === answers[k].toLowerCase()) matches++;
+  }
+  return { matches, considered: keys.length, score: keys.length ? matches / keys.length : 0 };
+}
 
 export default function CoalitionProvisionParticipate() {
   const { id = "" } = useParams();
   const { d, run, busy } = useProvision(id);
 
-  const [positionOpen, setPositionOpen] = useState(false);
-  const [carveOpen, setCarveOpen] = useState(false);
-  const [stance, setStance] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [freeOpen, setFreeOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
-  const [carveOut, setCarveOut] = useState<Record<string, string>>({});
 
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
+  const answeredKeys = useMemo(() => Object.keys(answers).filter((k) => answers[k]), [answers]);
+
   if (!d) return <p className="py-12 text-sm text-[var(--muted)]">Loading…</p>;
 
-  // Speak for the position discovered through your Civic Compass, not a partisan label.
+  const resolved = ["Passed", "Forked", "Died"].includes(d.state);
+  const promptByKey = new Map<string, string>(d.subQuestions.map((sq) => [sq.key, sq.prompt]));
   const compass = deriveCompassPosition(profile);
 
-  const resolved = ["Passed", "Forked", "Died"].includes(d.state);
-  // key -> prompt, so versions can spell out each position the way sub-questions do.
-  const promptByKey = new Map<string, string>(d.subQuestions.map((sq) => [sq.key, sq.prompt]));
+  // Versions a cohort member presented vs. the neutral starting drafts the system seeded.
+  const presented = d.versions.filter((v) => v.authorUserId);
+  const drafts = d.versions.filter((v) => !v.authorUserId);
+  const noOneHasPresented = presented.length === 0;
 
-  async function runAndClose(fn: () => Promise<ProvisionDetail>, close: () => void) {
-    await run(fn);
-    close();
+  // Rank existing versions by how close they are to the user's chosen answers.
+  const ranked = [...d.versions]
+    .map((v) => ({ v, ...closeness(answers, v) }))
+    .sort((a, b) => b.score - a.score || b.v.accepts - a.v.accepts);
+
+  function pick(key: string, option: string) {
+    setAnswers((prev) => ({ ...prev, [key]: prev[key] === option ? "" : option }));
+    setSaved(false);
+  }
+
+  async function present() {
+    const positions = Object.fromEntries(answeredKeys.map((k) => [k, answers[k]]));
+    if (Object.keys(positions).length === 0) return;
+    const label = noOneHasPresented ? "first reading" : "carve-out";
+    await run(async () => {
+      // Join with your Civic Compass position the first time you act on this bill.
+      if (!d!.youJoined && compass.hasData) await joinProvision(id, compass.bucket);
+      return proposeAmendment(id, positions, label);
+    });
+    setAnswers({});
+    setSaved(false);
   }
 
   return (
@@ -48,238 +78,224 @@ export default function CoalitionProvisionParticipate() {
       </Link>
 
       <header className="mt-3 flex items-center justify-between gap-3">
-        <h1 className="display text-3xl">Participate</h1>
+        <h1 className="display text-3xl">Take your position</h1>
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
       </header>
       <p className="mt-2 text-sm text-[var(--fg-soft)]">
-        Answer the sub-questions, co-sign the versions that bridge the gap, or contribute your own.
+        Answer each question below to say where you stand. When you save, we'll show you which existing
+        versions are closest — and let you put your own on the table.
       </p>
 
-      {/* Action buttons → flyouts */}
-      {!resolved && (
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            onClick={() => setPositionOpen(true)}
-            data-testid="open-take-position"
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
-          >
-            <Flag size={15} /> Take a position
-          </button>
-          <button
-            onClick={() => setCarveOpen(true)}
-            data-testid="open-propose-carveout"
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent)]"
-          >
-            <Scissors size={15} /> Propose a carve-out
-          </button>
+      {noOneHasPresented && !resolved && (
+        <div className="mt-4 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4" data-testid="be-first-banner">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+            <Sparkles size={16} /> No one in your cohort has presented this bill yet.
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Set your answers below and be the first to put a version on the table for everyone to react to.
+          </p>
         </div>
       )}
 
-      {/* Sub-questions */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Sub-questions</h2>
-      <ul className="mt-2 grid gap-2">
+      {/* Sub-questions — answer inline */}
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Your answers</h2>
+      <ul className="mt-2 grid gap-3" data-testid="subquestion-cards">
         {d.subQuestions.map((sq) => (
-          <li key={sq.key} className="rounded-xl border border-[var(--line)] p-4 text-sm">
+          <li key={sq.key} className="rounded-2xl border border-[var(--line)] p-4">
             <p className="font-medium">{sq.prompt}</p>
             {sq.tradeoff && <p className="mt-1 text-xs text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {sq.options.length > 0 ? (
-                sq.options.map((o) => (
-                  <span key={o} className="rounded-full bg-[var(--line)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--fg-soft)]">
-                    {o}
-                  </span>
-                ))
-              ) : (
-                <span className="text-[11px] text-[var(--muted)]">free response</span>
-              )}
-            </div>
+            {sq.options.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sq.options.map((o) => {
+                  const selected = answers[sq.key] === o;
+                  return (
+                    <button
+                      key={o}
+                      type="button"
+                      disabled={resolved}
+                      onClick={() => pick(sq.key, o)}
+                      data-testid={`opt-${sq.key}-${o}`}
+                      aria-pressed={selected}
+                      className={`rounded-full border-2 px-4 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${
+                        selected
+                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                          : "border-[var(--line)] bg-[var(--bg-elev)] text-[var(--fg)] hover:border-[var(--accent)]"
+                      }`}
+                    >
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] text-[var(--muted)]">Open question — describe your take in your own words below.</p>
+            )}
           </li>
         ))}
       </ul>
 
-      {/* Versions — richer, spelled-out */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Versions</h2>
-      <ul className="mt-2 grid gap-3">
-        {d.versions.length === 0 && (
-          <li className="rounded-2xl border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
-            No versions yet — take a position or propose a carve-out to start one.
-          </li>
-        )}
-        {d.versions.map((v) => {
-          const positions = Object.entries(v.positions);
-          // Auto-generated versions store a "Version — key = val; …" dump in `text`, which just
-          // repeats the spelled-out breakdown below. Show a short summary instead; only render
-          // `text` verbatim when it's a real freeform proposal.
-          const isAutoText = !v.text || v.text.trimStart().startsWith("Version —");
-          const summary = isAutoText
-            ? positions.length > 0
-              ? `A position on ${positions.length} question${positions.length === 1 ? "" : "s"}`
-              : null
-            : v.text;
-          return (
-            <li key={v.id} className="rounded-2xl border border-[var(--line)] p-4 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <span className="rounded-full bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-                  {v.label ?? "proposal"}
-                </span>
-                <span className="flex shrink-0 items-center gap-3 text-xs text-[var(--muted)]">
-                  <span className="text-emerald-600">✓ {v.accepts} co-sign{v.accepts === 1 ? "" : "s"}</span>
-                  <span>✕ {v.declines} decline{v.declines === 1 ? "" : "s"}</span>
-                </span>
+      {/* Save → compare + present */}
+      {!resolved && (
+        <div className="mt-5">
+          {!saved ? (
+            <button
+              type="button"
+              onClick={() => setSaved(true)}
+              disabled={answeredKeys.length === 0}
+              data-testid="save-answers"
+              className="w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Save my answers & see where I land
+            </button>
+          ) : (
+            <div className="rounded-2xl border border-[var(--line)] p-4" data-testid="compare-panel">
+              <div className="flex items-center gap-2">
+                <ScrollText size={16} className="text-[var(--accent)]" />
+                <h3 className="text-sm font-semibold">How your answers compare</h3>
               </div>
-
-              {/* Freeform proposals render verbatim; synthetic versions get a short summary,
-                  since the full breakdown is spelled out under "Where this version lands". */}
-              {summary && (
-                <p className={`mt-2 leading-snug ${isAutoText ? "text-[13px] text-[var(--muted)]" : "text-[15px] font-medium"}`}>
-                  {summary}
+              {compass.hasData && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                  <Compass size={12} className="text-[var(--accent)]" /> Presenting as {compass.label}
                 </p>
               )}
 
-              {positions.length > 0 && (
-                <>
-                  <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Where this version lands</p>
-                  <div className="mt-1.5 grid gap-1.5">
-                    {positions.map(([k, val]) => (
-                      <div key={k} className="rounded-lg bg-[var(--line)]/40 px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wider text-[var(--muted)]">{promptByKey.get(k) ?? k}</p>
-                        <p className="mt-0.5 font-medium">{val}</p>
+              {d.versions.length === 0 ? (
+                <p className="mt-3 text-xs text-[var(--muted)]">No versions yet — yours will be the first.</p>
+              ) : (
+                <ul className="mt-3 grid gap-2" data-testid="closeness-list">
+                  {ranked.map(({ v, matches, considered }) => (
+                    <li key={v.id} className="rounded-xl border border-[var(--line)] p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2">
+                          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+                            {v.authorUserId ? v.label ?? "version" : `draft · ${v.label ?? "starting point"}`}
+                          </span>
+                          <span className="text-xs font-semibold text-[var(--accent)]" data-testid={`match-${v.id}`}>
+                            {considered > 0 ? `${matches}/${considered} of your answers match` : "—"}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs text-[var(--muted)]">✓ {v.accepts} · ✕ {v.declines}</span>
                       </div>
-                    ))}
-                  </div>
-                </>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => run(() => castAcceptance(id, v.id, true))}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          <Check size={12} /> Co-sign
+                        </button>
+                        <button
+                          onClick={() => run(() => castAcceptance(id, v.id, false))}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50"
+                        >
+                          <X size={12} /> Decline
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
 
-              {!resolved && (
-                <div className="mt-3 flex gap-2">
+              <button
+                onClick={present}
+                disabled={busy || answeredKeys.length === 0}
+                data-testid="present-version"
+                className="mt-4 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {noOneHasPresented ? "Present this as the bill" : "Propose this as a carve-out"}
+              </button>
+              <p className="mt-1.5 text-center text-[11px] text-[var(--muted)]">
+                Puts your answers on the table as a version others can co-sign.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Secondary: describe in your own words (free-form) */}
+      {!resolved && (
+        <div className="mt-4">
+          {!freeOpen ? (
+            <button
+              type="button"
+              onClick={() => setFreeOpen(true)}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)]"
+            >
+              <PenLine size={13} /> Or describe your position in your own words
+            </button>
+          ) : (
+            <div className="rounded-2xl border border-[var(--line)] p-4">
+              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">In your own words</label>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">We'll extract it into structured answers automatically.</p>
+              <textarea
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                rows={3}
+                placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
+                className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    if (!freeText.trim()) return;
+                    await run(() => proposeFreeformAmendment(id, freeText));
+                    setFreeText("");
+                    setFreeOpen(false);
+                  }}
+                  disabled={busy || !freeText.trim()}
+                  className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  Present in my words
+                </button>
+                <button
+                  onClick={() => { setFreeOpen(false); setFreeText(""); }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Starting drafts — collapsed context, de-emphasized */}
+      {drafts.length > 0 && (
+        <details className="mt-8" data-testid="starting-drafts">
+          <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Starting drafts ({drafts.length})
+          </summary>
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            Neutral reference wordings to react to — not anyone's position. Your cohort's presented versions lead the bill.
+          </p>
+          <ul className="mt-2 grid gap-2">
+            {drafts.map((v) => (
+              <li key={v.id} className="rounded-xl border border-dashed border-[var(--line)] p-3 text-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{v.label ?? "draft"}</p>
+                {Object.entries(v.positions).length > 0 && (
+                  <div className="mt-1.5 grid gap-1">
+                    {Object.entries(v.positions).map(([k, val]) => (
+                      <p key={k} className="text-xs text-[var(--fg-soft)]">
+                        <span className="text-[var(--muted)]">{promptByKey.get(k) ?? k}:</span> {val}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {!resolved && (
                   <button
                     onClick={() => run(() => castAcceptance(id, v.id, true))}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold hover:border-[var(--accent)] disabled:opacity-50"
                   >
-                    <Check size={12} /> Co-sign
+                    <Check size={12} /> Co-sign this draft
                   </button>
-                  <button
-                    onClick={() => run(() => castAcceptance(id, v.id, false))}
-                    disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                  >
-                    <X size={12} /> Decline
-                  </button>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* Take a position flyout */}
-      <Flyout
-        open={positionOpen}
-        onClose={() => setPositionOpen(false)}
-        title="Take a position"
-        subtitle="Say where you stand and which part of the spectrum you speak for."
-      >
-        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Your stance</label>
-        <input
-          value={stance}
-          onChange={(e) => setStance(e.target.value)}
-          placeholder="e.g. for, but only with a carve-out"
-          className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-        />
-
-        <p className="mt-4 block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Speaking for</p>
-        <div
-          className="mt-1 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2"
-          data-testid="participate-compass"
-        >
-          <Compass size={15} className="shrink-0 text-[var(--accent)]" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">{compass.label}</p>
-            <p className="text-[11px] text-[var(--muted)]">{compass.detail}</p>
-          </div>
-        </div>
-        {!compass.hasData && (
-          <Link to="/onboarding" className="mt-1 inline-block text-xs font-semibold text-[var(--accent)]">
-            Build your Civic Compass →
-          </Link>
-        )}
-
-        <button
-          onClick={() =>
-            runAndClose(
-              () => takePosition(id, { stance, intensity: "Medium", bucket: compass.bucket }),
-              () => { setPositionOpen(false); setStance(""); },
-            )
-          }
-          disabled={busy || !stance.trim()}
-          className="mt-5 w-full rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Post position
-        </button>
-      </Flyout>
-
-      {/* Propose a carve-out flyout */}
-      <Flyout
-        open={carveOpen}
-        onClose={() => setCarveOpen(false)}
-        title="Propose a carve-out"
-        subtitle="Offer an amendment that could pull a broader coalition together."
-      >
-        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">In your own words</label>
-        <p className="mt-0.5 text-xs text-[var(--muted)]">It's extracted into structured positions automatically.</p>
-        <textarea
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          rows={3}
-          placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
-          className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-        />
-        <button
-          onClick={() =>
-            runAndClose(
-              () => proposeFreeformAmendment(id, freeText),
-              () => { setCarveOpen(false); setFreeText(""); },
-            )
-          }
-          disabled={busy || !freeText.trim()}
-          className="mt-2 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Propose (free-form)
-        </button>
-
-        <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-wider text-[var(--muted)]">
-          <span className="h-px flex-1 bg-[var(--line)]" /> or pick per sub-question <span className="h-px flex-1 bg-[var(--line)]" />
-        </div>
-
-        {d.subQuestions.map((sq: CoalitionSubQuestion) => (
-          <div key={sq.key} className="mb-3">
-            <label className="text-xs font-medium">{sq.prompt}</label>
-            <select
-              value={carveOut[sq.key] ?? ""}
-              onChange={(e) => setCarveOut({ ...carveOut, [sq.key]: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-[var(--line)] px-2 py-1.5 text-sm"
-            >
-              <option value="">(leave silent)</option>
-              {sq.options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-        ))}
-        <button
-          onClick={() => {
-            const positions = Object.fromEntries(Object.entries(carveOut).filter(([, val]) => val));
-            if (Object.keys(positions).length > 0)
-              void runAndClose(
-                () => proposeAmendment(id, positions, "carve-out"),
-                () => { setCarveOpen(false); setCarveOut({}); },
-              );
-          }}
-          disabled={busy}
-          className="mt-2 w-full rounded-full border border-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent)] disabled:opacity-50"
-        >
-          Propose amendment
-        </button>
-      </Flyout>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </section>
   );
 }

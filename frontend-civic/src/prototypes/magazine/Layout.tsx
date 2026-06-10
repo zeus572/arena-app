@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: "/campaigns", label: "Campaign" },
   { to: "/leagues", label: "Leagues" },
   { to: "/coalition", label: "Coalition" },
+  { to: "/cohort", label: "Cohort" },
   { to: "/zeitgeist", label: "Zeitgeist" },
   { to: "/quizzes", label: "Quizzes" },
   { to: "/about", label: "About" },
