@@ -22,11 +22,11 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition disabled:opacity-50 disabled:pointer-events-none [&_svg]:h-3.5 [&_svg]:w-3.5";
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "px-2.5 py-1 text-xs",
-  md: "px-4 py-1.5 text-sm",
+  sm: "px-2 py-0.5 text-[11px]",
+  md: "px-3 py-1 text-xs",
 };
 
 const variants: Record<ButtonVariant, string> = {

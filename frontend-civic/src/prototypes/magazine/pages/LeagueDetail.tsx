@@ -455,7 +455,7 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       data-testid={testId}
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition [&_svg]:h-3 [&_svg]:w-3 ${
         active ? "bg-[var(--accent)] text-white" : "text-[var(--fg-soft)] hover:text-[var(--fg)]"
       }`}
     >
