@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, GraduationCap, Compass, User, Megaphone } from "lucide-react";
+import { Home, Trophy, Handshake, User, Megaphone } from "lucide-react";
 
 type Tab = {
   to: string;
@@ -9,12 +9,13 @@ type Tab = {
   testId: string;
 };
 
+// The five primary destinations. Everything else is reached via the mobile menu drawer (MobileMenu).
 const tabs: Tab[] = [
   { to: "/", label: "Home", icon: Home, end: true, testId: "tab-home" },
+  { to: "/leagues", label: "Leagues", icon: Trophy, testId: "tab-leagues" },
   { to: "/campaigns", label: "Campaign", icon: Megaphone, testId: "tab-campaign" },
-  { to: "/quizzes", label: "Quizzes", icon: GraduationCap, testId: "tab-quizzes" },
-  { to: "/onboarding", label: "Compass", icon: Compass, testId: "tab-compass" },
-  { to: "/profile", label: "You", icon: User, testId: "tab-you" },
+  { to: "/coalition", label: "Coalition", icon: Handshake, testId: "tab-coalition" },
+  { to: "/profile", label: "Profile", icon: User, testId: "tab-profile" },
 ];
 
 export function BottomTabs() {
