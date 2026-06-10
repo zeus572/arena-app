@@ -10,6 +10,8 @@ import {
 } from "@/api/coalition";
 import { getMyProfile, type Profile } from "@/api/profile";
 import { deriveCompassPosition } from "@/lib/compass";
+import { useAuth } from "@/auth/AuthContext";
+import { SignInPrompt } from "../components/SignInPrompt";
 import { useProvision } from "../hooks/useProvision";
 
 /** How well a version matches the answers the user has chosen so far. */
@@ -25,6 +27,7 @@ function closeness(answers: Record<string, string>, v: CoalitionVersion) {
 
 export default function CoalitionProvisionParticipate() {
   const { id = "" } = useParams();
+  const { isAuthenticated } = useAuth();
   const { d, run, busy } = useProvision(id);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -59,6 +62,7 @@ export default function CoalitionProvisionParticipate() {
   }
 
   async function present() {
+    if (!isAuthenticated) return;
     const positions = Object.fromEntries(answeredKeys.map((k) => [k, answers[k]]));
     if (Object.keys(positions).length === 0) return;
     const label = noOneHasPresented ? "first reading" : "carve-out";
@@ -134,8 +138,19 @@ export default function CoalitionProvisionParticipate() {
         ))}
       </ul>
 
+      {/* Sign-in gate: anyone can pick answers, but saving/co-signing needs an account. */}
+      {!resolved && !isAuthenticated && (
+        <div className="mt-5" data-testid="participate-signin">
+          <SignInPrompt
+            compact
+            title="Sign in to save your position"
+            message="Pick your answers above — then sign in to save a version and co-sign bills."
+          />
+        </div>
+      )}
+
       {/* Save → compare + present */}
-      {!resolved && (
+      {!resolved && isAuthenticated && (
         <div className="mt-5">
           {!saved ? (
             <button
@@ -213,8 +228,8 @@ export default function CoalitionProvisionParticipate() {
         </div>
       )}
 
-      {/* Secondary: describe in your own words (free-form) */}
-      {!resolved && (
+      {/* Secondary: describe in your own words (free-form) — also account-gated. */}
+      {!resolved && isAuthenticated && (
         <div className="mt-4">
           {!freeOpen ? (
             <button
@@ -282,7 +297,7 @@ export default function CoalitionProvisionParticipate() {
                     ))}
                   </div>
                 )}
-                {!resolved && (
+                {!resolved && isAuthenticated && (
                   <button
                     onClick={() => run(() => castAcceptance(id, v.id, true))}
                     disabled={busy}

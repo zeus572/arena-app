@@ -2,16 +2,56 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, Trophy, Flame, Bot, Star } from "lucide-react";
 import { getMyCohort, type Cohort } from "@/api/cohort";
+import { useAuth } from "@/auth/AuthContext";
+import { SignInPrompt } from "../components/SignInPrompt";
+
+function CohortHeader() {
+  return (
+    <header>
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+        <Users size={14} /> This week's cohort
+      </p>
+      <h1 className="display mt-1 text-4xl">Your 50</h1>
+    </header>
+  );
+}
 
 export default function CohortPage() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Don't create or fetch a cohort for signed-out visitors.
+    if (!isAuthenticated) {
+      setLoaded(true);
+      return;
+    }
+    setLoaded(false);
     void getMyCohort()
       .then(setCohort)
       .finally(() => setLoaded(true));
-  }, []);
+  }, [isAuthenticated]);
+
+  if (isLoading) {
+    return <p className="py-12 text-sm text-[var(--muted)]" data-testid="cohort-loading">Loading…</p>;
+  }
+  if (!isAuthenticated) {
+    return (
+      <section data-testid="cohort-page" className="max-w-3xl">
+        <CohortHeader />
+        <p className="mt-2 max-w-prose text-[var(--fg-soft)]">
+          Your weekly cohort is a fixed group of up to 50 people you work the bills with.
+        </p>
+        <div className="mt-6">
+          <SignInPrompt
+            title="Sign in to see your cohort"
+            message="Create a free account to join a weekly cohort and climb its leaderboard."
+          />
+        </div>
+      </section>
+    );
+  }
 
   if (!loaded) {
     return <p className="py-12 text-sm text-[var(--muted)]" data-testid="cohort-loading">Finding your cohort…</p>;
