@@ -21,6 +21,7 @@ import type { CivicBriefingSummary } from "@/api/types";
 import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function LeagueDetail() {
   const { id = "" } = useParams();
@@ -76,17 +77,17 @@ export default function LeagueDetail() {
           </p>
         </div>
         {!isOwner && (
-          <button
-            type="button"
+          <Button
+            variant="danger"
+            size="sm"
             onClick={async () => {
               await leaveLeague(id);
               navigate("/leagues");
             }}
             data-testid="leave-league"
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1.5 text-sm font-semibold text-[var(--fg-soft)] hover:border-red-400 hover:text-red-600"
           >
             <LogOut className="h-4 w-4" /> Leave
-          </button>
+          </Button>
         )}
       </header>
 
@@ -241,15 +242,9 @@ function LinkCampaignPanel({ league, onLinked }: { league: LeagueDetailT; onLink
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={onLink}
-            disabled={!selected || busy}
-            data-testid="link-campaign-submit"
-            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
+          <Button onClick={onLink} disabled={!selected || busy} data-testid="link-campaign-submit">
             {busy ? "Linking…" : "Link campaign"}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -332,15 +327,9 @@ function RoundPanel({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={onOpen}
-              disabled={!slug || busy}
-              data-testid="open-round-submit"
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
+            <Button onClick={onOpen} disabled={!slug || busy} data-testid="open-round-submit">
               <Plus className="h-4 w-4" /> {busy ? "Opening…" : "Open round"}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -512,15 +501,9 @@ function LinkInvites({
         <p className="text-sm text-[var(--fg-soft)]">
           Anyone with the link can join — share it in your group chat.
         </p>
-        <button
-          type="button"
-          onClick={generate}
-          disabled={busy}
-          data-testid="generate-invite"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
+        <Button onClick={generate} disabled={busy} data-testid="generate-invite" className="shrink-0">
           <Plus className="h-4 w-4" /> New link
-        </button>
+        </Button>
       </div>
 
       {links.length === 0 ? (
@@ -621,15 +604,9 @@ function EmailInvites({
         <span className="text-xs text-[var(--muted)]">
           {parsed.length > 0 ? `${parsed.length} address${parsed.length === 1 ? "" : "es"}` : "Separate with commas or new lines"}
         </span>
-        <button
-          type="button"
-          onClick={send}
-          disabled={busy || parsed.length === 0}
-          data-testid="email-invite-submit"
-          className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
+        <Button onClick={send} disabled={busy || parsed.length === 0} data-testid="email-invite-submit">
           <Send className="h-4 w-4" /> {busy ? "Inviting…" : "Create invites"}
-        </button>
+        </Button>
       </div>
 
       {results && results.length > 0 && (
@@ -701,27 +678,17 @@ function CopyButton({
   label?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onCopy(code)}
-      data-testid="copy-invite"
-      className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--fg-soft)] hover:border-[var(--accent)]"
-    >
+    <Button variant="ghost" size="sm" onClick={() => onCopy(code)} data-testid="copy-invite">
       {copied === code ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied === code ? "Copied" : label}
-    </button>
+    </Button>
   );
 }
 
 function RevokeButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-testid="revoke-invite"
-      className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--fg-soft)] hover:border-red-400 hover:text-red-600"
-    >
+    <Button variant="danger" size="sm" onClick={onClick} data-testid="revoke-invite">
       Revoke
-    </button>
+    </Button>
   );
 }

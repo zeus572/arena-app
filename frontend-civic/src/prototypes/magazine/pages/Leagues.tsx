@@ -4,6 +4,7 @@ import { Users, Trophy, Plus, ArrowRight } from "lucide-react";
 import { listMyLeagues, createLeague, type LeagueSummary } from "@/api/leagues";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function Leagues() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -155,15 +156,16 @@ export default function Leagues() {
                   {error}
                 </p>
               )}
-              <button
+              <Button
                 type="submit"
+                fullWidth
                 disabled={!name.trim() || creating}
                 data-testid="create-league-submit"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-4"
               >
                 <Plus className="h-4 w-4" />
                 {creating ? "Creating…" : "Create league"}
-              </button>
+              </Button>
               <p className="mt-3 text-xs text-[var(--muted)]">
                 You'll get a shareable invite link to send your friends right after.
               </p>
@@ -213,14 +215,9 @@ function JoinByCode() {
           data-testid="join-code-input"
           className="w-full border border-[var(--border)] bg-[var(--bg)] px-3 py-2 font-mono uppercase tracking-wider text-[var(--fg)] outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-[var(--accent)]"
         />
-        <button
-          type="submit"
-          disabled={!code.trim()}
-          data-testid="join-code-submit"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={!code.trim()} data-testid="join-code-submit" className="shrink-0">
           Go <ArrowRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );

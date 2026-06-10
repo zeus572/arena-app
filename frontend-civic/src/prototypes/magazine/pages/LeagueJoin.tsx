@@ -4,6 +4,7 @@ import { Users } from "lucide-react";
 import { previewInvite, joinByCode, type LeagueInvitePreview } from "@/api/leagues";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 export default function LeagueJoin() {
   const { code = "" } = useParams();
@@ -121,14 +122,8 @@ function Card({ children }: { children: React.ReactNode }) {
 
 function ActionButton({ onClick, disabled, label }: { onClick: () => void; disabled: boolean; label: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      data-testid="join-submit"
-      className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
-    >
+    <Button onClick={onClick} disabled={disabled} fullWidth data-testid="join-submit" className="mt-4">
       {label}
-    </button>
+    </Button>
   );
 }
