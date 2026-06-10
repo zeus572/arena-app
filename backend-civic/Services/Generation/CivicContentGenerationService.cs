@@ -38,7 +38,9 @@ public class CivicContentGenerationService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Reset any items left in Generating from a previous crashed/restarted instance.
-        await ResetStuckItemsAsync(stoppingToken);
+        // Swallow exceptions — a DB timeout here must not kill the host.
+        try { await ResetStuckItemsAsync(stoppingToken); }
+        catch (Exception ex) { _log.LogWarning(ex, "CivicContentGenerationService: ResetStuckItems failed, will retry naturally"); }
 
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ContinueWith(_ => { }, TaskScheduler.Default);
 
