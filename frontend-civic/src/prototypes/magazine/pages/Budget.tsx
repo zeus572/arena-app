@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button, ButtonLink } from "../components/Button";
 import {
   completeBudgetSession,
   getBudgetCategories,
@@ -99,19 +100,15 @@ export default function MagazineBudget() {
           Your Civic Compass will reflect how you spent these 100 points.
         </p>
         <div className="mt-8 flex justify-center gap-4">
-          <button
+          <Button
             onClick={() => navigate("/profile")}
-            className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
             data-testid="see-profile"
           >
             See your updated profile
-          </button>
-          <Link
-            to="/"
-            className="rounded-full border border-[var(--border)] px-6 py-3 text-sm font-semibold text-[var(--fg)]"
-          >
+          </Button>
+          <ButtonLink to="/" variant="ghost">
             Back to the issue
-          </Link>
+          </ButtonLink>
         </div>
       </article>
     );
@@ -217,14 +214,13 @@ export default function MagazineBudget() {
             ? "Looks good. Lock in your budget to update your profile."
             : "Get to exactly 100 to submit."}
         </p>
-        <button
+        <Button
           onClick={submit}
           disabled={submitting || delta !== 0}
           data-testid="submit-button"
-          className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitting ? "Saving…" : "Lock in budget"}
-        </button>
+        </Button>
       </div>
     </article>
   );

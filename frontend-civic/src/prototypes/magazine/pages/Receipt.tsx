@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ButtonLink } from "../components/Button";
 import { getReceipt, type ValuesReceipt } from "@/api/receipts";
 
 export default function MagazineReceipt() {
@@ -114,18 +115,12 @@ export default function MagazineReceipt() {
       )}
 
       <section className="mt-16 text-center">
-        <Link
-          to="/onboarding"
-          className="rounded-full border border-[var(--border)] px-6 py-3 text-sm font-semibold text-[var(--fg)] hover:border-[var(--accent)]"
-        >
+        <ButtonLink to="/onboarding" variant="ghost">
           Answer more questions
-        </Link>
-        <Link
-          to="/profile"
-          className="ml-3 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
-        >
+        </ButtonLink>
+        <ButtonLink to="/profile" className="ml-3">
           See your full profile
-        </Link>
+        </ButtonLink>
       </section>
     </article>
   );

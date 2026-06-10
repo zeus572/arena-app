@@ -13,6 +13,7 @@ import {
 import { getMyProfile, type Profile } from "@/api/profile";
 import { deriveCompassPosition, prettyBucket } from "@/lib/compass";
 import { useProvision } from "../hooks/useProvision";
+import { Button, ButtonLink } from "../components/Button";
 
 const REASON_LABELS = [
   "Workable",
@@ -210,10 +211,9 @@ export default function CoalitionProvisionDetail() {
           {d.probes.map((pr) => (
             <div key={pr.versionId} className="mt-2 flex items-center justify-between gap-3 text-sm">
               <span>{pr.prompt}</span>
-              <button onClick={() => run(() => castAcceptance(id, pr.versionId, true))} disabled={busy}
-                className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+              <Button variant="positive" size="sm" onClick={() => run(() => castAcceptance(id, pr.versionId, true))} disabled={busy}>
                 Co-sign
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -259,13 +259,10 @@ export default function CoalitionProvisionDetail() {
         {/* Steelman — collapsed until requested */}
         <div className="mt-3 border-t border-[var(--line)] pt-3">
           {!steelOpen ? (
-            <button
-              onClick={() => setSteelOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--accent)]"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setSteelOpen(true)}>
               Add a steelman
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">+ XP</span>
-            </button>
+            </Button>
           ) : (
             <div>
               <label className="text-xs text-[var(--muted)]">
@@ -279,7 +276,8 @@ export default function CoalitionProvisionDetail() {
                 className="mt-1 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
               />
               <div className="mt-2 flex items-center gap-2">
-                <button
+                <Button
+                  size="sm"
                   onClick={() => {
                     if (steelText.trim()) {
                       void act("Steelman", "steelman", steelText);
@@ -288,7 +286,6 @@ export default function CoalitionProvisionDetail() {
                     }
                   }}
                   disabled={busy || !steelText.trim()}
-                  className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                 >
                   Submit steelman
                   <span
@@ -298,13 +295,14 @@ export default function CoalitionProvisionDetail() {
                   >
                     {lastAward?.key === "steelman" ? `+${lastAward.points} XP` : "+ XP"}
                   </span>
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => { setSteelOpen(false); setSteelText(""); }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -326,13 +324,12 @@ export default function CoalitionProvisionDetail() {
       {/* Join + agent ballast */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {import.meta.env.DEV && (
-          <button
+          <Button
             onClick={() => run(() => agentStep(id))}
             disabled={busy || resolved}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             <Bot size={16} /> Run agents (dev)
-          </button>
+          </Button>
         )}
         {!d.youJoined && !resolved && (
           <div
@@ -347,22 +344,23 @@ export default function CoalitionProvisionDetail() {
               <p className="text-xs text-[var(--muted)]">{compass.detail}</p>
             </div>
             {compass.hasData ? (
-              <button
+              <Button
                 onClick={() => run(() => joinProvision(id, compass.bucket))}
                 disabled={busy}
-                className="shrink-0 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="shrink-0"
                 data-testid="compass-join-button"
               >
                 Join with this position
-              </button>
+              </Button>
             ) : (
-              <Link
+              <ButtonLink
                 to="/onboarding"
-                className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2 text-center text-sm font-semibold text-[var(--accent)]"
+                variant="secondary"
+                className="shrink-0"
                 data-testid="compass-join-build"
               >
                 Build your Compass →
-              </Link>
+              </ButtonLink>
             )}
           </div>
         )}

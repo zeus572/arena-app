@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "../components/Button";
 import { useAuth } from "@/auth/AuthContext";
 
 export default function MagazineLogin() {
@@ -74,14 +75,14 @@ export default function MagazineLogin() {
           </p>
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="mt-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-2"
           data-testid="login-submit"
         >
           {submitting ? "Signing you in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
 
       <p className="mt-6 text-sm text-[var(--fg-soft)]">

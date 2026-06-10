@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Circle, CircleDashed } from "lucide-react";
 import { getBillTimeline, type BillTimelineStep } from "@/api/billTimeline";
+import { ButtonLink } from "../components/Button";
 
 function StepIcon({ status }: { status: BillTimelineStep["status"] }) {
   if (status === "Done") return <Check className="h-4 w-4 text-emerald-600" />;
@@ -126,12 +127,9 @@ export default function MagazineBillTimeline() {
             </p>
           )}
           <div className="mt-4">
-            <Link
-              to="/briefings/congress-student-data-privacy-bill"
-              className="inline-block rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-            >
+            <ButtonLink to="/briefings/congress-student-data-privacy-bill">
               See the briefing →
-            </Link>
+            </ButtonLink>
           </div>
         </section>
       )}

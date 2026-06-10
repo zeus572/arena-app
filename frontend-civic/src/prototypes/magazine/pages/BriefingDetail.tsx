@@ -6,6 +6,7 @@ import { requestDebateFromBriefing } from "@/api/debates";
 import { useAuth } from "@/auth/AuthContext";
 import { PullQuote } from "../components/PullQuote";
 import { SharePreviewCard } from "../components/SharePreviewCard";
+import { Button } from "../components/Button";
 
 export default function MagazineBriefingDetail() {
   const { slug } = useParams();
@@ -173,8 +174,7 @@ export default function MagazineBriefingDetail() {
                 </p>
               )}
             </div>
-            <button
-              type="button"
+            <Button
               disabled={debateBusy}
               onClick={async () => {
                 if (!slug) return;
@@ -191,11 +191,10 @@ export default function MagazineBriefingDetail() {
                   setDebateBusy(false);
                 }
               }}
-              className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
               data-testid="debate-this-button"
             >
               {debateBusy ? "Starting…" : "Debate this →"}
-            </button>
+            </Button>
           </section>
         )}
 

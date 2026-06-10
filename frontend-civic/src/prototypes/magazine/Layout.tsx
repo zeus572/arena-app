@@ -2,6 +2,7 @@ import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
+import { ButtonLink } from "./components/Button";
 import "./theme.css";
 
 const NAV_LINKS = [
@@ -102,13 +103,14 @@ function AuthStrip() {
       >
         Sign in
       </Link>
-      <Link
+      <ButtonLink
         to="/register"
-        className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-white"
+        size="sm"
+        className="uppercase tracking-wider"
         data-testid="auth-strip-signup-link"
       >
         Sign up
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

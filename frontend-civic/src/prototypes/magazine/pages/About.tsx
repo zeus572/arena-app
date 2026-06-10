@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
 import { Compass, Handshake, Megaphone, Sparkles } from "lucide-react";
+import { ButtonLink } from "../components/Button";
 
 const STEPS = [
   {
@@ -63,27 +63,23 @@ export default function About() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link
-          to="/onboarding"
-          className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white"
-          data-testid="about-cta-compass"
-        >
+        <ButtonLink to="/onboarding" data-testid="about-cta-compass">
           Build your Civic Compass →
-        </Link>
-        <Link
+        </ButtonLink>
+        <ButtonLink
           to="/coalition"
-          className="rounded-full border border-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent)]"
+          variant="secondary"
           data-testid="about-cta-coalition"
         >
           See this week's coalitions
-        </Link>
-        <Link
+        </ButtonLink>
+        <ButtonLink
           to="/zeitgeist"
-          className="rounded-full border border-[var(--line)] px-5 py-2.5 text-sm font-semibold text-[var(--fg)] hover:border-[var(--accent)]"
+          variant="ghost"
           data-testid="about-cta-zeitgeist"
         >
           Read the Zeitgeist
-        </Link>
+        </ButtonLink>
       </div>
     </section>
   );

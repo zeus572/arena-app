@@ -11,6 +11,7 @@ import {
   type Me,
   type League,
 } from "@/api/coalition";
+import { Button, ButtonLink } from "../components/Button";
 
 function stateColor(state: string): string {
   switch (state) {
@@ -138,10 +139,9 @@ export default function CoalitionProvisions() {
 
       {import.meta.env.DEV && (
         <div className="mt-6 flex items-center gap-3">
-          <button onClick={reseed} disabled={seeding}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]">
+          <Button variant="ghost" size="sm" onClick={reseed} disabled={seeding}>
             <RefreshCw size={14} className={seeding ? "animate-spin" : ""} /> Seed / recompose demo (dev)
-          </button>
+          </Button>
         </div>
       )}
 
@@ -158,10 +158,9 @@ export default function CoalitionProvisions() {
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Recommended for your level</h3>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {me.recommended.map((r) => (
-                    <Link key={r.id} to={`/coalition/${r.id}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+                    <ButtonLink key={r.id} to={`/coalition/${r.id}`} variant="secondary" size="sm">
                       {r.title} {difficultyBadge(r.difficulty)}
-                    </Link>
+                    </ButtonLink>
                   ))}
                 </div>
               </div>

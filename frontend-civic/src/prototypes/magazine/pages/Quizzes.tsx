@@ -7,6 +7,7 @@ import {
   type QuizQuestion,
   type QuizPollResult,
 } from "@/api/quiz";
+import { Button, ButtonLink } from "../components/Button";
 
 export default function MagazineQuizzes() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -61,8 +62,8 @@ export default function MagazineQuizzes() {
           Your answers feed the global poll — a 60-day moving average of how everyone's doing.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => {
               setIndex(0);
               setPicked(null);
@@ -72,17 +73,13 @@ export default function MagazineQuizzes() {
               // Pull a fresh, reshuffled set so "try again" isn't the same quiz.
               loadQuestions();
             }}
-            className="rounded-full border border-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--accent)]"
             data-testid="quiz-restart"
           >
             New questions
-          </button>
-          <Link
-            to="/"
-            className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
-          >
+          </Button>
+          <ButtonLink to="/">
             Back to the issue
-          </Link>
+          </ButtonLink>
         </div>
       </article>
     );
@@ -225,15 +222,15 @@ export default function MagazineQuizzes() {
           </div>
         )}
 
-        <button
-          type="button"
+        <Button
+          fullWidth
           disabled={!answered}
           onClick={onNext}
-          className="mt-6 w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-6"
           data-testid="quiz-next"
         >
           {index === questions.length - 1 ? "See results" : "Next question"}
-        </button>
+        </Button>
       </section>
     </article>
   );

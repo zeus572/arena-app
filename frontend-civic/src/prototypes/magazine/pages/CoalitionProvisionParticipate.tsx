@@ -13,6 +13,7 @@ import { deriveCompassPosition } from "@/lib/compass";
 import { useAuth } from "@/auth/AuthContext";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { useProvision } from "../hooks/useProvision";
+import { Button } from "../components/Button";
 
 /** How well a version matches the answers the user has chosen so far. */
 function closeness(answers: Record<string, string>, v: CoalitionVersion) {
@@ -153,15 +154,14 @@ export default function CoalitionProvisionParticipate() {
       {!resolved && isAuthenticated && (
         <div className="mt-5">
           {!saved ? (
-            <button
-              type="button"
+            <Button
+              fullWidth
               onClick={() => setSaved(true)}
               disabled={answeredKeys.length === 0}
               data-testid="save-answers"
-              className="w-full rounded-full bg-[var(--accent)] py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               Save my answers & see where I land
-            </button>
+            </Button>
           ) : (
             <div className="rounded-2xl border border-[var(--line)] p-4" data-testid="compare-panel">
               <div className="flex items-center gap-2">
@@ -192,34 +192,37 @@ export default function CoalitionProvisionParticipate() {
                         <span className="shrink-0 text-xs text-[var(--muted)]">✓ {v.accepts} · ✕ {v.declines}</span>
                       </div>
                       <div className="mt-2 flex gap-2">
-                        <button
+                        <Button
+                          variant="positive"
+                          size="sm"
                           onClick={() => run(() => castAcceptance(id, v.id, true))}
                           disabled={busy}
-                          className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
                         >
                           <Check size={12} /> Co-sign
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
                           onClick={() => run(() => castAcceptance(id, v.id, false))}
                           disabled={busy}
-                          className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold disabled:opacity-50"
                         >
                           <X size={12} /> Decline
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
 
-              <button
+              <Button
+                fullWidth
                 onClick={present}
                 disabled={busy || answeredKeys.length === 0}
                 data-testid="present-version"
-                className="mt-4 w-full rounded-full bg-[var(--accent)] py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-4"
               >
                 {noOneHasPresented ? "Present this as the bill" : "Propose this as a carve-out"}
-              </button>
+              </Button>
               <p className="mt-1.5 text-center text-[11px] text-[var(--muted)]">
                 Puts your answers on the table as a version others can co-sign.
               </p>
@@ -251,7 +254,8 @@ export default function CoalitionProvisionParticipate() {
                 className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
               />
               <div className="mt-2 flex items-center gap-2">
-                <button
+                <Button
+                  size="sm"
                   onClick={async () => {
                     if (!freeText.trim()) return;
                     await run(() => proposeFreeformAmendment(id, freeText));
@@ -259,16 +263,16 @@ export default function CoalitionProvisionParticipate() {
                     setFreeOpen(false);
                   }}
                   disabled={busy || !freeText.trim()}
-                  className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
                 >
                   Present in my words
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => { setFreeOpen(false); setFreeText(""); }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -298,13 +302,15 @@ export default function CoalitionProvisionParticipate() {
                   </div>
                 )}
                 {!resolved && isAuthenticated && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => run(() => castAcceptance(id, v.id, true))}
                     disabled={busy}
-                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold hover:border-[var(--accent)] disabled:opacity-50"
+                    className="mt-2"
                   >
                     <Check size={12} /> Co-sign this draft
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}

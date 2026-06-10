@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { CandidateAvatar } from "../components/CandidateAvatar";
 import { SignInPrompt } from "../components/SignInPrompt";
+import { Button } from "../components/Button";
 
 function ValueBar({ value }: { value: CandidateValue }) {
   const pct = ((value.score + 1) / 2) * 100;
@@ -205,16 +206,15 @@ export default function CampaignNewsResponse() {
                 “{opt.body}”
               </blockquote>
 
-              <button
-                type="button"
+              <Button
                 data-testid={`choose-${opt.id}`}
                 disabled={disabled || submitting !== null}
                 onClick={() => choose(opt.id)}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-3"
               >
                 {submitting === opt.id && <Loader2 className="h-4 w-4 animate-spin" />}
                 Post this response
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
