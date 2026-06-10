@@ -23,6 +23,8 @@ public class CivicDbContext : DbContext
     public DbSet<Election> Elections => Set<Election>();
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
     public DbSet<QuizResponse> QuizResponses => Set<QuizResponse>();
+    public DbSet<Cohort> Cohorts => Set<Cohort>();
+    public DbSet<CohortMember> CohortMembers => Set<CohortMember>();
     public DbSet<BillTimelineStep> BillTimelineSteps => Set<BillTimelineStep>();
     public DbSet<NewsItem> NewsItems => Set<NewsItem>();
     public DbSet<VirtualCandidate> VirtualCandidates => Set<VirtualCandidate>();
@@ -188,6 +190,22 @@ public class CivicDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Cohort>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // One cohort per (league, week); null AnchorLeagueId rows are distinct (solo cohorts).
+            e.HasIndex(x => new { x.AnchorLeagueId, x.WeekKey }).IsUnique();
+            e.HasMany(x => x.Members).WithOne(m => m.Cohort!).HasForeignKey(m => m.CohortId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CohortMember>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // Exactly one cohort per user per week.
+            e.HasIndex(x => new { x.UserId, x.WeekKey }).IsUnique();
+            e.HasIndex(x => x.CohortId);
         });
 
         modelBuilder.Entity<BillTimelineStep>(e =>
