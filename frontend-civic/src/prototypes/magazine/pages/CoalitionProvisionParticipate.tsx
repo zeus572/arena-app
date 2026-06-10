@@ -85,7 +85,7 @@ export default function CoalitionProvisionParticipate() {
         <h1 className="display text-3xl">Take your position</h1>
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
       </header>
-      <p className="mt-2 text-sm text-[var(--fg-soft)]">
+      <p className="mt-2 text-base text-[var(--fg-soft)]">
         Answer each question below to say where you stand. When you save, we'll show you which existing
         versions are closest — and let you put your own on the table.
       </p>
@@ -106,8 +106,8 @@ export default function CoalitionProvisionParticipate() {
       <ul className="mt-2 grid gap-3" data-testid="subquestion-cards">
         {d.subQuestions.map((sq) => (
           <li key={sq.key} className="rounded-2xl border border-[var(--line)] p-4">
-            <p className="font-medium">{sq.prompt}</p>
-            {sq.tradeoff && <p className="mt-1 text-xs text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
+            <p className="text-lg font-semibold">{sq.prompt}</p>
+            {sq.tradeoff && <p className="mt-1 text-sm text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
             {sq.options.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {sq.options.map((o) => {
@@ -120,7 +120,7 @@ export default function CoalitionProvisionParticipate() {
                       onClick={() => pick(sq.key, o)}
                       data-testid={`opt-${sq.key}-${o}`}
                       aria-pressed={selected}
-                      className={`rounded-full border-2 px-4 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
                         selected
                           ? "border-[var(--accent)] bg-[var(--accent)] text-white"
                           : "border-[var(--line)] bg-[var(--bg-elev)] text-[var(--fg)] hover:border-[var(--accent)]"
@@ -132,7 +132,7 @@ export default function CoalitionProvisionParticipate() {
                 })}
               </div>
             ) : (
-              <p className="mt-2 text-[11px] text-[var(--muted)]">Open question — describe your take in your own words below.</p>
+              <p className="mt-2 text-xs text-[var(--muted)]">Open question — describe your take in your own words below.</p>
             )}
           </li>
         ))}
@@ -158,7 +158,7 @@ export default function CoalitionProvisionParticipate() {
               onClick={() => setSaved(true)}
               disabled={answeredKeys.length === 0}
               data-testid="save-answers"
-              className="w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-white disabled:opacity-50"
+              className="w-full rounded-full bg-[var(--accent)] py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               Save my answers & see where I land
             </button>
@@ -216,7 +216,7 @@ export default function CoalitionProvisionParticipate() {
                 onClick={present}
                 disabled={busy || answeredKeys.length === 0}
                 data-testid="present-version"
-                className="mt-4 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-4 w-full rounded-full bg-[var(--accent)] py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {noOneHasPresented ? "Present this as the bill" : "Propose this as a carve-out"}
               </button>
@@ -259,7 +259,7 @@ export default function CoalitionProvisionParticipate() {
                     setFreeOpen(false);
                   }}
                   disabled={busy || !freeText.trim()}
-                  className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
                 >
                   Present in my words
                 </button>
