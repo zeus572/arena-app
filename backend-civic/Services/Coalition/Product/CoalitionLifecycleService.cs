@@ -18,7 +18,7 @@ public class CoalitionLifecycleService
     private readonly CivicDbContext _db;
     private readonly CoalitionLoopService _loop;
 
-    public const int TargetActiveProvisions = 4;
+    public const int TargetActiveProvisions = 7;
 
     public CoalitionLifecycleService(CivicDbContext db, CoalitionLoopService loop)
     {
@@ -46,6 +46,7 @@ public class CoalitionLifecycleService
     {
         var activeCount = await _db.Provisions.CountAsync(p => Active.Contains(p.State), ct);
         var born = 0;
+        var needed = target - activeCount;
         while (activeCount + born < target)
         {
             var usedBriefingIds = await _db.Provisions
@@ -55,7 +56,12 @@ public class CoalitionLifecycleService
                 .OrderBy(b => b.IssueOrder).FirstOrDefaultAsync(ct);
             if (briefing is null) break; // no unused briefings left
 
-            await _loop.BirthFromBriefingAsync(briefing.Id, currentUserId: null, ct);
+            // When filling an empty pool, stagger deadlines (1 day, 2 days, … target days) so the
+            // rolling window is established immediately and provisions expire one per day.
+            // When topping up a partially-populated pool, give each new provision the full lifetime.
+            var daysOut = needed >= target ? born + 1 : target;
+            await _loop.BirthFromBriefingAsync(briefing.Id, currentUserId: null, ct,
+                deadline: DateTime.UtcNow.AddDays(daysOut));
             born++;
         }
         return born;

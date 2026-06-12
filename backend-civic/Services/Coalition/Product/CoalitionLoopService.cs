@@ -313,15 +313,15 @@ public class CoalitionLoopService
     /// the briefing's fields so the catalog still produces playable provisions in dev. Adds a base
     /// version and a single agent counterpart so it's immediately engageable.
     /// </summary>
-    public async Task<ProvisionDetailDto?> BirthFromBriefingAsync(Guid briefingId, string? currentUserId, CancellationToken ct = default)
+    public async Task<ProvisionDetailDto?> BirthFromBriefingAsync(Guid briefingId, string? currentUserId, CancellationToken ct = default, DateTime? deadline = null)
     {
         var briefing = await _db.Briefings.FirstOrDefaultAsync(b => b.Id == briefingId, ct);
         if (briefing is null) return null;
 
         Provision provision;
         GeneratedProvisionDto dto;
-        try { (provision, dto) = await _birth.BirthFromBriefingAsync(briefing, ct); }
-        catch (LlmException) { dto = HeuristicBirthDto(briefing); provision = await _birth.MapAndPersistAsync(dto, briefing, ct); }
+        try { (provision, dto) = await _birth.BirthFromBriefingAsync(briefing, ct, deadline); }
+        catch (LlmException) { dto = HeuristicBirthDto(briefing); provision = await _birth.MapAndPersistAsync(dto, briefing, ct, deadline); }
 
         var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provision.Id).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         if (subQs.Count > 0)

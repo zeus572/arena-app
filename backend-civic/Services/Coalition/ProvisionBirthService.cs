@@ -43,7 +43,8 @@ public class ProvisionBirthService
     /// sub-questions), and returns it. Throws <see cref="LlmException"/> if the
     /// extraction call fails (e.g. no API key configured).
     /// </summary>
-    public async Task<(Provision Provision, GeneratedProvisionDto Dto)> BirthFromBriefingAsync(Briefing briefing, CancellationToken ct = default)
+    public async Task<(Provision Provision, GeneratedProvisionDto Dto)> BirthFromBriefingAsync(
+        Briefing briefing, CancellationToken ct = default, DateTime? deadline = null)
     {
         _policy?.EnsureAllowed(); // gate: only premium users trigger live birth (else caller falls back to heuristic)
         var (sys, user) = CoalitionPrompts.ProvisionBirth(briefing);
@@ -52,7 +53,7 @@ public class ProvisionBirthService
         var dto = await _llm.GenerateStructuredAsync<GeneratedProvisionDto>(
             sys, user, LlmModelTier.Sonnet, ct: ct);
 
-        var provision = await MapAndPersistAsync(dto, briefing, ct);
+        var provision = await MapAndPersistAsync(dto, briefing, ct, deadline);
         _log.LogInformation(
             "Provision born from briefing {Slug}: {ProvisionSlug} ({SubQ} sub-questions, {Proposals} core proposals, axes: {Axes})",
             briefing.Slug, provision.Slug, provision.SubQuestions.Count, dto.CoreProposals?.Count ?? 0, string.Join(",", provision.RelevantAxes));
@@ -64,7 +65,8 @@ public class ProvisionBirthService
     /// Phase 0.2 mechanics test can drive the mapping deterministically with a
     /// canned DTO without going through the LLM client.
     /// </summary>
-    internal async Task<Provision> MapAndPersistAsync(GeneratedProvisionDto dto, Briefing briefing, CancellationToken ct = default)
+    internal async Task<Provision> MapAndPersistAsync(
+        GeneratedProvisionDto dto, Briefing briefing, CancellationToken ct = default, DateTime? deadline = null)
     {
         var title = string.IsNullOrWhiteSpace(dto.Title) ? briefing.Headline : dto.Title.Trim();
         var slug = await UniqueSlugAsync(title, ct);
@@ -83,7 +85,7 @@ public class ProvisionBirthService
             State = ProvisionState.Open,
             RelevantAxes = (dto.RelevantAxes ?? Array.Empty<string>())
                 .Select(a => a.Trim()).Where(a => a.Length > 0).ToArray(),
-            Deadline = DateTime.UtcNow + DefaultLifetime,
+            Deadline = deadline ?? DateTime.UtcNow + DefaultLifetime,
             GenerationSource = briefing.GenerationSource,
             CreatedAt = DateTime.UtcNow,
         };
