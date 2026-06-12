@@ -58,6 +58,20 @@ export interface NewsInfo {
   publishedAt: string;
 }
 
+export interface BudgetFact {
+  id: string;
+  factDate: string;
+  category: string;
+  tensionLabel: string;
+  perspectiveA: string;
+  sourceA: string;
+  sourceUrlA: string;
+  perspectiveB: string;
+  sourceB: string;
+  sourceUrlB: string;
+  explanation: string;
+}
+
 export type ReactionCounts = Record<string, number>;
 
 export interface TurnCitation {

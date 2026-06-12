@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo, ArenaSummary, ArenaDetail, ArenaFeedResponse, ForkDebateRequest, ForkSummary } from "./types";
+import type { DebateDetail, DebateSummary, Agent, AgentDetail, CreateDebateRequest, LeaderboardResponse, PredictionData, InterventionData, DebateFormatInfo, AgentSourceInfo, ArenaSummary, ArenaDetail, ArenaFeedResponse, ForkDebateRequest, ForkSummary, BudgetFact } from "./types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
@@ -124,6 +124,11 @@ export async function castVote(debateId: string, votedForAgentId: string) {
 
 export async function fetchTrendingTopics() {
   const res = await api.get<{ topic: string; score: number }[]>("/feed/trending");
+  return res.data;
+}
+
+export async function fetchBudgetFacts() {
+  const res = await api.get<BudgetFact[]>("/budget-facts");
   return res.data;
 }
 

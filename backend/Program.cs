@@ -112,6 +112,7 @@ builder.Services.AddSingleton<Arena.Shared.News.INewsFeed>(sp =>
     return new Arena.Shared.News.AggregateNewsFeed(sources, loggerFactory.CreateLogger<Arena.Shared.News.AggregateNewsFeed>());
 });
 builder.Services.AddHostedService<DailyTopicRefreshService>();
+builder.Services.AddHostedService<DailyBudgetFactService>();
 builder.Services.AddSingleton<BudgetService>();
 builder.Services.AddSingleton(new HeartbeatSettings
 {
@@ -242,6 +243,16 @@ if (app.Environment.IsDevelopment())
     {
         await news.GenerateTopicsFromNewsAsync();
         return Results.Ok(new { status = "news topic generation complete", timestamp = DateTime.UtcNow });
+    }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    app.MapPost("/dev/generate-budget-facts", async (IServiceProvider sp) =>
+    {
+        var svc = sp.GetServices<IHostedService>()
+            .OfType<DailyBudgetFactService>()
+            .FirstOrDefault();
+        if (svc is null) return Results.Problem("DailyBudgetFactService not found");
+        await svc.TriggerNowAsync(CancellationToken.None);
+        return Results.Ok(new { status = "budget fact generation complete", timestamp = DateTime.UtcNow });
     }).RequireCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
     app.MapPost("/dev/set-premium/{userId:guid}", async (Guid userId, ArenaDbContext db) =>

@@ -99,11 +99,14 @@ builder.Services.AddScoped<LeagueRoundService>();
 
 // HTTP client for proxying premium-initiated debate creation to the debate
 // backend. Base URL defaulted to the local dev port; override in production.
+// Also used by BudgetFactsController to surface the debate backend's daily
+// "Did You Know?" budget contradictions.
 builder.Services.AddHttpClient("DebateApi", c =>
 {
     c.BaseAddress = new Uri(builder.Configuration["Debate:ApiBaseUrl"] ?? "http://localhost:5000/");
     c.Timeout = TimeSpan.FromSeconds(15);
 });
+builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthentication(options =>
 {

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { fetchFeed, fetchTrendingTopics, type FeedParams } from "@/api/client";
-import type { DebateSummary } from "@/api/types";
+import { fetchFeed, fetchTrendingTopics, fetchBudgetFacts, type FeedParams } from "@/api/client";
+import type { DebateSummary, BudgetFact } from "@/api/types";
+import { DidYouKnowCard } from "@/components/DidYouKnowCard";
 import { cn } from "@/lib/utils";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { getAgentColor, FORMAT_LABELS } from "@/lib/agent-colors";
@@ -614,6 +615,7 @@ const VARIANT_CYCLE: ("hero" | "image" | "compact")[] = [
 
 export default function Feed() {
   const [debates, setDebates] = useState<DebateSummary[]>([]);
+  const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
   const [trending, setTrending] = useState<{ topic: string; score: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -638,6 +640,7 @@ export default function Feed() {
   }, [sortBy, activeTag, loadFeed, searchQuery]);
 
   useEffect(() => { fetchTrendingTopics().then(setTrending); }, []);
+  useEffect(() => { fetchBudgetFacts().then(setBudgetFacts).catch(() => {}); }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -682,6 +685,28 @@ export default function Feed() {
         .map((d) => d.id)
     );
   }, [otherDebates, isFiltering]);
+
+  // Interleave "Did You Know?" budget contradiction cards into the grid —
+  // one after every 5 debate cards. A separate variant counter keeps the
+  // debate cards' VARIANT_CYCLE rhythm unaffected by the insertions. Skipped
+  // while filtering so search results aren't broken up.
+  type GridItem =
+    | { type: "debate"; debate: DebateSummary; variantIndex: number }
+    | { type: "budget-fact"; fact: BudgetFact };
+
+  const gridItems = useMemo<GridItem[]>(() => {
+    const items: GridItem[] = [];
+    const pool = isFiltering ? [] : budgetFacts;
+    let factIdx = 0;
+    let variantIdx = 0;
+    for (let i = 0; i < otherDebates.length; i++) {
+      if (pool.length > 0 && i > 0 && i % 5 === 0 && factIdx < pool.length) {
+        items.push({ type: "budget-fact", fact: pool[factIdx++] });
+      }
+      items.push({ type: "debate", debate: otherDebates[i], variantIndex: variantIdx++ });
+    }
+    return items;
+  }, [otherDebates, budgetFacts, isFiltering]);
 
   if (loading && debates.length === 0) {
     return (
@@ -756,14 +781,22 @@ export default function Feed() {
           {/* Card grid with mixed variants. Promoted quote cards span 2
               columns; everything else cycles through hero/image/compact. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {otherDebates.map((d, i) => {
+            {gridItems.map((item, i) => {
+              const delayMs = Math.min(i * 60, 600);
+              if (item.type === "budget-fact") {
+                return (
+                  <RevealCard key={`bf-${item.fact.id}`} delayMs={delayMs} className="sm:col-span-2">
+                    <DidYouKnowCard fact={item.fact} />
+                  </RevealCard>
+                );
+              }
+              const d = item.debate;
               const isPromotedQuote = promotedQuoteIds.has(d.id);
-              const variant = isFiltering ? "image" : VARIANT_CYCLE[i % VARIANT_CYCLE.length];
+              const variant = isFiltering ? "image" : VARIANT_CYCLE[item.variantIndex % VARIANT_CYCLE.length];
               // Hero and promoted-quote variants both span 2 columns. We hoist
               // the span class to the wrapper so the grid (not the inner Link)
               // sees it, while still keeping the entrance animation per-card.
               const spans2 = isPromotedQuote || (!isFiltering && variant === "hero");
-              const delayMs = Math.min(i * 60, 600);
               return (
                 <RevealCard
                   key={d.id}
@@ -813,6 +846,23 @@ export default function Feed() {
           </Link>
 
           <AhaMomentsRail debates={debates} />
+
+          {budgetFacts.length > 0 && (
+            <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-card to-card p-4">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Lightbulb size={12} className="text-amber-500" />
+                <span className="text-xs font-bold text-card-foreground">Did You Know?</span>
+                <span className="ml-auto text-[9px] uppercase tracking-wider text-amber-600/70">Today</span>
+              </div>
+              <div className="space-y-2">
+                {budgetFacts.slice(0, 3).map((f) => (
+                  <p key={f.id} className="text-[11px] text-foreground/80 leading-snug">
+                    {f.tensionLabel}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
 
           {trending.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4">

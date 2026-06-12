@@ -4,12 +4,14 @@ import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
 import type { CivicBriefingSummary, Concept } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
 import { getConcepts } from "@/api/concepts";
+import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { ButtonLink } from "../components/Button";
 import { CoverStory } from "../components/CoverStory";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PullQuote } from "../components/PullQuote";
+import { BudgetFactCard } from "../components/BudgetFactCard";
 
 // Two-column grid → 10 rows max per page. The cover takes one slot on page 1,
 // so page 1 shows the cover + (PAGE_SIZE - 1) explainers; later pages show a
@@ -33,6 +35,7 @@ export default function MagazineHome() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [concept, setConcept] = useState<Concept | null>(null);
+  const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
   const [loaded, setLoaded] = useState(false);
   const explainersRef = useRef<HTMLElement>(null);
   const didMountRef = useRef(false);
@@ -62,6 +65,12 @@ export default function MagazineHome() {
 
   useEffect(() => {
     void getConcepts().then((cs) => setConcept(cs[0] ?? null));
+  }, []);
+
+  useEffect(() => {
+    void fetchBudgetFacts()
+      .then(setBudgetFacts)
+      .catch(() => {});
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -244,6 +253,24 @@ export default function MagazineHome() {
           source="From: Congress advances a student data privacy bill"
         />
       </section>
+
+      {budgetFacts.length > 0 && (
+        <section className="mt-16" data-testid="budget-facts">
+          <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
+            The budget, from both sides
+          </p>
+          <h2 className="display mt-2 text-4xl">Did you know?</h2>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--fg-soft)]">
+            Two facts can both be true and still pull in opposite directions.
+            Fresh contradictions from the federal budget, every day.
+          </p>
+          <div className="mt-8 space-y-6">
+            {budgetFacts.slice(0, 2).map((fact) => (
+              <BudgetFactCard key={fact.id} fact={fact} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {concept && (
         <section

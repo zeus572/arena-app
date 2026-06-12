@@ -25,6 +25,7 @@ public class ArenaDbContext : DbContext
     public DbSet<AgentSource> AgentSources => Set<AgentSource>();
     public DbSet<DebateParticipant> DebateParticipants => Set<DebateParticipant>();
     public DbSet<DebateArena> Arenas => Set<DebateArena>();
+    public DbSet<BudgetFact> BudgetFacts => Set<BudgetFact>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +131,11 @@ public class ArenaDbContext : DbContext
             e.HasOne(dt => dt.Tag)
                 .WithMany(t => t.DebateTags)
                 .HasForeignKey(dt => dt.TagId);
+        });
+
+        modelBuilder.Entity<BudgetFact>(e =>
+        {
+            e.HasIndex(f => new { f.FactDate, f.IsActive });
         });
     }
 }
