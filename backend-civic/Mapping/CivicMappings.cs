@@ -18,6 +18,7 @@ public static class CivicMappings
         Tags = b.Tags,
         Summary30 = b.Summary30,
         CreatedAt = b.CreatedAt,
+        ThinkDeeperQuestion = b.ThinkDeeperQuestion,
     };
 
     /// <summary>

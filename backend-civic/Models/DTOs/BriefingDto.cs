@@ -19,6 +19,7 @@ public class BriefingSummaryDto
     public string[] Tags { get; set; } = Array.Empty<string>();
     public string Summary30 { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+    public string ThinkDeeperQuestion { get; set; } = "";
 }
 
 /// <summary>A single page of briefing summaries plus the total count for paging UI.</summary>
@@ -42,7 +43,6 @@ public class BriefingDto : BriefingSummaryDto
     public string StrongestArgumentFor { get; set; } = "";
     public string StrongestArgumentAgainst { get; set; } = "";
     public string[] ValuesInConflict { get; set; } = Array.Empty<string>();
-    public string ThinkDeeperQuestion { get; set; } = "";
     public string[] RelatedConcepts { get; set; } = Array.Empty<string>();
     public string[] WhereToGoNext { get; set; } = Array.Empty<string>();
 

@@ -111,7 +111,30 @@ export default function MagazineHome() {
         <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
           Inside this issue
         </p>
-        <h2 className="display mt-2 text-3xl md:text-4xl">60-second explainers</h2>
+
+        {/* Think Deeper — 3-4 quoted questions pulled from this page's briefings */}
+        {rest.filter((b) => b.thinkDeeperQuestion).slice(0, 4).length > 0 && (
+          <ul className="mt-5 space-y-3 border-l-2 border-[var(--accent)] pl-5">
+            {rest
+              .filter((b) => b.thinkDeeperQuestion)
+              .slice(0, 4)
+              .map((b) => (
+                <li key={b.id}>
+                  <Link
+                    to={`/briefings/${b.slug}`}
+                    className="group block"
+                  >
+                    <p className="text-base italic leading-snug text-[var(--fg)] group-hover:text-[var(--accent)]">
+                      "{b.thinkDeeperQuestion}"
+                    </p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)] group-hover:text-[var(--accent)]">
+                      {b.headline} →
+                    </p>
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        )}
 
         {/* Mobile: horizontal snap-carousel of cards. Desktop: two-column grid. */}
         <ul

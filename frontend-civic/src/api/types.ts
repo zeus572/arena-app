@@ -24,6 +24,7 @@ export type CivicBriefingSummary = {
   tags: string[];
   summary30: string;
   createdAt: string;
+  thinkDeeperQuestion: string;
 };
 
 export type CivicBriefing = CivicBriefingSummary & {
