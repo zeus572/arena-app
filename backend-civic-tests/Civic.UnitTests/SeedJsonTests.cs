@@ -123,6 +123,39 @@ public class SeedJsonTests
     }
 
     [Fact]
+    public void Briefings_IncludesTaxApportionmentInteractiveModel()
+    {
+        var items = SeedService.LoadJson<List<Briefing>>("Seed.briefings.json");
+
+        items.Should().NotBeNull();
+        var tax = items!.FirstOrDefault(b => b.Slug == "who-gets-your-tax-dollar");
+        tax.Should().NotBeNull("the Tax Apportionment briefing must be seeded for the feed entry");
+        tax!.Tags.Should().Contain("interactive_model");
+        tax.KeyConcept.Should().Be("Tax apportionment");
+        tax.WordsToKnow.Should().Contain(w => w.Term == "Apportionment");
+        tax.ThinkDeeperQuestion.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void Questions_IncludesFourTaxApportionmentIssueSpecificItems()
+    {
+        var items = SeedService.LoadJson<List<CivicQuestion>>("Seed.questions.json");
+
+        items.Should().NotBeNull();
+        var ponder = items!.Where(q => q.Topic == "Tax apportionment").ToList();
+        ponder.Should().HaveCount(4);
+        ponder.Should().OnlyContain(q => q.Type == CivicQuestionType.IssueSpecific);
+        ponder.Should().OnlyContain(q => q.Choices.Count == 2);
+        // Every choice must move at least one axis, and the set should touch the
+        // federalism (authority) and fiscal (govt-role / economic-fairness) axes.
+        ponder.SelectMany(q => q.Choices).Should().OnlyContain(c => c.AxisDeltas.Count >= 1);
+        var axes = ponder.SelectMany(q => q.Choices).SelectMany(c => c.AxisDeltas).Select(d => d.AxisKey).ToHashSet();
+        axes.Should().Contain("authority");
+        axes.Should().Contain("govt-role");
+        items.Select(q => q.ExternalId).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void LoadJson_UnknownResource_Throws()
     {
         var act = () => SeedService.LoadJson<List<Briefing>>("Seed.does-not-exist.json");
