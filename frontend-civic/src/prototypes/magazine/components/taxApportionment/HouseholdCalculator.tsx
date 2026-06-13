@@ -1,6 +1,6 @@
 import type { FilingStatus, StateProfile, TaxComputeResult } from "@/taxModel/engine";
-import { STATE_PROFILES } from "@/taxModel/engine";
 import { SplitBar } from "./SplitBar";
+import { USMap } from "./USMap";
 import { pct, usd } from "./format";
 
 const INCOME_MIN = 20_000;
@@ -60,6 +60,7 @@ export function HouseholdCalculator({
   stateCode,
   profile,
   result,
+  states,
   onIncomeChange,
   onFilingChange,
   onStateChange,
@@ -69,6 +70,7 @@ export function HouseholdCalculator({
   stateCode: string;
   profile: StateProfile;
   result: TaxComputeResult;
+  states: StateProfile[];
   onIncomeChange: (income: number) => void;
   onFilingChange: (filing: FilingStatus) => void;
   onStateChange: (code: string) => void;
@@ -187,28 +189,25 @@ export function HouseholdCalculator({
         </fieldset>
       </div>
 
-      {/* State chips */}
+      {/* State map */}
       <div className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">State</p>
-        <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="State">
-          {STATE_PROFILES.map((s) => (
-            <button
-              key={s.code}
-              type="button"
-              role="radio"
-              aria-checked={stateCode === s.code}
-              onClick={() => onStateChange(s.code)}
-              data-testid={`tax-state-${s.code}`}
-              className={`flex items-center gap-1.5 border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${
-                stateCode === s.code
-                  ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
-                  : "border-[var(--border)] text-[var(--fg-soft)] hover:border-[var(--fg)]"
-              }`}
-            >
-              <span aria-hidden>{s.glyph}</span>
-              {s.code}
-            </button>
-          ))}
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            State — tap the map
+          </p>
+          <p className="text-sm font-semibold">
+            <span aria-hidden>{profile.glyph} </span>
+            {profile.name}
+          </p>
+        </div>
+        <div className="mt-3">
+          <USMap
+            states={states}
+            income={income}
+            filing={filing}
+            selected={stateCode}
+            onSelect={onStateChange}
+          />
         </div>
       </div>
 
@@ -218,7 +217,7 @@ export function HouseholdCalculator({
         <p className="mt-3 text-sm text-[var(--fg-soft)]">
           On {usd(income)} in {profile.name}, about{" "}
           <strong style={{ color: "var(--federal)" }}>{pct(combined.federalShare)}</strong> of your{" "}
-          {usd(combined.total)} tax bill flows to Washington and{" "}
+          {usd(combined.total)} tax bill flows to the federal government and{" "}
           <strong style={{ color: "var(--state)" }}>{pct(combined.stateShare)}</strong> stays state
           and local — a combined effective rate of {pct(combined.effectiveRate)}.
         </p>
@@ -227,7 +226,7 @@ export function HouseholdCalculator({
       {/* Breakdown columns */}
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <LineColumn
-          title="To Washington"
+          title="To the Federal Government"
           color="var(--federal)"
           total={federal.total}
           effectiveRate={federal.effectiveRate}

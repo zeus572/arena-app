@@ -12,9 +12,26 @@ public static class TaxModelMappings
         Name = p.Name,
         Glyph = p.Glyph,
         IncomeSummary = p.IncomeSummary,
+        Income = p.Income.ToDto(),
         SalesRate = p.SalesRate,
+        ConsumptionShare = p.ConsumptionShare,
         PropRate = p.PropRate,
+        HomeMultiple = p.HomeMultiple,
         Notes = p.Notes,
+    };
+
+    public static TaxIncomeRuleDto ToDto(this IncomeRule rule) => rule.Kind switch
+    {
+        IncomeRuleKind.None => new TaxIncomeRuleDto { Type = "none" },
+        IncomeRuleKind.Flat => new TaxIncomeRuleDto { Type = "flat", Rate = rule.Rate, StdDed = rule.StdDed },
+        IncomeRuleKind.Progressive => new TaxIncomeRuleDto
+        {
+            Type = "progressive",
+            StdDed = rule.StdDed,
+            Brackets = (rule.Brackets ?? Array.Empty<TaxBracket>())
+                .Select(b => new TaxBracketDto { Lower = b.Lower, Rate = b.Rate }).ToList(),
+        },
+        _ => new TaxIncomeRuleDto { Type = "none" },
     };
 
     public static FederalBreakdownDto ToDto(this FederalResult r) => new()

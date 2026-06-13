@@ -2,15 +2,39 @@ namespace Civic.API.Models.DTOs;
 
 // Wire shapes for the Tax Apportionment module (§5). Stateless, cacheable, LLM-free.
 
-/// <summary>One state for pickers + cards: GET /api/tax-model/states.</summary>
+public class TaxBracketDto
+{
+    public double Lower { get; set; }
+    public double Rate { get; set; }
+}
+
+/// <summary>
+/// A state's income-tax rule, serialized to match the TypeScript engine's IncomeRule
+/// union: <c>type</c> is "none" | "flat" | "progressive"; the irrelevant fields are null.
+/// </summary>
+public class TaxIncomeRuleDto
+{
+    public string Type { get; set; } = "none";
+    public double? Rate { get; set; }
+    public double? StdDed { get; set; }
+    public List<TaxBracketDto>? Brackets { get; set; }
+}
+
+/// <summary>
+/// Full per-state profile: GET /api/tax-model/states. Shaped to match the frontend
+/// StateProfile type so the client engine computes directly from it (one source of truth).
+/// </summary>
 public class TaxStateSummaryDto
 {
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public string Glyph { get; set; } = "";
     public string IncomeSummary { get; set; } = "";
+    public TaxIncomeRuleDto Income { get; set; } = new();
     public double SalesRate { get; set; }
+    public double ConsumptionShare { get; set; }
     public double PropRate { get; set; }
+    public double HomeMultiple { get; set; }
     public string Notes { get; set; } = "";
 }
 

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { FilingStatus } from "@/taxModel/engine";
-import { compute, findStateProfile, MACRO_PROOF, STATE_PROFILES } from "@/taxModel/engine";
+import type { FilingStatus, StateProfile } from "@/taxModel/engine";
+import { compute, MACRO_PROOF, STATE_PROFILES } from "@/taxModel/engine";
+import { getTaxStates } from "@/api/taxModel";
 import { HouseholdCalculator } from "../components/taxApportionment/HouseholdCalculator";
 import { ScalingTable } from "../components/taxApportionment/ScalingTable";
 import { StateCard } from "../components/taxApportionment/StateCard";
@@ -23,8 +24,26 @@ export default function MagazineTaxApportionment() {
   const [income, setIncome] = useState(100_000);
   const [filing, setFiling] = useState<FilingStatus>("single");
   const [stateCode, setStateCode] = useState("CA");
+  // Start with the bundled 8 so the page renders instantly, then swap in all 50
+  // from the API (the single source of truth). Falls back to the 8 if the API is down.
+  const [states, setStates] = useState<StateProfile[]>(STATE_PROFILES);
 
-  const profile = findStateProfile(stateCode) ?? STATE_PROFILES[0];
+  useEffect(() => {
+    let active = true;
+    void getTaxStates()
+      .then((fetched) => {
+        if (active && fetched.length > 0) setStates(fetched);
+      })
+      .catch(() => {
+        /* keep the bundled fallback set */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const profile =
+    states.find((s) => s.code === stateCode) ?? states[0] ?? STATE_PROFILES[0];
   const result = useMemo(() => compute(income, filing, profile), [income, filing, profile]);
 
   return (
@@ -44,8 +63,8 @@ export default function MagazineTaxApportionment() {
         <h1 className="display mt-3 text-5xl md:text-6xl">Who actually gets your tax dollar?</h1>
         <p className="mt-5 text-xl leading-relaxed text-[var(--fg-soft)]">
           "Pork" is a verdict on top of an arithmetic. Before you can argue whether federal
-          spending is wasteful, it helps to see how much of your tax even reaches Washington —
-          and how much never leaves your state.
+          spending is wasteful, it helps to see how much of your tax even reaches the federal
+          government — and how much never leaves your state.
         </p>
       </header>
 
@@ -76,9 +95,9 @@ export default function MagazineTaxApportionment() {
           </div>
         </div>
         <p className="mx-auto mt-6 max-w-3xl text-center text-base leading-relaxed text-[var(--fg-soft)]">
-          Washington collects roughly {MACRO_PROOF.ratio.toFixed(1)}× what every state and city
-          takes in combined. That gap is why federal money turns up in almost every project you
-          can name — and why "pork" is a judgment laid on top of the arithmetic, not the
+          The federal government collects roughly {MACRO_PROOF.ratio.toFixed(1)}× what every state
+          and city takes in combined. That gap is why federal money turns up in almost every project
+          you can name — and why "pork" is a judgment laid on top of the arithmetic, not the
           arithmetic itself.
         </p>
       </section>
@@ -92,6 +111,7 @@ export default function MagazineTaxApportionment() {
           stateCode={stateCode}
           profile={profile}
           result={result}
+          states={states}
           onIncomeChange={setIncome}
           onFilingChange={setFiling}
           onStateChange={setStateCode}

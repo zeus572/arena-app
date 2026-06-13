@@ -162,13 +162,26 @@ public class TaxEngineTests
     }
 
     [Fact]
-    public void StateProfiles_ShipsEightVerifiedStates()
+    public void StateProfiles_ShipsAllFiftyStates()
     {
-        StateProfiles.All.Should().HaveCount(8);
+        StateProfiles.All.Should().HaveCount(50);
         StateProfiles.All.Select(s => s.Code).Should().OnlyHaveUniqueItems();
         StateProfiles.All.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Notes));
+        StateProfiles.All.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.IncomeSummary));
         StateProfiles.All.Should().OnlyContain(s => s.ConsumptionShare == 0.40);
+        // The 8 fully-verified spotlight states must remain present.
         StateProfiles.All.Select(s => s.Code).Should()
-            .BeEquivalentTo(new[] { "CA", "NY", "TX", "FL", "WA", "CO", "PA", "IL" });
+            .Contain(new[] { "CA", "NY", "TX", "FL", "WA", "CO", "PA", "IL" });
+    }
+
+    [Fact]
+    public void StateProfiles_EveryState_ComputesWithoutError()
+    {
+        foreach (var profile in StateProfiles.All)
+        {
+            var r = TaxEngine.ComputeState(100_000, profile);
+            r.Total.Should().BeGreaterOrEqualTo(0);
+            double.IsNaN(r.Total).Should().BeFalse($"{profile.Code} produced NaN");
+        }
     }
 }
