@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Handshake, RefreshCw, Trophy, Flame, Scale, Award, TrendingUp } from "lucide-react";
+import { Handshake, RefreshCw, Trophy, Flame, Scale, Award, TrendingUp, Clock } from "lucide-react";
 import {
   listProvisions,
   seedCoalition,
@@ -30,6 +30,45 @@ function difficultyBadge(difficulty: string) {
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${map[difficulty] ?? "bg-[var(--line)] text-[var(--muted)]"}`}>
       {difficulty}
+    </span>
+  );
+}
+
+// A provision closes on its deadline (the 7-day rolling window). Show a friendly
+// countdown so users can see when a coalition is leaving; the absolute date is on hover.
+function Deadline({ deadline }: { deadline: string | null }) {
+  if (!deadline) return null;
+  const end = new Date(deadline);
+  const ms = end.getTime();
+  if (Number.isNaN(ms)) return null;
+
+  const remaining = ms - Date.now();
+  const absolute = end.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  let text: string;
+  let urgent = false;
+  if (remaining <= 0) {
+    text = "Closed";
+  } else {
+    const hours = remaining / 3_600_000;
+    if (hours < 24) {
+      const h = Math.max(1, Math.ceil(hours));
+      text = `Closes in ${h}h`;
+      urgent = true;
+    } else {
+      const days = Math.ceil(hours / 24);
+      text = `Closes in ${days} day${days === 1 ? "" : "s"}`;
+      urgent = days <= 2;
+    }
+  }
+
+  return (
+    <span
+      className={`flex items-center gap-1 font-semibold ${urgent ? "text-rose-600" : "text-[var(--muted)]"}`}
+      title={`Closes ${absolute}`}
+      data-testid="provision-deadline"
+    >
+      <Clock size={12} /> {text}
     </span>
   );
 }
@@ -170,6 +209,7 @@ export default function CoalitionProvisions() {
                           </span>
                           <span>distance {(p.distance * 100).toFixed(0)}%</span>
                           <span>breadth {p.coveredBuckets}/{p.totalBuckets}</span>
+                          <Deadline deadline={p.deadline} />
                         </div>
                       </Link>
                     </li>
