@@ -1,6 +1,6 @@
 import type { FilingStatus, StateProfile, TaxComputeResult } from "@/taxModel/engine";
 import { SplitBar } from "./SplitBar";
-import { USMap } from "./USMap";
+import { StatePicker } from "./StatePicker";
 import { pct, usd } from "./format";
 
 const INCOME_MIN = 20_000;
@@ -189,26 +189,9 @@ export function HouseholdCalculator({
         </fieldset>
       </div>
 
-      {/* State map */}
+      {/* State picker */}
       <div className="mt-6">
-        <div className="flex items-baseline justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            State — tap the map
-          </p>
-          <p className="text-sm font-semibold">
-            <span aria-hidden>{profile.glyph} </span>
-            {profile.name}
-          </p>
-        </div>
-        <div className="mt-3">
-          <USMap
-            states={states}
-            income={income}
-            filing={filing}
-            selected={stateCode}
-            onSelect={onStateChange}
-          />
-        </div>
+        <StatePicker states={states} selected={stateCode} onSelect={onStateChange} />
       </div>
 
       {/* Split bar */}
