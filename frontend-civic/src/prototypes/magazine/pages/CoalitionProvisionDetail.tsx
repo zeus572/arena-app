@@ -14,6 +14,7 @@ import { getMyProfile, type Profile } from "@/api/profile";
 import { deriveCompassPosition, prettyBucket } from "@/lib/compass";
 import { useProvision } from "../hooks/useProvision";
 import { Button, ButtonLink } from "../components/Button";
+import { Term } from "../components/Term";
 
 const REASON_LABELS = [
   "Workable",
@@ -314,7 +315,7 @@ export default function CoalitionProvisionDetail() {
         <div className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
           <strong>{d.outcome.finalState}.</strong>{" "}
           {d.outcome.finalState === "Passed" && (
-            <>Coalition of {d.outcome.signers?.join(", ")} — breadth {d.outcome.coveredBuckets}, teeth{" "}
+            <>Coalition of {d.outcome.signers?.join(", ")} — breadth {d.outcome.coveredBuckets}, <Term term="teeth">teeth</Term>{" "}
               {d.outcome.specificity}, {d.outcome.movedSigners} moved.</>
           )}
           {d.outcome.diedReason && <>{d.outcome.diedReason}</>}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
 import type { NavLinkItem } from "../nav";
 
 /**
@@ -54,16 +53,16 @@ export function NavDropdown({
         aria-expanded={open}
         data-testid={`top-nav-${label.toLowerCase()}`}
         className={[
-          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition",
+          "text-xs font-semibold uppercase tracking-wider transition",
           containsActive || open
             ? "text-[var(--accent)]"
             : "text-[var(--muted)] hover:text-[var(--fg)]",
         ].join(" ")}
       >
         {label}
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        <span aria-hidden className="ml-0.5 text-[0.85em] opacity-70">
+          {open ? "▴" : "▾"}
+        </span>
       </button>
 
       {open && (
