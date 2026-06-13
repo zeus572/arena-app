@@ -1,11 +1,19 @@
 namespace Civic.API.Services.TaxModel;
 
 /// <summary>
-/// Per-state parameters for all 50 states. The original 8 (CA/NY/TX/FL/WA/CO/PA/IL)
-/// carry the fully verified 2025-2026 figures and rich notes from the spec (§4.3); the
-/// remaining 42 use best-effort 2025 figures (combined avg sales rate, effective avg
-/// property rate, an estimated home-value-to-income multiple, and a simplified top-line
-/// single-filer income schedule). consumptionShare = 0.40 across all states (v1 assumption).
+/// Per-state parameters for all 50 states.
+///
+/// The original 8 spotlight states (CA/NY/TX/FL/WA/CO/PA/IL) carry the fully verified
+/// 2025-2026 figures and rich notes from the spec (§4.3).
+///
+/// The remaining 42 were verified against Tax Foundation 2025 data:
+///   - Income: "State Individual Income Tax Rates and Brackets, 2025" (single filer —
+///     structure, top-line brackets, and standard deduction).
+///   - Sales: "State and Local Sales Tax Rates, Midyear 2025" (combined state+local avg).
+///   - Property: Tax Foundation effective property tax rate on owner-occupied housing
+///     (latest published vintage).
+/// homeMultiple (imputed home value ÷ income) remains a modeled estimate for every state,
+/// and consumptionShare = 0.40 across all states (v1 assumption, flagged in the UI).
 /// Notes prose is stored verbatim, never generated at compute time.
 ///
 /// This is the single source of truth: the frontend fetches these profiles from
@@ -33,7 +41,7 @@ public static class StateProfiles
 
     public static readonly IReadOnlyList<StateProfile> All = new[]
     {
-        // ---- The 8 fully verified states (§4.3) ----
+        // ---- The 8 fully verified spotlight states (§4.3) ----
         Prog("CA", "California", "🌅", "Progressive, 1%–13.3% (incl. 1% MHS surcharge >$1M)", 5_540,
             new[] { B(0, 0.01), B(10_756, 0.02), B(25_499, 0.04), B(40_245, 0.06), B(55_866, 0.08),
                     B(70_606, 0.093), B(360_659, 0.103), B(432_787, 0.113), B(721_314, 0.123), B(1_000_000, 0.133) },
@@ -72,169 +80,171 @@ public static class StateProfiles
             "Flat 4.95%, no standard deduction (a small personal exemption applies instead, omitted here). " +
             "Among the highest effective property tax rates in the nation. Retirement income is exempt."),
 
-        // ---- The remaining 42 (best-effort 2025 figures) ----
-        Prog("AL", "Alabama", "🎺", "Progressive, 2%–5%", 2_500,
-            new[] { B(0, 0.02), B(500, 0.04), B(3_000, 0.05) }, 0.0929, 0.0040, 2.7,
+        // ---- The remaining 42, verified against Tax Foundation 2025 (income + sales) and
+        //      Tax Foundation effective property tax rates. ----
+        Prog("AL", "Alabama", "🎺", "Progressive, 2%–5%", 3_000,
+            new[] { B(0, 0.02), B(500, 0.04), B(3_000, 0.05) }, 0.0944, 0.0030, 2.7,
             "Low income-tax rates but a high combined sales tax, and groceries are still partly taxed. " +
             "Among the lowest effective property taxes in the country."),
 
-        None("AK", "Alaska", "🐻", 0.0182, 0.0104, 3.2,
+        None("AK", "Alaska", "🐻", 0.0182, 0.0060, 3.2,
             "No state income tax and no statewide sales tax — only local sales taxes. Oil revenue funds much " +
             "of the budget and even pays residents an annual dividend."),
 
-        Flat("AZ", "Arizona", "🌵", "Flat 2.50%", 0.025, 14_600, 0.0838, 0.0063, 4.0,
+        Flat("AZ", "Arizona", "🌵", "Flat 2.50%", 0.025, 15_000, 0.0852, 0.0048, 4.0,
             "Moved to a low 2.5% flat income tax in 2023. Combined sales taxes run high once local rates are added."),
 
-        Prog("AR", "Arkansas", "💎", "Progressive, 2%–3.9%", 2_340,
-            new[] { B(0, 0.02), B(4_400, 0.03), B(8_800, 0.039) }, 0.0945, 0.0062, 2.6,
+        Prog("AR", "Arkansas", "💎", "Progressive, 2%–3.9%", 2_410,
+            new[] { B(0, 0.02), B(4_500, 0.039) }, 0.0948, 0.0051, 2.6,
             "Top rate has been cut repeatedly toward a flatter structure. High combined sales tax."),
 
         Prog("CT", "Connecticut", "⚓", "Progressive, 2%–6.99%", 0,
             new[] { B(0, 0.02), B(10_000, 0.045), B(50_000, 0.055), B(100_000, 0.06), B(200_000, 0.065),
-                    B(250_000, 0.069), B(500_000, 0.0699) }, 0.0635, 0.0179, 3.2,
+                    B(250_000, 0.069), B(500_000, 0.0699) }, 0.0635, 0.0155, 3.2,
             "No standard deduction; a personal exemption phases out as income rises. Very high property taxes."),
 
         Prog("DE", "Delaware", "🏖️", "Progressive, 2.2%–6.6%", 3_250,
             new[] { B(2_000, 0.022), B(5_000, 0.039), B(10_000, 0.048), B(20_000, 0.052), B(25_000, 0.0555), B(60_000, 0.066) },
-            0.0000, 0.0058, 3.2,
+            0.0000, 0.0049, 3.2,
             "No sales tax at all, offset by a gross-receipts tax on businesses. Modest property taxes."),
 
-        Flat("GA", "Georgia", "🍑", "Flat 5.39%", 0.0539, 12_000, 0.0740, 0.0090, 3.2,
+        Flat("GA", "Georgia", "🍑", "Flat 5.39%", 0.0539, 12_000, 0.0744, 0.0080, 3.2,
             "Moved to a flat ~5.39% rate, scheduled to fall further. Moderate sales and property taxes."),
 
-        Prog("HI", "Hawaii", "🌺", "Progressive, 1.4%–11%", 2_200,
-            new[] { B(0, 0.014), B(2_400, 0.032), B(9_600, 0.055), B(24_000, 0.076), B(48_000, 0.079),
-                    B(175_000, 0.0825), B(200_000, 0.09), B(300_000, 0.11) }, 0.0450, 0.0032, 6.0,
+        Prog("HI", "Hawaii", "🌺", "Progressive, 1.4%–11%", 4_400,
+            new[] { B(0, 0.014), B(9_600, 0.032), B(14_400, 0.055), B(19_200, 0.064), B(24_000, 0.068),
+                    B(36_000, 0.072), B(48_000, 0.076), B(125_000, 0.079), B(175_000, 0.0825), B(225_000, 0.09),
+                    B(275_000, 0.10), B(325_000, 0.11) }, 0.0450, 0.0028, 6.0,
             "One of the highest top income-tax rates but the lowest effective property tax. Home prices are " +
             "very high relative to income."),
 
-        Flat("ID", "Idaho", "🥔", "Flat 5.695%", 0.05695, 14_600, 0.0603, 0.0067, 4.4,
+        Flat("ID", "Idaho", "🥔", "Flat 5.695%", 0.05695, 15_000, 0.0603, 0.0047, 4.4,
             "Replaced its brackets with a single ~5.7% rate. Low-to-moderate sales and property taxes."),
 
-        Flat("IN", "Indiana", "🏁", "Flat 3.00%", 0.030, 0, 0.0700, 0.0084, 2.6,
+        Flat("IN", "Indiana", "🏁", "Flat 3.00%", 0.030, 0, 0.0700, 0.0070, 2.6,
             "Low flat state rate, but counties add their own local income taxes (not modeled here)."),
 
-        Flat("IA", "Iowa", "🌽", "Flat 3.80%", 0.038, 0, 0.0694, 0.0152, 2.5,
+        Flat("IA", "Iowa", "🌽", "Flat 3.80%", 0.038, 0, 0.0694, 0.0120, 2.5,
             "Moved to a 3.8% flat tax in 2025. High effective property taxes; retirement income is now exempt."),
 
         Prog("KS", "Kansas", "🌻", "Progressive, 5.2%–5.58%", 3_605,
-            new[] { B(0, 0.052), B(23_000, 0.0558) }, 0.0875, 0.0134, 2.6,
+            new[] { B(0, 0.052), B(23_000, 0.0558) }, 0.0878, 0.0135, 2.6,
             "Two brackets after recent cuts. High combined sales tax, including on groceries (being phased down)."),
 
-        Flat("KY", "Kentucky", "🐎", "Flat 4.00%", 0.040, 3_270, 0.0600, 0.0085, 2.6,
+        Flat("KY", "Kentucky", "🐎", "Flat 4.00%", 0.040, 3_270, 0.0600, 0.0065, 2.6,
             "Flat rate trending downward toward elimination as revenue triggers are met. Low sales tax."),
 
-        Flat("LA", "Louisiana", "🎷", "Flat 3.00%", 0.030, 0, 0.0956, 0.0056, 2.6,
+        Flat("LA", "Louisiana", "🎷", "Flat 3.00%", 0.030, 12_500, 0.1011, 0.0041, 2.6,
             "Adopted a 3% flat income tax in 2025. The nation's highest combined sales-tax rate; low property taxes."),
 
-        Prog("ME", "Maine", "🦞", "Progressive, 5.8%–7.15%", 14_600,
-            new[] { B(0, 0.058), B(26_050, 0.0675), B(61_600, 0.0715) }, 0.0550, 0.0124, 3.7,
+        Prog("ME", "Maine", "🦞", "Progressive, 5.8%–7.15%", 15_000,
+            new[] { B(0, 0.058), B(26_800, 0.0675), B(63_450, 0.0715) }, 0.0550, 0.0099, 3.7,
             "A few wide brackets. Generous standard deduction; moderate-to-high property taxes."),
 
-        Prog("MD", "Maryland", "🦀", "Progressive, 2%–5.75%", 2_550,
+        Prog("MD", "Maryland", "🦀", "Progressive, 2%–5.75%", 2_700,
             new[] { B(0, 0.02), B(1_000, 0.03), B(2_000, 0.04), B(3_000, 0.0475), B(100_000, 0.05),
-                    B(125_000, 0.0525), B(150_000, 0.055), B(250_000, 0.0575) }, 0.0600, 0.0105, 3.6,
+                    B(125_000, 0.0525), B(150_000, 0.055), B(250_000, 0.0575) }, 0.0600, 0.0087, 3.6,
             "Counties add a local income tax of roughly 2.25%–3.2% on top (not modeled here)."),
 
-        Prog("MA", "Massachusetts", "🦃", "Flat 5% + 4% millionaire surtax", 0,
-            new[] { B(0, 0.05), B(1_000_000, 0.09) }, 0.0625, 0.0114, 4.0,
+        Prog("MA", "Massachusetts", "🦃", "Flat 5% + 4% surtax >$1M", 0,
+            new[] { B(0, 0.05), B(1_083_150, 0.09) }, 0.0625, 0.0102, 4.0,
             "Flat 5% with a 4% surtax on income over $1M (the 'Fair Share' amendment). High home values."),
 
-        Flat("MI", "Michigan", "🚗", "Flat 4.25%", 0.0425, 0, 0.0600, 0.0138, 2.6,
+        Flat("MI", "Michigan", "🚗", "Flat 4.25%", 0.0425, 0, 0.0600, 0.0109, 2.6,
             "Flat state rate; many cities levy a separate local income tax (not modeled here)."),
 
-        Prog("MN", "Minnesota", "🛶", "Progressive, 5.35%–9.85%", 14_575,
-            new[] { B(0, 0.0535), B(31_690, 0.068), B(104_090, 0.0785), B(193_240, 0.0985) }, 0.0804, 0.0111, 3.2,
+        Prog("MN", "Minnesota", "🛶", "Progressive, 5.35%–9.85%", 14_950,
+            new[] { B(0, 0.0535), B(32_570, 0.068), B(106_990, 0.0785), B(198_630, 0.0985) }, 0.0813, 0.0095, 3.2,
             "High top rate and broad-based sales tax (clothing is exempt). Moderate property taxes."),
 
-        Flat("MS", "Mississippi", "🎣", "Flat 4.4% (first $10k exempt)", 0.044, 10_000, 0.0707, 0.0079, 2.6,
+        Flat("MS", "Mississippi", "🎣", "Flat 4.4% (first $10k exempt)", 0.044, 12_300, 0.0706, 0.0055, 2.6,
             "Flat rate above a $10,000 exemption, scheduled to keep falling. Low property taxes."),
 
-        Prog("MO", "Missouri", "🎻", "Progressive, 2%–4.7%", 14_600,
-            new[] { B(0, 0.02), B(2_546, 0.03), B(5_092, 0.04), B(8_419, 0.047) }, 0.0839, 0.0097, 2.7,
+        Prog("MO", "Missouri", "🎻", "Progressive, 2%–4.7%", 15_000,
+            new[] { B(1_313, 0.02), B(2_626, 0.025), B(3_939, 0.03), B(5_252, 0.035), B(6_565, 0.04),
+                    B(7_878, 0.045), B(9_191, 0.047) }, 0.0841, 0.0065, 2.7,
             "Top rate is falling toward a flatter structure. St. Louis and Kansas City add a 1% earnings tax (not modeled)."),
 
-        Prog("MT", "Montana", "🏔️", "Progressive, 4.7%–5.9%", 14_600,
-            new[] { B(0, 0.047), B(20_500, 0.059) }, 0.0000, 0.0074, 4.3,
+        Prog("MT", "Montana", "🏔️", "Progressive, 4.7%–5.9%", 15_000,
+            new[] { B(0, 0.047), B(21_100, 0.059) }, 0.0000, 0.0057, 4.3,
             "No general sales tax. Simplified to two income brackets in a recent reform."),
 
-        Prog("NE", "Nebraska", "🌾", "Progressive, 2.46%–5.84%", 7_900,
-            new[] { B(0, 0.0246), B(3_700, 0.0351), B(22_170, 0.0501), B(35_730, 0.0584) }, 0.0697, 0.0163, 2.7,
-            "Top rate is being cut toward ~3.99%. High effective property taxes fund local schools."),
+        Prog("NE", "Nebraska", "🌾", "Progressive, 2.46%–5.2%", 8_600,
+            new[] { B(0, 0.0246), B(4_030, 0.0351), B(24_120, 0.0501), B(38_870, 0.052) }, 0.0698, 0.0117, 2.7,
+            "Top rate is being cut toward ~3.99%. Above-average effective property taxes fund local schools."),
 
-        None("NV", "Nevada", "🎰", 0.0824, 0.0055, 4.0,
+        None("NV", "Nevada", "🎰", 0.0824, 0.0060, 4.0,
             "No personal income tax; the state leans on sales tax and gaming revenue. Low property taxes."),
 
-        None("NH", "New Hampshire", "🍂", 0.0000, 0.0193, 3.6,
+        None("NH", "New Hampshire", "🍂", 0.0000, 0.0218, 3.6,
             "No tax on wages and no sales tax (the old interest-and-dividends tax was repealed). " +
             "Among the highest property taxes in the nation."),
 
         Prog("NJ", "New Jersey", "🏖️", "Progressive, 1.4%–10.75%", 0,
             new[] { B(0, 0.014), B(20_000, 0.0175), B(35_000, 0.035), B(40_000, 0.05525), B(75_000, 0.0637),
-                    B(500_000, 0.0897), B(1_000_000, 0.1075) }, 0.0660, 0.0223, 3.8,
+                    B(500_000, 0.0897), B(1_000_000, 0.1075) }, 0.0660, 0.0249, 3.8,
             "The highest effective property taxes in the country, paired with a steeply progressive income tax."),
 
-        Prog("NM", "New Mexico", "🌶️", "Progressive, 1.7%–5.9%", 14_600,
-            new[] { B(0, 0.017), B(5_500, 0.032), B(11_000, 0.047), B(16_000, 0.049), B(210_000, 0.059) },
-            0.0762, 0.0073, 3.6,
+        Prog("NM", "New Mexico", "🌶️", "Progressive, 1.5%–5.9%", 15_000,
+            new[] { B(0, 0.015), B(5_500, 0.032), B(16_500, 0.043), B(33_500, 0.047), B(66_500, 0.049), B(210_000, 0.059) },
+            0.0767, 0.0080, 3.6,
             "A gross-receipts tax stands in for a conventional sales tax. Low property taxes."),
 
-        Prog("NC", "North Carolina", "🌲", "Flat 4.25%", 12_750,
-            new[] { B(0, 0.0425) }, 0.0700, 0.0080, 3.4,
+        Flat("NC", "North Carolina", "🌲", "Flat 4.25%", 0.0425, 12_750, 0.0700, 0.0084, 3.4,
             "Flat rate trending down toward ~3.99%. Moderate sales and property taxes."),
 
-        Prog("ND", "North Dakota", "🦬", "Progressive, ~2%", 14_600,
-            new[] { B(0, 0.0), B(44_725, 0.0195), B(225_975, 0.025) }, 0.0704, 0.0098, 2.7,
+        Prog("ND", "North Dakota", "🦬", "Progressive, ~0%–2.5%", 15_000,
+            new[] { B(0, 0.0), B(48_475, 0.0195), B(244_825, 0.025) }, 0.0708, 0.0098, 2.7,
             "Among the lowest income-tax rates in the country, cushioned by energy revenue."),
 
         Prog("OH", "Ohio", "🌰", "Progressive, 0%–3.5%", 0,
-            new[] { B(0, 0.0), B(26_050, 0.0275), B(100_000, 0.035) }, 0.0724, 0.0153, 2.5,
+            new[] { B(0, 0.0), B(26_050, 0.0275), B(100_000, 0.035) }, 0.0730, 0.0156, 2.5,
             "Low state rate trending toward a flat tax; many municipalities levy their own income tax (not modeled)."),
 
         Prog("OK", "Oklahoma", "🛢️", "Progressive, 0.25%–4.75%", 6_350,
             new[] { B(0, 0.0025), B(1_000, 0.0075), B(2_500, 0.0175), B(3_750, 0.0275), B(4_900, 0.0375), B(7_200, 0.0475) },
-            0.0899, 0.0090, 2.5,
+            0.0905, 0.0090, 2.5,
             "Low income tax with high combined sales taxes. Low property taxes."),
 
-        Prog("OR", "Oregon", "🌲", "Progressive, 4.75%–9.9%", 2_745,
-            new[] { B(0, 0.0475), B(4_300, 0.0675), B(10_750, 0.0875), B(125_000, 0.099) }, 0.0000, 0.0093, 4.5,
+        Prog("OR", "Oregon", "🌲", "Progressive, 4.75%–9.9%", 2_800,
+            new[] { B(0, 0.0475), B(4_400, 0.0675), B(11_050, 0.0875), B(125_000, 0.099) }, 0.0000, 0.0097, 4.5,
             "No sales tax, so the income tax does the heavy lifting and hits high earners hard."),
 
-        Prog("RI", "Rhode Island", "⛵", "Progressive, 3.75%–5.99%", 10_550,
-            new[] { B(0, 0.0375), B(77_450, 0.0475), B(176_050, 0.0599) }, 0.0700, 0.0140, 3.6,
+        Prog("RI", "Rhode Island", "⛵", "Progressive, 3.75%–5.99%", 10_900,
+            new[] { B(0, 0.0375), B(79_900, 0.0475), B(181_650, 0.0599) }, 0.0700, 0.0163, 3.6,
             "Three brackets with a generous standard deduction. Relatively high property taxes."),
 
-        Prog("SC", "South Carolina", "🌴", "Progressive, 0%–6.2%", 14_600,
-            new[] { B(0, 0.0), B(3_460, 0.03), B(17_330, 0.062) }, 0.0750, 0.0057, 3.6,
+        Prog("SC", "South Carolina", "🌴", "Progressive, 0%–6.2%", 15_000,
+            new[] { B(0, 0.0), B(3_560, 0.03), B(17_830, 0.062) }, 0.0749, 0.0057, 3.6,
             "A 0% bottom bracket but a high top rate that arrives quickly. Low effective property taxes."),
 
-        None("SD", "South Dakota", "🗿", 0.0611, 0.0117, 2.9,
+        None("SD", "South Dakota", "🗿", 0.0611, 0.0131, 2.9,
             "No personal income tax. Relies on sales tax (including on groceries) and a light overall burden."),
 
-        None("TN", "Tennessee", "🎸", 0.0955, 0.0067, 3.4,
+        None("TN", "Tennessee", "🎸", 0.0961, 0.0071, 3.4,
             "No tax on wages (the old investment-income tax is gone). Among the highest combined sales-tax rates."),
 
-        Flat("UT", "Utah", "🎿", "Flat 4.55%", 0.0455, 14_600, 0.0725, 0.0057, 4.5,
+        Flat("UT", "Utah", "🎿", "Flat 4.55%", 0.0455, 14_600, 0.0742, 0.0060, 4.5,
             "Flat rate paired with a taxpayer credit that phases out for higher earners. Low property taxes."),
 
-        Prog("VT", "Vermont", "🍁", "Progressive, 3.35%–8.75%", 7_000,
-            new[] { B(0, 0.0335), B(45_400, 0.066), B(110_050, 0.076), B(229_550, 0.0875) }, 0.0636, 0.0183, 3.8,
+        Prog("VT", "Vermont", "🍁", "Progressive, 3.35%–8.75%", 7_400,
+            new[] { B(0, 0.0335), B(47_900, 0.066), B(116_000, 0.076), B(242_000, 0.0875) }, 0.0639, 0.0190, 3.8,
             "High top rate and high property taxes that fund a statewide education system."),
 
         Prog("VA", "Virginia", "🏛️", "Progressive, 2%–5.75%", 8_500,
             new[] { B(0, 0.02), B(3_000, 0.03), B(5_000, 0.05), B(17_000, 0.0575) }, 0.0577, 0.0082, 3.4,
             "The top 5.75% rate kicks in at just $17,000, so most filers pay close to the top rate. Low sales tax."),
 
-        Prog("WV", "West Virginia", "⛏️", "Progressive, 2.36%–5.12%", 0,
-            new[] { B(0, 0.0236), B(10_000, 0.0315), B(25_000, 0.0354), B(40_000, 0.0472), B(60_000, 0.0512) },
-            0.0657, 0.0058, 2.5,
+        Prog("WV", "West Virginia", "⛏️", "Progressive, 2.22%–4.82%", 0,
+            new[] { B(0, 0.0222), B(10_000, 0.0296), B(25_000, 0.0333), B(40_000, 0.0444), B(60_000, 0.0482) },
+            0.0658, 0.0058, 2.5,
             "Income-tax rates have been cut in recent years. Low sales and property taxes."),
 
-        Prog("WI", "Wisconsin", "🧀", "Progressive, 3.5%–7.65%", 13_230,
-            new[] { B(0, 0.035), B(14_320, 0.044), B(28_640, 0.053), B(315_310, 0.0765) }, 0.0570, 0.0161, 2.9,
+        Prog("WI", "Wisconsin", "🧀", "Progressive, 3.5%–7.65%", 13_560,
+            new[] { B(0, 0.035), B(14_680, 0.044), B(29_370, 0.053), B(323_290, 0.0765) }, 0.0572, 0.0185, 2.9,
             "Wide brackets with a high top rate. Low sales tax but relatively high property taxes."),
 
-        None("WY", "Wyoming", "🦬", 0.0544, 0.0061, 3.4,
+        None("WY", "Wyoming", "🦬", 0.0556, 0.0061, 3.4,
             "No personal income tax, funded largely by mineral and energy revenue. Low overall tax burden."),
     };
 
