@@ -5,6 +5,7 @@ import MagazineLayout from "@/prototypes/magazine/Layout";
 import MagazineHome from "@/prototypes/magazine/pages/Home";
 import MagazineBriefingDetail from "@/prototypes/magazine/pages/BriefingDetail";
 import MagazineTaxApportionment from "@/prototypes/magazine/pages/TaxApportionment";
+import MagazineTaxMethodology from "@/prototypes/magazine/pages/TaxMethodology";
 import MagazineThinkDeeper from "@/prototypes/magazine/pages/ThinkDeeper";
 import MagazineOnboarding from "@/prototypes/magazine/pages/Onboarding";
 import MagazineProfile from "@/prototypes/magazine/pages/Profile";
@@ -46,6 +47,10 @@ function App() {
             <Route
               path="briefings/who-gets-your-tax-dollar"
               element={<MagazineTaxApportionment />}
+            />
+            <Route
+              path="briefings/who-gets-your-tax-dollar/methodology"
+              element={<MagazineTaxMethodology />}
             />
             <Route path="briefings/:slug" element={<MagazineBriefingDetail />} />
             <Route path="think-deeper/:slug" element={<MagazineThinkDeeper />} />
