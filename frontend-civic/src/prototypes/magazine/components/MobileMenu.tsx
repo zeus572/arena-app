@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { DEBATE_ARENA_URL } from "@/lib/links";
-import { NAV_LINKS } from "../nav";
+import { NAV_GROUPS, NAV_PRIMARY, NAV_TRAILING } from "../nav";
 
 /**
  * Mobile "everything" menu. The bottom bar carries the five primary destinations; this hamburger →
@@ -84,7 +84,8 @@ export function MobileMenu() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              {NAV_LINKS.map((l) => (
+              {/* Standalone primary links (the issue + the feed). */}
+              {NAV_PRIMARY.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
@@ -95,10 +96,44 @@ export function MobileMenu() {
                   {l.label}
                 </NavLink>
               ))}
-              {/* Profile lives in the bottom bar too, but the drawer is the full directory. */}
-              <NavLink to="/profile" data-testid="mobile-menu-profile" className={linkClass}>
-                Profile
-              </NavLink>
+
+              {/* Labeled groups: Compete, Explore. */}
+              {NAV_GROUPS.map((group) => (
+                <div key={group.heading} className="mt-3">
+                  <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                    {group.heading}
+                  </p>
+                  {group.links.map((l) => (
+                    <NavLink
+                      key={l.to}
+                      to={l.to}
+                      end={l.end}
+                      data-testid={`mobile-menu-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
+                      className={linkClass}
+                    >
+                      {l.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+
+              <div className="mt-3 border-t border-[var(--border)] pt-2">
+                {/* Profile lives in the bottom bar too, but the drawer is the full directory. */}
+                <NavLink to="/profile" data-testid="mobile-menu-profile" className={linkClass}>
+                  Profile
+                </NavLink>
+                {NAV_TRAILING.map((l) => (
+                  <NavLink
+                    key={l.to}
+                    to={l.to}
+                    end={l.end}
+                    data-testid={`mobile-menu-${l.label.toLowerCase()}`}
+                    className={linkClass}
+                  >
+                    {l.label}
+                  </NavLink>
+                ))}
+              </div>
               <a
                 href={DEBATE_ARENA_URL}
                 target="_blank"

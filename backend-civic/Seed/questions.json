@@ -398,5 +398,106 @@
         ]
       }
     ]
+  },
+  {
+    "externalId": "q-tax-apportionment-01-strings",
+    "type": "IssueSpecific",
+    "topic": "Tax apportionment",
+    "order": 16,
+    "prompt": "If Washington collects most of the money, should it also decide most of how it's spent — or send more back with no strings?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Washington should set the priorities for the money it raises",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": 0.5 },
+          { "axisKey": "govt-role", "delta": 0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Send more money back to states with no strings attached",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": -0.5 },
+          { "axisKey": "govt-role", "delta": -0.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-tax-apportionment-02-bridge",
+    "type": "IssueSpecific",
+    "topic": "Tax apportionment",
+    "order": 17,
+    "prompt": "A bridge in one state is funded by taxpayers in all fifty. When is that fair burden-sharing, and when is it one state's project on everyone's bill?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Pooling national money for local projects is fair solidarity",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": 0.4 },
+          { "axisKey": "community", "delta": 0.4 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "States should mostly pay for their own projects",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": -0.4 },
+          { "axisKey": "community", "delta": -0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-tax-apportionment-03-regressive",
+    "type": "IssueSpecific",
+    "topic": "Tax apportionment",
+    "order": 18,
+    "prompt": "Low earners often pay a larger share to state and local government. Does that change who should fund what?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Yes — the federal government should shoulder more to even it out",
+        "axisDeltas": [
+          { "axisKey": "economic-fairness", "delta": 0.5 },
+          { "axisKey": "govt-role", "delta": 0.4 },
+          { "axisKey": "authority", "delta": 0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "No — keep taxing and spending close to home",
+        "axisDeltas": [
+          { "axisKey": "economic-fairness", "delta": -0.3 },
+          { "axisKey": "authority", "delta": -0.4 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-tax-apportionment-04-trade",
+    "type": "IssueSpecific",
+    "topic": "Tax apportionment",
+    "order": 19,
+    "prompt": "Would you trade a lower federal tax for a higher state one, keeping more decisions local — even if your state raises less overall?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Yes — more decisions local, even with less revenue",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": -0.5 },
+          { "axisKey": "govt-role", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "No — keep strong federal funding and shared standards",
+        "axisDeltas": [
+          { "axisKey": "authority", "delta": 0.5 },
+          { "axisKey": "govt-role", "delta": 0.3 }
+        ]
+      }
+    ]
   }
 ]

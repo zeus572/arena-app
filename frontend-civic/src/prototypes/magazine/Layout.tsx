@@ -3,18 +3,44 @@ import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
 import { MobileMenu } from "./components/MobileMenu";
+import { NavDropdown } from "./components/NavDropdown";
 import { ButtonLink } from "./components/Button";
-import { NAV_LINKS } from "./nav";
+import { NAV_COMPETE, NAV_EXPLORE, NAV_PRIMARY, NAV_TRAILING } from "./nav";
 import "./theme.css";
 
 function TopNav() {
+  // Flat, high-engagement links (Home, Feed + the Compete group) sit in the row;
+  // the Explore tools live under a dropdown; About is pinned to the end.
+  const flatLinks = [...NAV_PRIMARY, ...NAV_COMPETE.links];
+
   return (
     <nav
       className="hidden items-center gap-6 md:flex"
       data-testid="top-nav"
       aria-label="Primary"
     >
-      {NAV_LINKS.map((l) => (
+      {flatLinks.map((l) => (
+        <NavLink
+          key={l.to}
+          to={l.to}
+          end={l.end}
+          data-testid={`top-nav-${l.label.toLowerCase()}`}
+          className={({ isActive }) =>
+            [
+              "text-xs font-semibold uppercase tracking-wider transition",
+              isActive
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)] hover:text-[var(--fg)]",
+            ].join(" ")
+          }
+        >
+          {l.label}
+        </NavLink>
+      ))}
+
+      <NavDropdown label={NAV_EXPLORE.heading} links={NAV_EXPLORE.links} />
+
+      {NAV_TRAILING.map((l) => (
         <NavLink
           key={l.to}
           to={l.to}
