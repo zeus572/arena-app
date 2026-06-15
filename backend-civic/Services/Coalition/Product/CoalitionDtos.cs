@@ -49,7 +49,8 @@ public sealed record ProvisionSummaryDto(
     DateTime? Deadline,
     double GapWidth,
     string Difficulty,
-    bool Governance);
+    bool Governance,
+    string? Locality = null);
 
 public sealed record ProvisionDetailDto(
     Guid Id,

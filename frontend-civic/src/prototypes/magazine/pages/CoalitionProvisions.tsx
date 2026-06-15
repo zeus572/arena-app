@@ -9,6 +9,7 @@ import {
   type ProvisionSummary,
   type Me,
 } from "@/api/coalition";
+import { localityLabel } from "@/api/profile";
 import { Button } from "../components/Button";
 import { Term } from "../components/Term";
 
@@ -203,6 +204,14 @@ export default function CoalitionProvisions() {
                           <span className={`text-xs font-semibold uppercase tracking-wider ${stateColor(p.state)}`}>{p.state}</span>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                          {p.locality && (
+                            <span
+                              className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                              data-testid={`provision-local-badge-${p.locality}`}
+                            >
+                              Local · {localityLabel(p.locality)}
+                            </span>
+                          )}
                           {difficultyBadge(p.difficulty)}
                           <span className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                             {p.governance ? "governance" : "culture"}

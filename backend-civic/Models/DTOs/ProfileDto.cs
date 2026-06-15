@@ -27,6 +27,16 @@ public class ProfileDto
     public int ProfileVersion { get; set; }
     public DateTime UpdatedAt { get; set; }
     public int AnswerCount { get; set; }
+
+    /// <summary>The reader's chosen local-news region (state code), or null for national.</summary>
+    public string? LocalityState { get; set; }
+
     public List<AxisScoreDto> Axes { get; set; } = new();
     public List<ArchetypeBlendItemDto> ArchetypeBlend { get; set; } = new();
+}
+
+/// <summary>Request body for PUT /api/profile/me/locality. Null/empty ⇒ national.</summary>
+public class UpdateLocalityRequest
+{
+    public string? LocalityState { get; set; }
 }

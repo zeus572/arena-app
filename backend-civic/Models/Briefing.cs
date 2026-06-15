@@ -78,6 +78,14 @@ public class Briefing
     public string GenerationSource { get; set; } = CivicGenerationSource.Seed;
 
     public Guid? SourceNewsItemId { get; set; }
+
+    /// <summary>
+    /// Local-news region (2-letter state code) copied from the source NewsItem,
+    /// or null for national briefings. Local briefings are only shown to readers
+    /// in the matching locality. See <see cref="Localities"/>.
+    /// </summary>
+    [MaxLength(2)]
+    public string? Locality { get; set; }
 }
 
 public class BriefingWord

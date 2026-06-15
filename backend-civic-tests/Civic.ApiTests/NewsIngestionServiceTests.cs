@@ -6,6 +6,7 @@ using Civic.ApiTests.Fakes;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -24,11 +25,15 @@ public class NewsIngestionServiceTests
     {
         var feed = new InMemoryNewsFeed();
         var scopes = _fx.Factory.Services.GetRequiredService<IServiceScopeFactory>();
+        var httpFactory = _fx.Factory.Services.GetRequiredService<IHttpClientFactory>();
+        var loggerFactory = _fx.Factory.Services.GetRequiredService<ILoggerFactory>();
         var opts = Options.Create(new NewsOptions { IngestIntervalHours = 24 });
         var svc = new NewsIngestionService(
             scopes,
             feed,
             new TestOptionsMonitor<NewsOptions>(opts.Value),
+            httpFactory,
+            loggerFactory,
             NullLogger<NewsIngestionService>.Instance);
         return (svc, feed);
     }
@@ -53,6 +58,7 @@ public class NewsIngestionServiceTests
         rows.Should().HaveCount(2);
         rows.Should().OnlyContain(r => r.Status == NewsItemStatus.Ingested);
         rows.Should().OnlyContain(r => r.PublishedAt.Kind == DateTimeKind.Utc);
+        rows.Should().OnlyContain(r => r.Locality == null, "the injected feed is the national feed");
     }
 
     [Fact]

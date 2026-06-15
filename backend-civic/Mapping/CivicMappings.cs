@@ -19,6 +19,7 @@ public static class CivicMappings
         Summary30 = b.Summary30,
         CreatedAt = b.CreatedAt,
         ThinkDeeperQuestion = b.ThinkDeeperQuestion,
+        Locality = b.Locality,
     };
 
     /// <summary>
@@ -57,6 +58,7 @@ public static class CivicMappings
         SourceUrl = source?.Url,
         SourcePublisher = source?.Source,
         SourcePublishedAt = source is null ? null : DateTime.SpecifyKind(source.PublishedAt, DateTimeKind.Utc),
+        Locality = b.Locality,
     };
 
     public static ConceptDto ToDto(this Concept c) => new()

@@ -1,4 +1,5 @@
 import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
+import { UserCircle } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
@@ -82,19 +83,21 @@ function AuthStrip() {
   if (isAuthenticated && user) {
     return (
       <div className="flex items-center gap-3" data-testid="auth-strip-authed">
-        <span
-          className="hidden text-xs font-semibold uppercase tracking-wider text-[var(--fg-soft)] sm:inline"
-          data-testid="auth-strip-email"
+        <Link
+          to="/settings"
+          className="flex items-center gap-1.5 text-[var(--fg-soft)] transition hover:text-[var(--accent)]"
+          data-testid="auth-strip-profile-link"
+          aria-label="Profile & settings"
+          title="Profile & settings"
         >
-          {user.displayName ?? user.email}
-        </span>
-        <span
-          className="text-xs font-semibold uppercase tracking-wider text-[var(--fg-soft)] sm:hidden"
-          data-testid="auth-strip-email-mobile"
-          aria-hidden
-        >
-          {(user.displayName ?? user.email).slice(0, 1).toUpperCase()}
-        </span>
+          <UserCircle className="h-5 w-5 shrink-0" aria-hidden />
+          <span
+            className="hidden text-xs font-semibold uppercase tracking-wider sm:inline"
+            data-testid="auth-strip-email"
+          >
+            {user.displayName ?? user.email}
+          </span>
+        </Link>
         <button
           type="button"
           onClick={async () => {

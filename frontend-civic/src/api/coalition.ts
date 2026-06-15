@@ -71,6 +71,8 @@ export interface ProvisionSummary {
   gapWidth: number;
   difficulty: string;
   governance: boolean;
+  /** Local-news region (state code) this provision belongs to, or null for national. */
+  locality: string | null;
 }
 
 export interface CampaignRecord {

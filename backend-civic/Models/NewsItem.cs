@@ -45,6 +45,14 @@ public class NewsItem
 
     public NewsItemStatus Status { get; set; } = NewsItemStatus.Ingested;
 
+    /// <summary>
+    /// Local-news region this item was ingested for (2-letter state code), or
+    /// null for national feeds. Set from which source feed produced it. See
+    /// <see cref="Localities"/>.
+    /// </summary>
+    [MaxLength(2)]
+    public string? Locality { get; set; }
+
     /// <summary>Surface for the last failed generation attempt, when applicable.</summary>
     [MaxLength(2000)]
     public string? LastError { get; set; }

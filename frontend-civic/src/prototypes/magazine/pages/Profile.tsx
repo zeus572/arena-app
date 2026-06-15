@@ -115,6 +115,16 @@ export default function MagazineProfile() {
             </ButtonLink>
           </div>
         )}
+        <p className="mt-6 text-xs text-[var(--muted)]">
+          Looking for your name, email, or locality?{" "}
+          <Link
+            to="/settings"
+            className="font-semibold text-[var(--accent)] underline"
+            data-testid="compass-to-settings"
+          >
+            Profile &amp; settings
+          </Link>
+        </p>
       </header>
 
       {hasAnswers && top && (

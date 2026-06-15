@@ -11,6 +11,14 @@ public class UserProfile
 
     public int ProfileVersion { get; set; } = 1;
 
+    /// <summary>
+    /// The reader's chosen local-news region (2-letter state code, e.g. "WA"),
+    /// or null for national-only. Drives which local briefings and coalition
+    /// provisions this user can see. See <see cref="Localities"/>.
+    /// </summary>
+    [MaxLength(2)]
+    public string? LocalityState { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { useAuth } from "@/auth/AuthContext";
+import { setMyLocality, LOCALITIES } from "@/api/profile";
 
 export default function MagazineRegister() {
   const { register } = useAuth();
@@ -14,6 +15,7 @@ export default function MagazineRegister() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [locality, setLocality] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,6 +30,15 @@ export default function MagazineRegister() {
     setSubmitting(true);
     try {
       await register(email, password, displayName, inviteCode);
+      // Persist the chosen locality to the civic profile (keyed by the new
+      // user identity). Non-fatal: a failure here shouldn't block sign-up.
+      if (locality) {
+        try {
+          await setMyLocality(locality);
+        } catch {
+          /* locality is editable later from the profile page */
+        }
+      }
       navigate(redirect);
     } catch (err) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -127,6 +138,28 @@ export default function MagazineRegister() {
             className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-base uppercase tracking-widest text-[var(--fg)] outline-none focus:border-[var(--accent)]"
             data-testid="register-invite"
           />
+        </label>
+
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Your locality
+          </span>
+          <select
+            value={locality}
+            onChange={(e) => setLocality(e.target.value)}
+            className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-base text-[var(--fg)] outline-none focus:border-[var(--accent)]"
+            data-testid="register-locality"
+          >
+            {LOCALITIES.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-[var(--muted)]">
+            Adds local stories to your feed. You can change this anytime in your
+            profile.
+          </span>
         </label>
 
         {error && (

@@ -231,6 +231,7 @@ public class CivicContentGenerationService : BackgroundService
             CreatedAt = DateTime.UtcNow,
             GenerationSource = CivicGenerationSource.News,
             SourceNewsItemId = source.Id,
+            Locality = source.Locality,
         };
     }
 

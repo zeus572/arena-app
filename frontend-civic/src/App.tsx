@@ -9,6 +9,7 @@ import MagazineTaxMethodology from "@/prototypes/magazine/pages/TaxMethodology";
 import MagazineThinkDeeper from "@/prototypes/magazine/pages/ThinkDeeper";
 import MagazineOnboarding from "@/prototypes/magazine/pages/Onboarding";
 import MagazineProfile from "@/prototypes/magazine/pages/Profile";
+import MagazineSettings from "@/prototypes/magazine/pages/Settings";
 import MagazineBudget from "@/prototypes/magazine/pages/Budget";
 import MagazineReceipt from "@/prototypes/magazine/pages/Receipt";
 import MagazineLogin from "@/prototypes/magazine/pages/Login";
@@ -56,6 +57,7 @@ function App() {
             <Route path="think-deeper/:slug" element={<MagazineThinkDeeper />} />
             <Route path="onboarding" element={<MagazineOnboarding />} />
             <Route path="profile" element={<MagazineProfile />} />
+            <Route path="settings" element={<MagazineSettings />} />
             <Route path="budget" element={<MagazineBudget />} />
             <Route path="receipt/:id" element={<MagazineReceipt />} />
             <Route path="login" element={<MagazineLogin />} />

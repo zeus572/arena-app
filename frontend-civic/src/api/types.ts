@@ -25,6 +25,8 @@ export type CivicBriefingSummary = {
   summary30: string;
   createdAt: string;
   thinkDeeperQuestion: string;
+  /** Local-news region (state code) for this briefing, or null for national. */
+  locality: string | null;
 };
 
 export type CivicBriefing = CivicBriefingSummary & {

@@ -29,7 +29,7 @@ public class CoalitionProvisionsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ProvisionSummaryDto>>> List(CancellationToken ct)
-        => Ok(await _loop.ListAsync(ct));
+        => Ok(await _loop.ListAsync(_user.GetCurrentUserId(), ct));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProvisionDetailDto>> Get(Guid id, CancellationToken ct)

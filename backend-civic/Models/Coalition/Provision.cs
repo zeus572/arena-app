@@ -78,6 +78,15 @@ public class Provision
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Local-news region (2-letter state code) inherited from the source
+    /// briefing, or null for national provisions. Coalition work on a local
+    /// provision is only visible to readers in the matching locality (the
+    /// "hard wall"). See <see cref="Civic.API.Models.Localities"/>.
+    /// </summary>
+    [MaxLength(2)]
+    public string? Locality { get; set; }
+
     // Navigation collections.
     public List<SubQuestion> SubQuestions { get; set; } = new();
     public List<ProvisionPosition> Positions { get; set; } = new();

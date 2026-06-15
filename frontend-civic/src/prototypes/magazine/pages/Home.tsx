@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
 import type { CivicBriefingSummary, Concept } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
+import { localityLabel } from "@/api/profile";
 import { getConcepts } from "@/api/concepts";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { useAuth } from "@/auth/AuthContext";
@@ -160,6 +161,14 @@ export default function MagazineHome() {
                 className="group block h-full border border-[var(--border)] bg-[var(--bg-elev)] p-5 md:border-x-0 md:border-b-0 md:border-t md:bg-transparent md:p-0 md:pt-6"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                  {b.locality && (
+                    <span
+                      className="mr-2 rounded-sm bg-[var(--accent)] px-1.5 py-0.5 text-[0.65rem] text-white"
+                      data-testid={`briefing-local-badge-${b.locality}`}
+                    >
+                      Local · {localityLabel(b.locality)}
+                    </span>
+                  )}
                   {b.institution} · {b.status}
                 </p>
                 <h3 className="display mt-2 text-2xl group-hover:text-[var(--accent)] md:text-3xl">

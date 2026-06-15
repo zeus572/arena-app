@@ -20,6 +20,9 @@ public class BriefingSummaryDto
     public string Summary30 { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public string ThinkDeeperQuestion { get; set; } = "";
+
+    /// <summary>Local-news region (state code) for this briefing, or null for national.</summary>
+    public string? Locality { get; set; }
 }
 
 /// <summary>A single page of briefing summaries plus the total count for paging UI.</summary>

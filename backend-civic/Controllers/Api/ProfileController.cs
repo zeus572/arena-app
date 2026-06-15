@@ -58,6 +58,42 @@ public class ProfileController : ControllerBase
         return Ok(BuildDto(profile, answerCount));
     }
 
+    /// <summary>
+    /// Set the reader's local-news region. Null/empty ⇒ national. Upserts the
+    /// profile row so anonymous users who haven't answered any questions can
+    /// still choose a locality.
+    /// </summary>
+    [HttpPut("me/locality")]
+    public async Task<ActionResult<ProfileDto>> SetLocality([FromBody] UpdateLocalityRequest req)
+    {
+        if (!Models.Localities.TryNormalize(req.LocalityState, out var locality))
+            return BadRequest(new { error = $"Unsupported locality '{req.LocalityState}'." });
+
+        var userId = _user.GetCurrentUserId();
+        var profile = await _db.UserProfiles
+            .Include(p => p.AxisScores)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile is null)
+        {
+            profile = new Models.UserProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ProfileVersion = 0,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _db.UserProfiles.Add(profile);
+        }
+
+        profile.LocalityState = locality;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var answerCount = await _db.CivicAnswers.CountAsync(a => a.UserId == userId);
+        return Ok(BuildDto(profile, answerCount));
+    }
+
     private ProfileDto EmptyProfile(string userId, int answerCount) => new()
     {
         UserId = userId,
@@ -127,6 +163,7 @@ public class ProfileController : ControllerBase
             ProfileVersion = profile.ProfileVersion,
             UpdatedAt = profile.UpdatedAt,
             AnswerCount = answerCount,
+            LocalityState = profile.LocalityState,
             Axes = axes,
             ArchetypeBlend = blend,
         };

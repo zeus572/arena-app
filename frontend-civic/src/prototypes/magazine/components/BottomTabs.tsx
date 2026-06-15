@@ -15,7 +15,7 @@ const tabs: Tab[] = [
   { to: "/leagues", label: "Leagues", icon: Trophy, testId: "tab-leagues" },
   { to: "/campaigns", label: "Campaign", icon: Megaphone, testId: "tab-campaign" },
   { to: "/coalition", label: "Coalition", icon: Handshake, testId: "tab-coalition" },
-  { to: "/profile", label: "Profile", icon: User, testId: "tab-profile" },
+  { to: "/settings", label: "Profile", icon: User, testId: "tab-profile" },
 ];
 
 export function BottomTabs() {

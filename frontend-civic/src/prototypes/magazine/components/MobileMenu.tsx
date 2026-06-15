@@ -118,9 +118,12 @@ export function MobileMenu() {
               ))}
 
               <div className="mt-3 border-t border-[var(--border)] pt-2">
-                {/* Profile lives in the bottom bar too, but the drawer is the full directory. */}
-                <NavLink to="/profile" data-testid="mobile-menu-profile" className={linkClass}>
-                  Profile
+                {/* Profile/settings lives in the bottom bar too, but the drawer is the full directory. */}
+                <NavLink to="/settings" data-testid="mobile-menu-profile" className={linkClass}>
+                  Profile &amp; settings
+                </NavLink>
+                <NavLink to="/profile" data-testid="mobile-menu-compass" className={linkClass}>
+                  Civic Compass
                 </NavLink>
                 {NAV_TRAILING.map((l) => (
                   <NavLink

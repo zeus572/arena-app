@@ -12,4 +12,12 @@ public class NewsOptions
     /// service is registered but does nothing (handy in tests).
     /// </summary>
     public Dictionary<string, string> Sources { get; set; } = new();
+
+    /// <summary>
+    /// Per-locality RSS feeds: outer key is a 2-letter state code (e.g. "WA"),
+    /// inner map is sourceName -> feed URL. Items ingested from these feeds are
+    /// tagged with the state code so the briefing/coalition pipeline can scope
+    /// them to readers in that locality. See <c>Civic.API.Models.Localities</c>.
+    /// </summary>
+    public Dictionary<string, Dictionary<string, string>> LocalSources { get; set; } = new();
 }

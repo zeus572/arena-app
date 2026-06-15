@@ -60,9 +60,16 @@ public class CoalitionLoopService
 
     // ---------------------------------------------------------------- reads
 
-    public async Task<IReadOnlyList<ProvisionSummaryDto>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ProvisionSummaryDto>> ListAsync(string? currentUserId = null, CancellationToken ct = default)
     {
-        var provisions = await _db.Provisions.OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
+        // Hard wall: national provisions are visible to all; local provisions only
+        // to readers in the matching state. Resolve the caller's locality once.
+        var userLocality = await ResolveUserLocalityAsync(currentUserId, ct);
+
+        var provisions = await _db.Provisions
+            .Where(p => p.Locality == null || p.Locality == userLocality)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
         var result = new List<ProvisionSummaryDto>();
         foreach (var p in provisions)
         {
@@ -71,7 +78,7 @@ public class CoalitionLoopService
             var (gap, gov) = await ProvisionMetaAsync(p, ct);
             result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.State.ToString(),
                 bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
-                gap, DifficultyLabel(gap), gov));
+                gap, DifficultyLabel(gap), gov, p.Locality));
         }
         return result;
     }
@@ -80,6 +87,8 @@ public class CoalitionLoopService
     {
         var p = await LoadProvisionAsync(provisionId, ct);
         if (p is null) return null;
+        // Hard wall: out-of-locality readers can't see a local provision's detail.
+        if (!await CanAccessProvisionAsync(p.Locality, currentUserId, ct)) return null;
         var state = await LoadStateAsync(provisionId, ct);
         var bar = SpectrumBarBuilder.Build(state!);
 
@@ -189,6 +198,9 @@ public class CoalitionLoopService
 
     public async Task JoinAsync(Guid provisionId, string userId, string? bucket, string? ageBand, CancellationToken ct = default)
     {
+        // Hard wall: refuse to enroll an out-of-locality user in a local provision.
+        var locality = await _db.Provisions.Where(p => p.Id == provisionId).Select(p => p.Locality).FirstOrDefaultAsync(ct);
+        if (!await CanAccessProvisionAsync(locality, userId, ct)) return;
         await EnsureParticipantAsync(provisionId, userId, bucket ?? "center", isAgent: false, ct, ageBand ?? "Adult");
         // Update bucket/age-band if the participant already existed.
         var existing = await _db.CoalitionParticipants.FirstOrDefaultAsync(c => c.ProvisionId == provisionId && c.UserId == userId, ct);
@@ -203,7 +215,8 @@ public class CoalitionLoopService
 
     public async Task<ProvisionDetailDto?> TakePositionAsync(Guid provisionId, string userId, PositionRequest req, CancellationToken ct = default)
     {
-        if (await LoadProvisionAsync(provisionId, ct) is null) return null;
+        var p = await LoadProvisionAsync(provisionId, ct);
+        if (p is null || !await CanAccessProvisionAsync(p.Locality, userId, ct)) return null;
         await EnsureParticipantAsync(provisionId, userId, req.Bucket ?? "center", isAgent: false, ct);
 
         var existing = await _db.ProvisionPositions.FirstOrDefaultAsync(x => x.ProvisionId == provisionId && x.UserId == userId, ct);
@@ -223,7 +236,8 @@ public class CoalitionLoopService
 
     public async Task<ProvisionDetailDto?> ProposeAmendmentAsync(Guid provisionId, string userId, AmendmentRequest req, CancellationToken ct = default)
     {
-        if (await LoadProvisionAsync(provisionId, ct) is null) return null;
+        var p = await LoadProvisionAsync(provisionId, ct);
+        if (p is null || !await CanAccessProvisionAsync(p.Locality, userId, ct)) return null;
         await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
 
         var positions = new Dictionary<string, string>(req.Positions, StringComparer.OrdinalIgnoreCase);
@@ -243,7 +257,7 @@ public class CoalitionLoopService
     public async Task<ProvisionDetailDto?> ProposeFreeformAmendmentAsync(Guid provisionId, string userId, string text, CancellationToken ct = default)
     {
         var p = await LoadProvisionAsync(provisionId, ct);
-        if (p is null) return null;
+        if (p is null || !await CanAccessProvisionAsync(p.Locality, userId, ct)) return null;
         await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
 
         var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provisionId).ToListAsync(ct);
@@ -292,7 +306,8 @@ public class CoalitionLoopService
 
     public async Task<ProvisionDetailDto?> CastAcceptanceAsync(Guid provisionId, string userId, AcceptanceRequest req, CancellationToken ct = default)
     {
-        if (await LoadProvisionAsync(provisionId, ct) is null) return null;
+        var p = await LoadProvisionAsync(provisionId, ct);
+        if (p is null || !await CanAccessProvisionAsync(p.Locality, userId, ct)) return null;
         await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
 
         var version = await _db.ProvisionVersions.FirstOrDefaultAsync(v => v.Id == req.VersionId && v.ProvisionId == provisionId, ct);
@@ -471,6 +486,27 @@ public class CoalitionLoopService
             .Include(p => p.AcceptanceRecords)
             .FirstOrDefaultAsync(p => p.Id == provisionId, ct);
 
+    // ---------------------------------------------------------------- locality hard wall
+
+    /// <summary>The reader's chosen locality (state code), or null for national-only.</summary>
+    private async Task<string?> ResolveUserLocalityAsync(string? userId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
+        return await _db.UserProfiles
+            .Where(u => u.UserId == userId)
+            .Select(u => u.LocalityState)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>National provisions (Locality null) are open to all; a local provision
+    /// is visible only to readers whose locality matches its state.</summary>
+    private async Task<bool> CanAccessProvisionAsync(string? provisionLocality, string? userId, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(provisionLocality)) return true;
+        var userLoc = await ResolveUserLocalityAsync(userId, ct);
+        return string.Equals(provisionLocality, userLoc, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task<ProvisionLoopState?> LoadStateAsync(Guid provisionId, CancellationToken ct)
     {
         var p = await LoadProvisionAsync(provisionId, ct);
@@ -610,7 +646,10 @@ public class CoalitionLoopService
         if (provisionId is Guid pid)
         {
             var p = await _db.Provisions.FirstOrDefaultAsync(x => x.Id == pid, ct);
-            if (p is not null) { axes = p.RelevantAxes; provisionText = p.NeutralText; }
+            if (p is null) return (0, "reasoning");
+            // Hard wall: a forged POST can't earn points on an out-of-locality provision.
+            if (!await CanAccessProvisionAsync(p.Locality, userId, ct)) return (0, "reasoning");
+            axes = p.RelevantAxes; provisionText = p.NeutralText;
         }
 
         // When the act is aimed at a specific version (e.g. the prevailing coalition

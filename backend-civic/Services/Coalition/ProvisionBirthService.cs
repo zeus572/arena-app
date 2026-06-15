@@ -79,6 +79,9 @@ public class ProvisionBirthService
             NeutralText = dto.NeutralText.Trim(),
             SourceBriefingId = briefing.Id,
             SourceBriefingSlug = briefing.Slug,
+            // Inherit the briefing's locality so a provision born from a local
+            // story stays walled off to readers in that state (null = national).
+            Locality = briefing.Locality,
             // Born and immediately open for position-gathering. The formal
             // BIRTH->OPEN transition is owned by the Layer 2 state machine; we set
             // the natural post-birth state here so Layer 0 engagement can attach.
