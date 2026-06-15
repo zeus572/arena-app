@@ -39,6 +39,14 @@ public class CoalitionAct
 
     public Guid? ProvisionId { get; set; }
 
+    /// <summary>
+    /// The specific provision version this act reacted to (e.g. the prevailing
+    /// coalition wording a reaction-with-reason or steelman was aimed at). Null for
+    /// acts not tied to a particular version. Judging scores against this version's
+    /// text when set, the neutral text otherwise.
+    /// </summary>
+    public Guid? VersionId { get; set; }
+
     public CoalitionActType Type { get; set; }
 
     [MaxLength(4000)]

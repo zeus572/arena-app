@@ -96,9 +96,9 @@ export default function CoalitionProvisionDetail() {
   useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
-  async function act(type: string, key: string, payload?: string) {
+  async function act(type: string, key: string, payload?: string, versionId?: string) {
     try {
-      const r = await recordAct(id, type, payload);
+      const r = await recordAct(id, type, payload, versionId);
       setLastAward({ key, points: r.points, currency: r.currency });
       reload();
     } catch {
@@ -139,7 +139,6 @@ export default function CoalitionProvisionDetail() {
           <h1 className="display text-3xl">{d.title}</h1>
           <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
         </div>
-        <p className="mt-2 text-[var(--fg-soft)]">{d.neutralText}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider">
           <span className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[var(--muted)]">{d.difficulty} gap · {(d.gapWidth * 100).toFixed(0)}%</span>
           <span className="rounded-full bg-[var(--line)] px-2 py-0.5 text-[var(--muted)]">{d.governance ? "governance" : "culture"}</span>
@@ -232,13 +231,21 @@ export default function CoalitionProvisionDetail() {
         </div>
         <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
 
+        {/* Anchor every act to the wording it's actually judging — the prevailing version. */}
+        <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--line)]/20 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            {hasAgreedWording ? "Reacting to the leading wording" : "Reacting to the proposal as proposed"}
+          </p>
+          <p className="mt-1 text-sm leading-snug text-[var(--fg-soft)]">{prevailingText}</p>
+        </div>
+
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {REASON_LABELS.map((label) => {
             const lit = lastAward?.key === label;
             return (
               <button
                 key={label}
-                onClick={() => act("ReactionWithReason", label, label)}
+                onClick={() => act("ReactionWithReason", label, label, leadingVersion?.id)}
                 disabled={busy}
                 className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:opacity-50 ${
                   lit ? "border-emerald-400 bg-emerald-50" : "border-[var(--line)] hover:border-[var(--accent)]"
@@ -281,7 +288,7 @@ export default function CoalitionProvisionDetail() {
                   size="sm"
                   onClick={() => {
                     if (steelText.trim()) {
-                      void act("Steelman", "steelman", steelText);
+                      void act("Steelman", "steelman", steelText, leadingVersion?.id);
                       setSteelText("");
                       setSteelOpen(false);
                     }

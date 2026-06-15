@@ -244,8 +244,13 @@ export async function proposeFreeformAmendment(id: string, text: string): Promis
   return data;
 }
 
-export async function recordAct(id: string, type: string, payload?: string): Promise<ActResult> {
-  const { data } = await civicApi.post<ActResult>(`${BASE}/${id}/acts`, { type, payload });
+export async function recordAct(
+  id: string,
+  type: string,
+  payload?: string,
+  versionId?: string,
+): Promise<ActResult> {
+  const { data } = await civicApi.post<ActResult>(`${BASE}/${id}/acts`, { type, payload, versionId });
   return data;
 }
 

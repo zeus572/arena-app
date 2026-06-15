@@ -603,7 +603,7 @@ public class CoalitionLoopService
     /// Record an act in the ledger and award points: judge governance+quality (LLM in prod,
     /// heuristic in dev), apply the currency rules + diminishing returns. Returns points awarded.
     /// </summary>
-    public async Task<(int Points, string Currency)> RecordActAsync(string userId, Guid? provisionId, CoalitionActType type, string? payload, CancellationToken ct = default)
+    public async Task<(int Points, string Currency)> RecordActAsync(string userId, Guid? provisionId, CoalitionActType type, string? payload, CancellationToken ct = default, Guid? versionId = null)
     {
         string[] axes = Array.Empty<string>();
         var provisionText = "";
@@ -611,6 +611,16 @@ public class CoalitionLoopService
         {
             var p = await _db.Provisions.FirstOrDefaultAsync(x => x.Id == pid, ct);
             if (p is not null) { axes = p.RelevantAxes; provisionText = p.NeutralText; }
+        }
+
+        // When the act is aimed at a specific version (e.g. the prevailing coalition
+        // wording), judge against that version's text rather than the neutral surface.
+        if (versionId is Guid vid)
+        {
+            var version = await _db.ProvisionVersions.FirstOrDefaultAsync(
+                v => v.Id == vid && (provisionId == null || v.ProvisionId == provisionId), ct);
+            if (version is not null && !string.IsNullOrWhiteSpace(version.Text)) provisionText = version.Text;
+            else versionId = null; // unknown / mismatched version — don't record a dangling reference
         }
 
         int governance = 50, quality = 50;
@@ -645,7 +655,7 @@ public class CoalitionLoopService
 
         _db.CoalitionActs.Add(new CoalitionAct
         {
-            Id = Guid.NewGuid(), UserId = userId, ProvisionId = provisionId, Type = type,
+            Id = Guid.NewGuid(), UserId = userId, ProvisionId = provisionId, VersionId = versionId, Type = type,
             Payload = payload is null ? null : (payload.Length > 4000 ? payload[..4000] : payload),
             GovernanceScore = governance, QualityScore = quality, Points = points, Currency = currency,
         });
