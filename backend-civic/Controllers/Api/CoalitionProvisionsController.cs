@@ -82,7 +82,7 @@ public class CoalitionProvisionsController : ControllerBase
     {
         if (!Enum.TryParse<CoalitionActType>(req.Type, ignoreCase: true, out var type))
             return BadRequest(new { error = "Unknown act type." });
-        var (points, currency) = await _loop.RecordActAsync(_user.GetCurrentUserId(), id, type, req.Payload, ct);
+        var (points, currency) = await _loop.RecordActAsync(_user.GetCurrentUserId(), id, type, req.Payload, ct, req.VersionId);
         return Ok(new ActResultDto(points, currency));
     }
 

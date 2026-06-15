@@ -120,5 +120,5 @@ public sealed record PositionRequest(string Stance, string Intensity = "Medium",
 public sealed record AmendmentRequest(Dictionary<string, string> Positions, string? Label = null);
 public sealed record FreeformAmendmentRequest(string Text);
 public sealed record BirthRequest(Guid BriefingId);
-public sealed record ActRequest(string Type, string? Payload = null);
+public sealed record ActRequest(string Type, string? Payload = null, Guid? VersionId = null);
 public sealed record AcceptanceRequest(Guid VersionId, bool Accept, string Intensity = "Medium");
