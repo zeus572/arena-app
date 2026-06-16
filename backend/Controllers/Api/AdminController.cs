@@ -61,7 +61,7 @@ public class AdminController : ControllerBase
         {
             enabled = _heartbeat.Enabled,
             intervalSeconds = _heartbeat.IntervalSeconds,
-            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514",
+            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6",
         });
     }
 
@@ -81,7 +81,7 @@ public class AdminController : ControllerBase
         {
             enabled = _heartbeat.Enabled,
             intervalSeconds = _heartbeat.IntervalSeconds,
-            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514",
+            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6",
         });
     }
 }

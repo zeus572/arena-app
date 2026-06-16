@@ -234,7 +234,7 @@ public class DailyBudgetFactService : BackgroundService
             "\"sourceB\": \"USASpending.gov or USAFacts\", \"sourceUrlB\": \"url or empty string\", " +
             "\"explanation\": \"1 sentence on why both are simultaneously true\"}]";
 
-        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514";
+        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6";
         var requestBody = new
         {
             model,

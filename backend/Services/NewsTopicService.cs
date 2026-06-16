@@ -127,7 +127,7 @@ public class NewsTopicService
 
         var requestBody = new
         {
-            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514",
+            model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6",
             max_tokens = 2048,
             system = """
                 You are a debate topic generator for a political debate platform.

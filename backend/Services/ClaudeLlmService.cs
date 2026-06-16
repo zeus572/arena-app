@@ -34,7 +34,7 @@ public class ClaudeLlmService : ILlmService
 
     public async Task<LlmTurnResult> GenerateTurnAsync(Agent agent, Debate debate, List<Turn> previousTurns, TurnType turnType = TurnType.Argument, string? crowdQuestion = null, Agent? opponent = null)
     {
-        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514";
+        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6";
         var formatConfig = DebateFormatConfig.Get(debate.Format);
         var maxToolRounds = formatConfig.HasTools ? formatConfig.MaxToolRounds : 0;
         var tools = formatConfig.HasTools ? FactCheckService.GetToolDefinitions().ToList() : new List<object>();
@@ -228,7 +228,7 @@ public class ClaudeLlmService : ILlmService
 
     public async Task<CommentaryResult> GenerateCommentaryAsync(Agent commentatorA, Agent commentatorB, Debate debate, List<Turn> previousTurns)
     {
-        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-20250514";
+        var model = _config["Anthropic:Model"] ?? "claude-sonnet-4-6";
         var formatConfig = DebateFormatConfig.Get(debate.Format);
 
         var systemPrompt = LlmPromptBuilder.BuildCommentarySystemPrompt(commentatorA, commentatorB, debate, formatConfig);
