@@ -120,6 +120,23 @@ export type LeagueInvitePreview = {
   isFull: boolean;
 };
 
+/**
+ * Privacy-safe invite preview for signed-out visitors. Powers the enticing "X members, organized
+ * by …" card on the join page before the visitor has an account. No inviter email / alreadyMember
+ * (those need a signed-in caller).
+ */
+export type LeagueInvitePublicPreview = {
+  code: string;
+  leagueName: string;
+  memberCount: number;
+  maxMembers: number;
+  organizerDisplayName: string | null;
+  organizerAvatarUrl: string | null;
+  isValid: boolean;
+  reason: string | null;
+  isFull: boolean;
+};
+
 export type NewsResponseOptionDetail = {
   id: string;
   label: string;
@@ -250,6 +267,16 @@ export async function previewInvite(code: string): Promise<LeagueInvitePreview |
     return data;
   } catch (err) {
     return notFoundToUndefined<LeagueInvitePreview>(err);
+  }
+}
+
+/** Anonymous-friendly preview for signed-out visitors landing on a join link. */
+export async function previewInvitePublic(code: string): Promise<LeagueInvitePublicPreview | undefined> {
+  try {
+    const { data } = await civicApi.get<LeagueInvitePublicPreview>(`${BASE}/join/${code}/public`);
+    return data;
+  } catch (err) {
+    return notFoundToUndefined<LeagueInvitePublicPreview>(err);
   }
 }
 

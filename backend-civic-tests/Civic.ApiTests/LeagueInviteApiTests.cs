@@ -149,6 +149,47 @@ public class LeagueInviteApiTests
     }
 
     [Fact]
+    public async Task PublicPreview_WorksWithoutAuth_AndShowsHeadcountAndOrganizer()
+    {
+        await _fixture.ResetMutableAsync();
+        var owner = ClientFor(Guid.NewGuid(), "owner@example.com");
+        var league = await CreateLeagueAsync(owner, "Public Crew");
+
+        var link = (await (await owner.PostAsJsonAsync($"/api/leagues/{league.Id}/invites", new CreateInviteRequest()))
+            .Content.ReadFromJsonAsync<LeagueInviteDto>())!;
+
+        // A friend joins so headcount > 1.
+        var friend = ClientFor(Guid.NewGuid(), "friend@example.com");
+        await friend.PostAsJsonAsync($"/api/leagues/join/{link.Code}", new JoinLeagueRequest { DisplayName = "Friend" });
+
+        // No Authorization header: a signed-out visitor still gets the enticing preview.
+        var anon = _fixture.Factory.CreateClient();
+        var res = await anon.GetAsync($"/api/leagues/join/{link.Code}/public");
+        res.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var preview = (await res.Content.ReadFromJsonAsync<LeagueInvitePublicPreviewDto>())!;
+        preview.LeagueName.Should().Be("Public Crew");
+        preview.MemberCount.Should().Be(2); // owner + friend
+        preview.OrganizerDisplayName.Should().Be("Owner");
+        preview.IsValid.Should().BeTrue();
+        preview.IsFull.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PublicPreview_RequiresAuth_OnTheIdentityAwareEndpoint()
+    {
+        await _fixture.ResetMutableAsync();
+        var owner = ClientFor(Guid.NewGuid(), "owner@example.com");
+        var league = await CreateLeagueAsync(owner, "Gated Crew");
+        var link = (await (await owner.PostAsJsonAsync($"/api/leagues/{league.Id}/invites", new CreateInviteRequest()))
+            .Content.ReadFromJsonAsync<LeagueInviteDto>())!;
+
+        // The identity-aware preview still demands a signed-in caller; only the /public variant is open.
+        var anon = _fixture.Factory.CreateClient();
+        (await anon.GetAsync($"/api/leagues/join/{link.Code}")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task InviteByEmail_RequiresOwner()
     {
         await _fixture.ResetMutableAsync();

@@ -292,6 +292,33 @@ public class LeagueService
         };
     }
 
+    /// <summary>
+    /// A privacy-safe preview for signed-out visitors landing on a join link. Unlike
+    /// <see cref="PreviewInviteAsync"/> this needs no caller identity, so it can power an enticing
+    /// "12 members, organized by Ada — sign in to join" card before the visitor has an account. It
+    /// surfaces only the league name, headcount, and organizer; never member emails.
+    /// </summary>
+    public async Task<LeagueInvitePublicPreviewDto> PublicPreviewInviteAsync(string code, CancellationToken ct = default)
+    {
+        var (invite, league) = await LoadInviteAsync(code, ct);
+        var now = DateTime.UtcNow;
+        var valid = invite.IsValid(now);
+        var organizer = league.Members.FirstOrDefault(m => m.Role == LeagueMemberRole.Owner);
+
+        return new LeagueInvitePublicPreviewDto
+        {
+            Code = invite.Code,
+            LeagueName = league.Name,
+            MemberCount = league.Members.Count,
+            MaxMembers = league.MaxMembers,
+            OrganizerDisplayName = organizer?.DisplayName,
+            OrganizerAvatarUrl = organizer?.AvatarUrl,
+            IsValid = valid,
+            Reason = valid ? null : InvalidReason(invite, now),
+            IsFull = league.Members.Count >= league.MaxMembers,
+        };
+    }
+
     public async Task<LeagueDetailDto> JoinAsync(string userId, string code, JoinLeagueRequest req, CancellationToken ct = default)
     {
         var (invite, league) = await LoadInviteAsync(code, ct);
