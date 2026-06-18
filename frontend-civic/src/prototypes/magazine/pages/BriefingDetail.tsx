@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import type { CivicBriefing } from "@/api/types";
 import { getBriefingBySlug } from "@/api/briefings";
 import { requestDebateFromBriefing } from "@/api/debates";
+import { markQuestDone } from "@/lib/questProgress";
 import { useAuth } from "@/auth/AuthContext";
 import { PullQuote } from "../components/PullQuote";
 import { SharePreviewCard } from "../components/SharePreviewCard";
@@ -21,7 +22,11 @@ export default function MagazineBriefingDetail() {
     if (!slug) return;
     setLoaded(false);
     void getBriefingBySlug(slug)
-      .then((b) => setBriefing(b ?? null))
+      .then((b) => {
+        setBriefing(b ?? null);
+        // Completes the "Read today's briefing" daily quest on PlayerHome.
+        if (b) markQuestDone("briefing-read");
+      })
       .finally(() => setLoaded(true));
   }, [slug]);
 

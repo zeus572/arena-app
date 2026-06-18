@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
 
 import MagazineLayout from "@/prototypes/magazine/Layout";
-import MagazineHome from "@/prototypes/magazine/pages/Home";
+import MagazineHomeIndex from "@/prototypes/magazine/pages/HomeIndex";
+import MagazineReadView from "@/prototypes/magazine/pages/MagazineReadView";
 import MagazineBriefingDetail from "@/prototypes/magazine/pages/BriefingDetail";
 import MagazineTaxApportionment from "@/prototypes/magazine/pages/TaxApportionment";
 import MagazineTaxMethodology from "@/prototypes/magazine/pages/TaxMethodology";
@@ -44,7 +45,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<MagazineLayout />}>
-            <Route index element={<MagazineHome />} />
+            <Route index element={<MagazineHomeIndex />} />
+            <Route path="magazine" element={<MagazineReadView />} />
             <Route
               path="briefings/who-gets-your-tax-dollar"
               element={<MagazineTaxApportionment />}
