@@ -12,6 +12,9 @@ namespace Arena.API.Controllers.Api;
 [Route("api/[controller]")]
 public class DebatesController : ControllerBase
 {
+    private const int MaxTopicLength = 300;
+    private const int MaxDescriptionLength = 2000;
+
     private readonly ArenaDbContext _db;
     private readonly ICurrentUserService _userService;
     private readonly TaggingService _tagging;
@@ -128,6 +131,12 @@ public class DebatesController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Topic))
             return BadRequest(new { error = "Topic is required." });
 
+        // Bound untrusted free-text that will be embedded in the LLM prompt.
+        if (request.Topic.Trim().Length > MaxTopicLength)
+            return BadRequest(new { error = $"Topic must be {MaxTopicLength} characters or less." });
+        if (request.Description is { } desc && desc.Trim().Length > MaxDescriptionLength)
+            return BadRequest(new { error = $"Description must be {MaxDescriptionLength} characters or less." });
+
         var user = await _userService.GetOrCreateUserAsync();
 
         Guid proponentId, opponentId;
@@ -240,6 +249,9 @@ public class DebatesController : ControllerBase
         var topic = string.IsNullOrWhiteSpace(request.Topic)
             ? $"Re: {parent.Topic}"
             : request.Topic.Trim();
+
+        if (topic.Length > MaxTopicLength)
+            return BadRequest(new { error = $"Topic must be {MaxTopicLength} characters or less." });
 
         var fork = new Debate
         {
