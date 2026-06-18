@@ -76,6 +76,16 @@ public class LeaguesController : ControllerBase
     public Task<IActionResult> PreviewInvite(string code, CancellationToken ct)
         => Execute(() => _leagues.PreviewInviteAsync(RequireUserId(), code, ct));
 
+    /// <summary>
+    /// Anonymous-friendly invite preview for the signed-out join page. Returns only league name,
+    /// headcount, and organizer (no caller-specific or sensitive fields) so a visitor without an
+    /// account still sees what they'd be joining and is nudged to sign in.
+    /// </summary>
+    [HttpGet("join/{code}/public")]
+    [AllowAnonymous]
+    public Task<IActionResult> PublicPreviewInvite(string code, CancellationToken ct)
+        => Execute(() => _leagues.PublicPreviewInviteAsync(code, ct));
+
     [HttpPost("join/{code}")]
     public Task<IActionResult> Join(string code, [FromBody] JoinLeagueRequest req, CancellationToken ct)
         => Execute(() => _leagues.JoinAsync(RequireUserId(), code, req ?? new JoinLeagueRequest(), ct));

@@ -172,6 +172,27 @@ public class LeagueInvitePreviewDto
     public bool IsFull { get; set; }
 }
 
+/// <summary>
+/// Privacy-safe invite preview served to signed-out visitors so the join page can entice them to
+/// create an account: just the league name, how many people are already in, and who organizes it.
+/// Deliberately omits anything that needs a caller identity (e.g. AlreadyMember) or that we don't
+/// want to leak to anyone holding the link (e.g. member emails).
+/// </summary>
+public class LeagueInvitePublicPreviewDto
+{
+    public string Code { get; set; } = "";
+    public string LeagueName { get; set; } = "";
+    public int MemberCount { get; set; }
+    public int MaxMembers { get; set; }
+    /// <summary>The organizer (owner) the visitor would be joining, for social proof.</summary>
+    public string? OrganizerDisplayName { get; set; }
+    public string? OrganizerAvatarUrl { get; set; }
+    public bool IsValid { get; set; }
+    /// <summary>Why the invite can't be used (expired/revoked/full), when IsValid is false.</summary>
+    public string? Reason { get; set; }
+    public bool IsFull { get; set; }
+}
+
 // ---------------------------------------------------------------- Rounds
 
 public class LeagueRoundSummaryDto
