@@ -35,7 +35,7 @@ public static class NewsResponsePrompts
     /// Bump this whenever the prompt or option shape changes meaningfully. Cached options with an
     /// older version are regenerated on next view, so improvements roll out without a manual wipe.
     /// </summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     public static (string System, string User) Build(VirtualCandidate candidate, Briefing briefing, int optionCount, int maxChars)
     {

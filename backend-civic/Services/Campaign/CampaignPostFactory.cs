@@ -107,7 +107,9 @@ public class CampaignPostFactory : ICampaignPostFactory
         try
         {
             var (sys, user) = NewsResponsePrompts.Build(candidate, briefing, count, maxChars);
-            var dto = await _llm.GenerateStructuredAsync<GeneratedNewsResponsesDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 1500, ct: ct);
+            // Headroom for 3 multi-sentence bodies; too low a cap truncates the JSON
+            // itself and forces the templated fallback.
+            var dto = await _llm.GenerateStructuredAsync<GeneratedNewsResponsesDto>(sys, user, LlmModelTier.Sonnet, maxTokens: 2200, ct: ct);
             var options = dto.Options
                 .Where(o => !string.IsNullOrWhiteSpace(o.Body))
                 .Take(count)
@@ -235,6 +237,19 @@ public class CampaignPostFactory : ICampaignPostFactory
         catch { return new(); }
     }
 
+    // Graceful truncation: never cut a response off mid-word or mid-sentence.
+    // Prefer ending on a complete sentence within the limit; otherwise fall back
+    // to the last whole word and add an ellipsis so it reads as a finished thought.
     private static string Truncate(string s, int max)
-        => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max].TrimEnd();
+    {
+        if (string.IsNullOrEmpty(s) || s.Length <= max) return s;
+        var slice = s[..max];
+        var lastSentence = slice.LastIndexOfAny(new[] { '.', '!', '?' });
+        if (lastSentence >= max / 2)
+            return slice[..(lastSentence + 1)].TrimEnd();
+        var lastSpace = slice.LastIndexOf(' ');
+        if (lastSpace >= max / 2)
+            return slice[..lastSpace].TrimEnd() + "…";
+        return slice.TrimEnd() + "…";
+    }
 }
