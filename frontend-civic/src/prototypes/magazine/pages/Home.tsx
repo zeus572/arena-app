@@ -6,9 +6,11 @@ import { getBriefings } from "@/api/briefings";
 import { localityLabel } from "@/api/profile";
 import { getConcepts } from "@/api/concepts";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
+import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { ButtonLink } from "../components/Button";
+import { CandidateAvatar } from "../components/CandidateAvatar";
 import { CoverStory } from "../components/CoverStory";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PullQuote } from "../components/PullQuote";
@@ -37,6 +39,7 @@ export default function MagazineHome() {
   const [page, setPage] = useState(1);
   const [concept, setConcept] = useState<Concept | null>(null);
   const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
+  const [activeCampaign, setActiveCampaign] = useState<CivicCampaignSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const explainersRef = useRef<HTMLElement>(null);
   const didMountRef = useRef(false);
@@ -74,6 +77,30 @@ export default function MagazineHome() {
       .catch(() => {});
   }, []);
 
+  // Once the player has picked a candidate to manage (an active campaign), the
+  // "pick a candidate" CTA below is swapped for a tile showing that candidate's
+  // current favorability. Only signed-in users can have campaigns.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setActiveCampaign(null);
+      return;
+    }
+    let cancelled = false;
+    void listCampaigns()
+      .then((campaigns) => {
+        if (cancelled) return;
+        const active =
+          campaigns
+            .filter((c) => c.status === "Active")
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
+        setActiveCampaign(active);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rest = explainers;
 
@@ -94,25 +121,29 @@ export default function MagazineHome() {
       )}
       <div className="my-10 grid items-stretch gap-4 md:grid-cols-2">
         <CountdownTimer scope="National" testId="countdown-national" className="h-full" />
-        <Link
-          to="/campaigns"
-          data-testid="campaign-cta"
-          className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-        >
-          <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-              <Megaphone className="h-4 w-4" /> Campaign Manager
-            </p>
-            <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-              Take the reins for a candidate, respond to the real headlines, and try to win the race
-              before the clock runs out.
-            </p>
-          </div>
-          <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-            Manage a campaign →
-          </span>
-        </Link>
+        {activeCampaign ? (
+          <CampaignFavorabilityTile campaign={activeCampaign} />
+        ) : (
+          <Link
+            to="/campaigns"
+            data-testid="campaign-cta"
+            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
+          >
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+                <Megaphone className="h-4 w-4" /> Campaign Manager
+              </p>
+              <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
+                Take the reins for a candidate, respond to the real headlines, and try to win the race
+                before the clock runs out.
+              </p>
+            </div>
+            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+              Manage a campaign →
+            </span>
+          </Link>
+        )}
       </div>
 
       {cover && <CoverStory briefing={cover} />}
@@ -441,5 +472,62 @@ export default function MagazineHome() {
         )}
       </section>
     </div>
+  );
+}
+
+// Replaces the "pick a candidate" CTA once the player is managing a campaign.
+// Surfaces the candidate's current favorability (their support share across the
+// race) as the headline metric, and links straight back into the campaign.
+function CampaignFavorabilityTile({ campaign }: { campaign: CivicCampaignSummary }) {
+  const favorability = campaign.playerSupport;
+  return (
+    <Link
+      to={`/campaigns/${campaign.id}`}
+      data-testid="campaign-favorability"
+      className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
+    >
+      <div>
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+          <Megaphone className="h-4 w-4" /> Campaign Manager
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <CandidateAvatar
+            candidate={{
+              slug: campaign.candidateSlug,
+              name: campaign.candidateName,
+              avatarBaseUrl: "",
+            }}
+            size={44}
+          />
+          <div className="min-w-0">
+            <h2 className="display truncate text-2xl leading-tight">{campaign.candidateName}</h2>
+            <p className="truncate text-sm text-[var(--fg-soft)]">
+              {campaign.party} · {campaign.raceLabel}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex items-end gap-3">
+          <p className="display text-[44px] leading-none" data-testid="favorability-value">
+            {favorability.toFixed(1)}
+            <span className="text-xl">%</span>
+          </p>
+          <div className="pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
+              Favorability
+            </p>
+            <p
+              className={`text-xs font-semibold ${
+                campaign.isLeading ? "text-emerald-600" : "text-[var(--fg-soft)]"
+              }`}
+            >
+              {campaign.isLeading ? "Leading the race" : "Trailing the field"}
+            </p>
+          </div>
+        </div>
+      </div>
+      <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+        Resume campaign →
+      </span>
+    </Link>
   );
 }
