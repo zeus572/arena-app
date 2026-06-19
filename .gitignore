@@ -56,3 +56,8 @@ npm-debug.log*
 # Local dev server logs (coalition feature)
 *.devlog.txt
 .claude/scheduled_tasks.lock
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
