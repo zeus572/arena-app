@@ -768,8 +768,14 @@ public class CoalitionLoopService
         string? circleId = null, circleName = null; double tier = 0; var movement = "Stay";
         if (member is not null)
         {
-            var lg = await _db.CoalitionCircles.FirstOrDefaultAsync(l => l.Id == member.CircleId, ct);
-            circleId = member.CircleId.ToString(); circleName = lg?.Name; tier = lg?.GapTier ?? 0;
+            // Name from the circle's rank in gap-tier order (derived — so the ladder name
+            // shows even for rows seeded under the old "League N" naming).
+            var allCircles = await _db.CoalitionCircles.OrderBy(l => l.GapTier).ToListAsync(ct);
+            var rank = allCircles.FindIndex(l => l.Id == member.CircleId);
+            var lg = rank >= 0 ? allCircles[rank] : null;
+            circleId = member.CircleId.ToString();
+            circleName = lg != null ? CircleTierName(rank) : null;
+            tier = lg?.GapTier ?? 0;
             movement = PromotionService.Decide(skill, tier).ToString();
         }
 
@@ -833,6 +839,16 @@ public class CoalitionLoopService
         return member;
     }
 
+    // Evocative tier-name ladder for circles (ascending gap difficulty / skill tier).
+    // Shown as "<name> Circle" in the UI. The display name is derived from the circle's
+    // RANK (position in gap-tier order) at READ time, so existing rows show the ladder
+    // name without a recompose; it's also stamped as the stored Name on compose.
+    private static readonly string[] CircleTierLadder =
+        { "Citizen", "Delegate", "Framer", "Senator", "Statesman", "Founder" };
+
+    private static string CircleTierName(int rank) =>
+        rank >= 0 && rank < CircleTierLadder.Length ? CircleTierLadder[rank] : $"Circle {rank + 1}";
+
     public async Task ComposeCirclesAsync(int size = 4, CancellationToken ct = default)
     {
         _db.CoalitionCircleMembers.RemoveRange(_db.CoalitionCircleMembers);
@@ -852,15 +868,20 @@ public class CoalitionLoopService
         var composed = CircleComposer.Compose(pool, spectrum, size);
         var worlds = await LoadWorldAsync(ct);
 
-        var i = 1;
+        var built = new List<CoalitionCircle>();
         foreach (var cl in composed)
         {
             var tier = cl.Members.Count == 0 ? 0.5 : Math.Clamp(cl.Members.Average(m => UserSkill(m.UserId, worlds)), 0.15, 0.9);
-            var circle = new CoalitionCircle { Id = Guid.NewGuid(), Name = $"Circle {i++}", GapTier = tier };
+            var circle = new CoalitionCircle { Id = Guid.NewGuid(), GapTier = tier };
             foreach (var m in cl.Members)
                 circle.Members.Add(new CoalitionCircleMember { Id = Guid.NewGuid(), UserId = m.UserId, SpectrumBucket = m.SpectrumBucket, AgeBand = m.Age.ToString() });
-            _db.CoalitionCircles.Add(circle);
+            built.Add(circle);
         }
+        // Stamp ladder names in gap-tier order (read paths re-derive the same name by rank).
+        var rank = 0;
+        foreach (var circle in built.OrderBy(c => c.GapTier))
+            circle.Name = CircleTierName(rank++);
+        _db.CoalitionCircles.AddRange(built);
         await _db.SaveChangesAsync(ct);
     }
 
@@ -879,9 +900,11 @@ public class CoalitionLoopService
         var agentUsers = (await _db.CoalitionParticipants.Where(c => c.IsAgent).Select(c => c.UserId).Distinct().ToListAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var ordered = circles.OrderBy(l => l.GapTier).ToList();
         var result = new List<CircleDto>();
-        foreach (var l in circles.OrderBy(l => l.GapTier))
+        for (var rank = 0; rank < ordered.Count; rank++)
         {
+            var l = ordered[rank];
             var contribs = l.Members
                 .Select(m => contrib.TryGetValue(m.UserId, out var c) ? c : new PlayerContribution(m.UserId, 0, 0, 0, 0))
                 .ToList();
@@ -893,7 +916,7 @@ public class CoalitionLoopService
                 return new StandingRowDto(idx + 1, s.UserId, Pretty(s.UserId, isAgent), isAgent, s.Score,
                     c.CoalitionsSigned, c.TotalBreadthOfSignedCoalitions, c.MovedCount);
             }).ToList();
-            result.Add(new CircleDto(l.Id.ToString(), l.Name, l.GapTier, DifficultyLabel(l.GapTier),
+            result.Add(new CircleDto(l.Id.ToString(), CircleTierName(rank), l.GapTier, DifficultyLabel(l.GapTier),
                 l.Members.Select(m => m.SpectrumBucket).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), rows));
         }
         return result;
