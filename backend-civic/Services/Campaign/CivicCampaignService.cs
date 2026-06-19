@@ -3,6 +3,7 @@ using Civic.API.Data;
 using Civic.API.Mapping;
 using Civic.API.Models;
 using Civic.API.Models.DTOs;
+using Civic.API.Services.Coalition.Product;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -26,6 +27,7 @@ public class CivicCampaignService
     private readonly ICivicCatalog _catalog;
     private readonly CivicCampaignOptions _opts;
     private readonly ILogger<CivicCampaignService> _log;
+    private readonly ReasoningLedger _ledger;
     private readonly Random _random = new();
 
     private static readonly JsonSerializerOptions Json = new();
@@ -35,13 +37,15 @@ public class CivicCampaignService
         ICampaignPostFactory postFactory,
         ICivicCatalog catalog,
         IOptions<CivicCampaignOptions> opts,
-        ILogger<CivicCampaignService> log)
+        ILogger<CivicCampaignService> log,
+        ReasoningLedger ledger)
     {
         _db = db;
         _postFactory = postFactory;
         _catalog = catalog;
         _opts = opts.Value;
         _log = log;
+        _ledger = ledger;
     }
 
     // ---------------------------------------------------------------- Race picker
@@ -261,6 +265,10 @@ public class CivicCampaignService
         campaign.ActionsRemaining -= 1;
         campaign.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+
+        // Responding to a news item is real engagement — credit reasoning XP (capped/diminishing).
+        if (action.ActionType == CivicCampaignActionType.RespondToNews)
+            await _ledger.RecordAsync(userId, CoalitionActType.CampaignNewsResponse, ct: ct);
 
         campaign = await LoadOwnedAsync(userId, id, ct);
         var todayActions = campaign.Actions.Where(a => a.DayNumber == campaign.CurrentDay).ToList();

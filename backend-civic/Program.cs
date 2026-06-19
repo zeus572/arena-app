@@ -85,6 +85,9 @@ builder.Services.AddScoped<
 // SECURITY: the single LLM-access gate — only premium users trigger coalition LLM calls.
 builder.Services.AddScoped<Civic.API.Services.Coalition.ILlmAccessPolicy, Civic.API.Services.Coalition.PremiumLlmAccessPolicy>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.ITwoFramingsService, Civic.API.Services.Coalition.TwoFramingsService>();
+// Unified XP ledger: shared by the coalition loop AND campaign/reaction services so a
+// player's reasoning XP reflects all engagement (not just coalition acts).
+builder.Services.AddScoped<Civic.API.Services.Coalition.Product.ReasoningLedger>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLoopService>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, Civic.API.Services.Coalition.Judges.CoalitionJudge>();

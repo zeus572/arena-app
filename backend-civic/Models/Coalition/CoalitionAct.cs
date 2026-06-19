@@ -27,6 +27,10 @@ public enum CoalitionActType
     // system payouts
     CoalitionPassReward,      // scarce: deposited to each signer when a coalition passes
     DiedReasoningPayout,      // reasoning: dead provisions still pay participants
+    // cross-app engagement (reasoning currency, capped/diminishing like the rest)
+    CampaignNewsResponse,     // responded to a news item in your campaign
+    CampaignReaction,         // reacted to a candidate post (cheap; anti-farm via daily cap)
+    BriefingRead,             // read a daily briefing (the "read today's briefing" quest)
 }
 
 /// <summary>A recorded act in the ledger: what was done, how it scored, and what it paid.</summary>

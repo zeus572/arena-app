@@ -67,31 +67,31 @@ public class CoalitionLifecycleService
         return born;
     }
 
-    /// <summary>Move players to the league tier matching their skill (promotion/relegation). Returns count moved.</summary>
+    /// <summary>Move players to the circle tier matching their skill (promotion/relegation). Returns count moved.</summary>
     public async Task<int> ApplyPromotionsAsync(CancellationToken ct = default)
     {
-        var leagues = await _db.CoalitionLeagues.OrderBy(l => l.GapTier).ToListAsync(ct);
-        if (leagues.Count < 2) return 0;
+        var circles = await _db.CoalitionCircles.OrderBy(l => l.GapTier).ToListAsync(ct);
+        if (circles.Count < 2) return 0;
 
-        var members = await _db.CoalitionLeagueMembers.ToListAsync(ct);
+        var members = await _db.CoalitionCircleMembers.ToListAsync(ct);
         var moved = 0;
         foreach (var m in members)
         {
-            var league = leagues.FirstOrDefault(l => l.Id == m.LeagueId);
-            if (league is null) continue;
-            var idx = leagues.FindIndex(l => l.Id == league.Id);
+            var circle = circles.FirstOrDefault(l => l.Id == m.CircleId);
+            if (circle is null) continue;
+            var idx = circles.FindIndex(l => l.Id == circle.Id);
             var skill = await _loop.GetUserSkillAsync(m.UserId, ct);
 
-            var decision = PromotionService.Decide(skill, league.GapTier);
+            var decision = PromotionService.Decide(skill, circle.GapTier);
             var targetIdx = decision switch
             {
-                LeagueMovement.Promote => Math.Min(idx + 1, leagues.Count - 1),
-                LeagueMovement.Relegate => Math.Max(idx - 1, 0),
+                CircleMovement.Promote => Math.Min(idx + 1, circles.Count - 1),
+                CircleMovement.Relegate => Math.Max(idx - 1, 0),
                 _ => idx,
             };
             if (targetIdx != idx)
             {
-                m.LeagueId = leagues[targetIdx].Id;
+                m.CircleId = circles[targetIdx].Id;
                 moved++;
             }
         }
@@ -120,7 +120,7 @@ public class CoalitionLifecycleService
         return rounds;
     }
 
-    /// <summary>One lifecycle tick: resolve deadlines, top up, run agent ballast, re-balance leagues.</summary>
+    /// <summary>One lifecycle tick: resolve deadlines, top up, run agent ballast, re-balance circles.</summary>
     public async Task RunTickAsync(CancellationToken ct = default)
     {
         await ResolveOverdueAsync(ct);

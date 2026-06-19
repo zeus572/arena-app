@@ -1,10 +1,10 @@
 namespace Civic.API.Services.Coalition.Curriculum;
 
 /// <summary>One past provision result for a group: the (normalized) gap width it faced and whether it closed a coalition.</summary>
-public sealed record LeagueOutcome(double GapWidth, bool Closed);
+public sealed record CircleOutcome(double GapWidth, bool Closed);
 
 /// <summary>A group's bridging track record.</summary>
-public sealed record LeagueHistory(IReadOnlyList<LeagueOutcome> Outcomes)
+public sealed record CircleHistory(IReadOnlyList<CircleOutcome> Outcomes)
 {
     public int Attempted => Outcomes.Count;
     public int Closed => Outcomes.Count(o => o.Closed);
@@ -18,9 +18,9 @@ public static class GroupSkill
 {
     /// <summary>
     /// Skill in [0,1]: a blend of how reliably the group closes coalitions and how wide a gap
-    /// it has managed to bridge. A brand-new league (no history) is skill 0.
+    /// it has managed to bridge. A brand-new circle (no history) is skill 0.
     /// </summary>
-    public static double Estimate(LeagueHistory history)
+    public static double Estimate(CircleHistory history)
     {
         if (history.Attempted == 0) return 0.0;
         return Math.Clamp(0.5 * history.SuccessRate + 0.5 * history.MaxClosedGap, 0.0, 1.0);
