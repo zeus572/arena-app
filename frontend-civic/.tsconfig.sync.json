@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/taxModel/engine*": ["./src/taxModel/engine/index.ts"],
+      "@/*": ["./src/*"]
+    }
+  }
+}
