@@ -22,7 +22,7 @@ const CLOSED_STATES = ["Passed", "Forked", "Died"];
 
 // Level ladder. There's no discrete "level" field yet, so we derive it from
 // reasoning XP (500 XP/level) and name the tiers from this ladder; tiers outside
-// the named range fall back to the player's league/skill label.
+// the named range fall back to the player's circle/skill label.
 const XP_PER_LEVEL = 500;
 const TIER_NAMES: Record<number, string> = {
   5: "Apprentice",
@@ -97,7 +97,7 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
   const xpInto = reasoningXp % XP_PER_LEVEL;
   const xpFraction = xpInto / XP_PER_LEVEL;
   const tierName = (lvl: number) =>
-    TIER_NAMES[lvl] ?? me.leagueName ?? me.skillLabel ?? `Level ${lvl}`;
+    TIER_NAMES[lvl] ?? me.circleName ?? me.skillLabel ?? `Level ${lvl}`;
 
   const skillPct = Math.round((me.skill ?? 0) * 100);
   const governancePct = Math.round((me.record?.governanceRatio ?? 0) * 100);
@@ -196,7 +196,7 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
             tierName={tierName(level)}
             xpInto={xpInto}
             xpFraction={xpFraction}
-            leagueName={me.leagueName}
+            circleName={me.circleName}
             skillPct={skillPct}
             governancePct={governancePct}
             planksPassed={me.record?.planksPassed ?? 0}
@@ -505,7 +505,7 @@ function PlayerStatsCard({
   tierName,
   xpInto,
   xpFraction,
-  leagueName,
+  circleName,
   skillPct,
   governancePct,
   planksPassed,
@@ -516,7 +516,7 @@ function PlayerStatsCard({
   tierName: string;
   xpInto: number;
   xpFraction: number;
-  leagueName: string | null;
+  circleName: string | null;
   skillPct: number;
   governancePct: number;
   planksPassed: number;
@@ -543,9 +543,9 @@ function PlayerStatsCard({
           <p className="mt-0.5 text-xs text-[var(--muted)]">
             {xpInto} / {XP_PER_LEVEL} XP to Level {level + 1}
           </p>
-          {leagueName && (
+          {circleName && (
             <p className="mt-2 inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--accent)]">
-              {leagueName} League
+              {circleName} Circle
             </p>
           )}
         </div>
@@ -643,7 +643,7 @@ function ProgressionRail({
         <h3 className="display text-lg">Your progression</h3>
         <span className="text-[11px] font-semibold text-[var(--muted)]">
           Next reward at <strong className="font-semibold text-[var(--accent)]">Level {level + 1}</strong>:
-          promote-eligible to {tierName(level + 1)} League
+          promote-eligible to {tierName(level + 1)} Circle
         </span>
       </div>
       <div className="relative flex items-start justify-between">

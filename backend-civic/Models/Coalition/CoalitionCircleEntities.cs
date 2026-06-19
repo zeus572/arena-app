@@ -3,11 +3,14 @@ using System.ComponentModel.DataAnnotations;
 namespace Civic.API.Models;
 
 /// <summary>
-/// A composed coalition league (Layer 3.3): a structured-diverse group balanced
+/// A composed coalition circle (Layer 3.3): a structured-diverse cohort balanced
 /// across the Values spectrum. <see cref="GapTier"/> is the difficulty band (gap
-/// width in [0,1]) the league is served (Layer 3.2).
+/// width in [0,1]) the circle is served (Layer 3.2). A circle is the skill/engagement
+/// cohort a player is laddered through (promote/relegate by tier) — this is the
+/// DuoLingo-style grouping, and is DISTINCT from a social <c>League</c> (a private
+/// group of friends; see <see cref="League"/>).
 /// </summary>
-public class CoalitionLeague
+public class CoalitionCircle
 {
     public Guid Id { get; set; }
 
@@ -18,16 +21,16 @@ public class CoalitionLeague
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public List<CoalitionLeagueMember> Members { get; set; } = new();
+    public List<CoalitionCircleMember> Members { get; set; } = new();
 }
 
-/// <summary>A member of a coalition league (their spectrum bucket + age band).</summary>
-public class CoalitionLeagueMember
+/// <summary>A member of a coalition circle (their spectrum bucket + age band).</summary>
+public class CoalitionCircleMember
 {
     public Guid Id { get; set; }
 
-    public Guid LeagueId { get; set; }
-    public CoalitionLeague? League { get; set; }
+    public Guid CircleId { get; set; }
+    public CoalitionCircle? Circle { get; set; }
 
     [Required, MaxLength(120)]
     public string UserId { get; set; } = "";

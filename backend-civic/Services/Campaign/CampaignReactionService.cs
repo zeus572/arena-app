@@ -1,5 +1,6 @@
 using Civic.API.Data;
 using Civic.API.Models;
+using Civic.API.Services.Coalition.Product;
 using Microsoft.EntityFrameworkCore;
 
 namespace Civic.API.Services.Campaign;
@@ -28,8 +29,13 @@ public interface ICampaignReactionService
 public class CampaignReactionService : ICampaignReactionService
 {
     private readonly CivicDbContext _db;
+    private readonly ReasoningLedger _ledger;
 
-    public CampaignReactionService(CivicDbContext db) => _db = db;
+    public CampaignReactionService(CivicDbContext db, ReasoningLedger ledger)
+    {
+        _db = db;
+        _ledger = ledger;
+    }
 
     public async Task<ReactionResult> ReactAsync(
         string userId, Guid postId, Guid? fragmentId, ReactionType type, CancellationToken ct = default)
@@ -47,6 +53,7 @@ public class CampaignReactionService : ICampaignReactionService
         var existing = await _db.PostReactions.FirstOrDefaultAsync(
             r => r.UserId == userId && r.PostId == postId && r.FragmentId == fragmentId, ct);
 
+        var isNewReaction = existing is null;
         if (existing is null)
         {
             _db.PostReactions.Add(new PostReaction
@@ -65,6 +72,12 @@ public class CampaignReactionService : ICampaignReactionService
         }
 
         await RecomputeAndSaveAsync(post, fragment, ct);
+
+        // Award reasoning XP only for a genuinely new reaction (not a flip/no-op). The daily
+        // reasoning cap + diminishing curve keep this from being farmed.
+        if (isNewReaction)
+            await _ledger.RecordAsync(userId, CoalitionActType.CampaignReaction, ct: ct);
+
         return new ReactionResult(ReactionOutcome.Applied, Counts(post), fragment is null ? null : Counts(fragment));
     }
 

@@ -62,8 +62,8 @@ public class CivicDbContext : DbContext
     public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
     public DbSet<ExtractionCacheEntry> ExtractionCacheEntries => Set<ExtractionCacheEntry>();
     public DbSet<CoalitionParticipant> CoalitionParticipants => Set<CoalitionParticipant>();
-    public DbSet<CoalitionLeague> CoalitionLeagues => Set<CoalitionLeague>();
-    public DbSet<CoalitionLeagueMember> CoalitionLeagueMembers => Set<CoalitionLeagueMember>();
+    public DbSet<CoalitionCircle> CoalitionCircles => Set<CoalitionCircle>();
+    public DbSet<CoalitionCircleMember> CoalitionCircleMembers => Set<CoalitionCircleMember>();
     public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
     public DbSet<CoalitionAct> CoalitionActs => Set<CoalitionAct>();
 
@@ -656,19 +656,19 @@ public class CivicDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<CoalitionLeague>(e =>
+        modelBuilder.Entity<CoalitionCircle>(e =>
         {
             e.HasKey(l => l.Id);
             e.HasMany(l => l.Members)
-                .WithOne(m => m.League!)
-                .HasForeignKey(m => m.LeagueId)
+                .WithOne(m => m.Circle!)
+                .HasForeignKey(m => m.CircleId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<CoalitionLeagueMember>(e =>
+        modelBuilder.Entity<CoalitionCircleMember>(e =>
         {
             e.HasKey(m => m.Id);
-            // A user belongs to at most one coalition league.
+            // A user belongs to at most one coalition circle.
             e.HasIndex(m => m.UserId).IsUnique();
         });
 

@@ -50,25 +50,25 @@ public static class CampaignMilestones
     }
 }
 
-public enum LeagueMovement { Relegate, Stay, Promote }
+public enum CircleMovement { Relegate, Stay, Promote }
 
 /// <summary>
 /// Promotion/relegation keeps players near their ability edge: an over-skilled
-/// group is promoted to a wider-gap league, a struggling one relegated. Pure.
-/// (Skill comes from <see cref="GroupSkill"/>; league "gap tier" is its served gap
+/// group is promoted to a wider-gap circle, a struggling one relegated. Pure.
+/// (Skill comes from <see cref="GroupSkill"/>; circle "gap tier" is its served gap
 /// width in [0,1].)
 /// </summary>
 public static class PromotionService
 {
-    public static LeagueMovement Decide(double skill, double leagueGapTier, double margin = 0.15)
+    public static CircleMovement Decide(double skill, double circleGapTier, double margin = 0.15)
     {
-        if (skill > leagueGapTier + margin) return LeagueMovement.Promote;
-        if (skill < leagueGapTier - margin) return LeagueMovement.Relegate;
-        return LeagueMovement.Stay;
+        if (skill > circleGapTier + margin) return CircleMovement.Promote;
+        if (skill < circleGapTier - margin) return CircleMovement.Relegate;
+        return CircleMovement.Stay;
     }
 
     /// <summary>The tier a player moves to on a promotion/relegation, from a ladder of tiers (ascending).</summary>
-    public static double NextTier(LeagueMovement movement, double currentTier, IReadOnlyList<double> tiers)
+    public static double NextTier(CircleMovement movement, double currentTier, IReadOnlyList<double> tiers)
     {
         if (tiers.Count == 0) return currentTier;
         var ordered = tiers.OrderBy(t => t).ToList();
@@ -77,8 +77,8 @@ public static class PromotionService
 
         var next = movement switch
         {
-            LeagueMovement.Promote => Math.Min(idx + 1, ordered.Count - 1),
-            LeagueMovement.Relegate => Math.Max(idx - 1, 0),
+            CircleMovement.Promote => Math.Min(idx + 1, ordered.Count - 1),
+            CircleMovement.Relegate => Math.Max(idx - 1, 0),
             _ => idx,
         };
         return ordered[next];

@@ -3,7 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import type { CivicBriefing } from "@/api/types";
 import { getBriefingBySlug } from "@/api/briefings";
 import { requestDebateFromBriefing } from "@/api/debates";
-import { markQuestDone } from "@/lib/questProgress";
+import { isQuestDone, markQuestDone } from "@/lib/questProgress";
+import { recordStandaloneAct } from "@/api/coalition";
 import { useAuth } from "@/auth/AuthContext";
 import { PullQuote } from "../components/PullQuote";
 import { SharePreviewCard } from "../components/SharePreviewCard";
@@ -24,8 +25,12 @@ export default function MagazineBriefingDetail() {
     void getBriefingBySlug(slug)
       .then((b) => {
         setBriefing(b ?? null);
-        // Completes the "Read today's briefing" daily quest on PlayerHome.
-        if (b) markQuestDone("briefing-read");
+        // Completes the "Read today's briefing" daily quest on PlayerHome and awards
+        // reasoning XP once per day (the server applies the daily cap / diminishing curve).
+        if (b && !isQuestDone("briefing-read")) {
+          markQuestDone("briefing-read");
+          void recordStandaloneAct("BriefingRead").catch(() => {});
+        }
       })
       .finally(() => setLoaded(true));
   }, [slug]);

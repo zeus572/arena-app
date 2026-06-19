@@ -27,17 +27,19 @@ public class CoalitionLoopService
     private readonly ProvisionBirthService _birth;
     private readonly Judges.ICoalitionJudge _judge;
     private readonly ITwoFramingsService _framings;
+    private readonly ReasoningLedger _ledger;
     private readonly ProvisionStateMachine _sm = new();
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
     public CoalitionLoopService(CivicDbContext db, IExtractionService extraction, ProvisionBirthService birth,
-        Judges.ICoalitionJudge judge, ITwoFramingsService framings)
+        Judges.ICoalitionJudge judge, ITwoFramingsService framings, ReasoningLedger ledger)
     {
         _db = db;
         _extraction = extraction;
         _birth = birth;
         _judge = judge;
         _framings = framings;
+        _ledger = ledger;
     }
 
     /// <summary>The provision's cultural vs governance framings (doc 02). LLM (premium) or heuristic.</summary>
@@ -677,30 +679,9 @@ public class CoalitionLoopService
             }
         }
 
-        var basePts = CoalitionPoints.BasePoints(type);
-        if (CoalitionPoints.QualityGated(type))
-            basePts = Math.Max(1, (int)Math.Round(basePts * Math.Max(0.2, quality / 100.0)));
-
-        var currency = CoalitionPoints.Currency(type);
-        int points;
-        if (currency == "reasoning")
-        {
-            var today = DateTime.UtcNow.Date;
-            var todays = await _db.CoalitionActs
-                .Where(a => a.UserId == userId && a.Currency == "reasoning" && a.CreatedAt >= today).ToListAsync(ct);
-            points = CoalitionPoints.ApplyDiminishing(basePts, todays.Count, todays.Sum(a => a.Points));
-        }
-        else points = basePts;
-
-        _db.CoalitionActs.Add(new CoalitionAct
-        {
-            Id = Guid.NewGuid(), UserId = userId, ProvisionId = provisionId, VersionId = versionId, Type = type,
-            Payload = payload is null ? null : (payload.Length > 4000 ? payload[..4000] : payload),
-            GovernanceScore = governance, QualityScore = quality, Points = points, Currency = currency,
-        });
-        await _db.SaveChangesAsync(ct);
-        await LogActivityAsync(userId, ct);
-        return (points, currency);
+        // The shared ledger applies quality-gating, the within-day diminishing curve,
+        // the daily reasoning cap, persists the act, and logs the activity day.
+        return await _ledger.RecordAsync(userId, type, payload, provisionId, versionId, governance, quality, ct: ct);
     }
 
     // ---------------------------------------------------------------- Layer 3 gamification
@@ -737,14 +718,8 @@ public class CoalitionLoopService
         return (agents, baseV);
     }
 
-    public async Task LogActivityAsync(string userId, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(userId)) return;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (await _db.CoalitionActivityDays.AnyAsync(a => a.UserId == userId && a.Day == today, ct)) return;
-        _db.CoalitionActivityDays.Add(new CoalitionActivityDay { Id = Guid.NewGuid(), UserId = userId, Day = today });
-        await _db.SaveChangesAsync(ct);
-    }
+    public Task LogActivityAsync(string userId, CancellationToken ct = default) =>
+        _ledger.LogActivityAsync(userId, ct);
 
     private sealed record ProvisionWorld(Provision P, ProvisionLoopState State, double Gap, bool Governance, CoalitionOutcome? Pass);
 
@@ -767,9 +742,9 @@ public class CoalitionLoopService
 
     private double UserSkill(string userId, IReadOnlyList<ProvisionWorld> worlds)
     {
-        var history = new LeagueHistory(worlds
+        var history = new CircleHistory(worlds
             .Where(w => w.State.Players.Any(pl => Eq(pl.UserId, userId)))
-            .Select(w => new LeagueOutcome(w.Gap, w.Pass?.Signers?.Any(s => Eq(s, userId)) == true))
+            .Select(w => new CircleOutcome(w.Gap, w.Pass?.Signers?.Any(s => Eq(s, userId)) == true))
             .ToList());
         return GroupSkill.Estimate(history);
     }
@@ -788,13 +763,13 @@ public class CoalitionLoopService
 
         var skill = UserSkill(userId, worlds);
         var cadence = await CadenceAsync(userId, ct);
-        var member = await EnsureLeagueMembershipAsync(userId, skill, ct);
+        var member = await EnsureCircleMembershipAsync(userId, skill, ct);
 
-        string? leagueId = null, leagueName = null; double tier = 0; var movement = "Stay";
+        string? circleId = null, circleName = null; double tier = 0; var movement = "Stay";
         if (member is not null)
         {
-            var lg = await _db.CoalitionLeagues.FirstOrDefaultAsync(l => l.Id == member.LeagueId, ct);
-            leagueId = member.LeagueId.ToString(); leagueName = lg?.Name; tier = lg?.GapTier ?? 0;
+            var lg = await _db.CoalitionCircles.FirstOrDefaultAsync(l => l.Id == member.CircleId, ct);
+            circleId = member.CircleId.ToString(); circleName = lg?.Name; tier = lg?.GapTier ?? 0;
             movement = PromotionService.Decide(skill, tier).ToString();
         }
 
@@ -817,7 +792,7 @@ public class CoalitionLoopService
         var scarce = acts.Where(a => a.Currency == "scarce").Sum(a => a.Points);
         var todayReasoning = acts.Where(a => a.Currency == "reasoning" && a.CreatedAt >= today).Sum(a => a.Points);
 
-        return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, leagueId, leagueName, tier, movement,
+        return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, circleId, circleName, tier, movement,
             recentPlanks, recommended, reasoningXp, scarce, todayReasoning, CoalitionPoints.DailyReasoningCap);
     }
 
@@ -833,69 +808,69 @@ public class CoalitionLoopService
         return new CadenceDto(CampaignCadence.Score(days), days);
     }
 
-    private async Task<CoalitionLeagueMember?> EnsureLeagueMembershipAsync(string userId, double skill, CancellationToken ct)
+    private async Task<CoalitionCircleMember?> EnsureCircleMembershipAsync(string userId, double skill, CancellationToken ct)
     {
-        var member = await _db.CoalitionLeagueMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
+        var member = await _db.CoalitionCircleMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
         if (member is not null) return member;
 
-        var leagues = await _db.CoalitionLeagues.ToListAsync(ct);
-        if (leagues.Count == 0)
+        var circles = await _db.CoalitionCircles.ToListAsync(ct);
+        if (circles.Count == 0)
         {
-            await ComposeLeaguesAsync(4, ct);
-            member = await _db.CoalitionLeagueMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
+            await ComposeCirclesAsync(4, ct);
+            member = await _db.CoalitionCircleMembers.FirstOrDefaultAsync(m => m.UserId == userId, ct);
             if (member is not null) return member;
-            leagues = await _db.CoalitionLeagues.ToListAsync(ct);
+            circles = await _db.CoalitionCircles.ToListAsync(ct);
         }
-        if (leagues.Count == 0) return null;
+        if (circles.Count == 0) return null;
 
         var served = DifficultyLadder.TargetGap(skill);
-        var best = leagues.OrderBy(l => Math.Abs(l.GapTier - served)).First();
+        var best = circles.OrderBy(l => Math.Abs(l.GapTier - served)).First();
         var bucket = await _db.CoalitionParticipants.Where(c => c.UserId == userId)
             .Select(c => c.SpectrumBucket).FirstOrDefaultAsync(ct) ?? "center";
-        member = new CoalitionLeagueMember { Id = Guid.NewGuid(), LeagueId = best.Id, UserId = userId, SpectrumBucket = bucket, AgeBand = "Adult" };
-        _db.CoalitionLeagueMembers.Add(member);
+        member = new CoalitionCircleMember { Id = Guid.NewGuid(), CircleId = best.Id, UserId = userId, SpectrumBucket = bucket, AgeBand = "Adult" };
+        _db.CoalitionCircleMembers.Add(member);
         await _db.SaveChangesAsync(ct);
         return member;
     }
 
-    public async Task ComposeLeaguesAsync(int size = 4, CancellationToken ct = default)
+    public async Task ComposeCirclesAsync(int size = 4, CancellationToken ct = default)
     {
-        _db.CoalitionLeagueMembers.RemoveRange(_db.CoalitionLeagueMembers);
-        _db.CoalitionLeagues.RemoveRange(_db.CoalitionLeagues);
+        _db.CoalitionCircleMembers.RemoveRange(_db.CoalitionCircleMembers);
+        _db.CoalitionCircles.RemoveRange(_db.CoalitionCircles);
         await _db.SaveChangesAsync(ct);
 
         var participants = await _db.CoalitionParticipants.ToListAsync(ct);
         var pool = participants
             .GroupBy(c => c.UserId, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
-            .Select(c => new LeagueMemberSpec(c.UserId, c.SpectrumBucket,
+            .Select(c => new CircleMemberSpec(c.UserId, c.SpectrumBucket,
                 Enum.TryParse<AgeBand>(c.AgeBand, ignoreCase: true, out var ab) ? ab : AgeBand.Adult))
             .ToList();
         if (pool.Count == 0) return;
 
         var spectrum = pool.Select(m => m.SpectrumBucket).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var composed = LeagueComposer.Compose(pool, spectrum, size);
+        var composed = CircleComposer.Compose(pool, spectrum, size);
         var worlds = await LoadWorldAsync(ct);
 
         var i = 1;
         foreach (var cl in composed)
         {
             var tier = cl.Members.Count == 0 ? 0.5 : Math.Clamp(cl.Members.Average(m => UserSkill(m.UserId, worlds)), 0.15, 0.9);
-            var league = new CoalitionLeague { Id = Guid.NewGuid(), Name = $"League {i++}", GapTier = tier };
+            var circle = new CoalitionCircle { Id = Guid.NewGuid(), Name = $"Circle {i++}", GapTier = tier };
             foreach (var m in cl.Members)
-                league.Members.Add(new CoalitionLeagueMember { Id = Guid.NewGuid(), UserId = m.UserId, SpectrumBucket = m.SpectrumBucket, AgeBand = m.Age.ToString() });
-            _db.CoalitionLeagues.Add(league);
+                circle.Members.Add(new CoalitionCircleMember { Id = Guid.NewGuid(), UserId = m.UserId, SpectrumBucket = m.SpectrumBucket, AgeBand = m.Age.ToString() });
+            _db.CoalitionCircles.Add(circle);
         }
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<LeagueDto>> GetLeaguesAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<CircleDto>> GetCirclesAsync(CancellationToken ct = default)
     {
-        var leagues = await _db.CoalitionLeagues.Include(l => l.Members).ToListAsync(ct);
-        if (leagues.Count == 0)
+        var circles = await _db.CoalitionCircles.Include(l => l.Members).ToListAsync(ct);
+        if (circles.Count == 0)
         {
-            await ComposeLeaguesAsync(4, ct);
-            leagues = await _db.CoalitionLeagues.Include(l => l.Members).ToListAsync(ct);
+            await ComposeCirclesAsync(4, ct);
+            circles = await _db.CoalitionCircles.Include(l => l.Members).ToListAsync(ct);
         }
 
         var worlds = await LoadWorldAsync(ct);
@@ -904,8 +879,8 @@ public class CoalitionLoopService
         var agentUsers = (await _db.CoalitionParticipants.Where(c => c.IsAgent).Select(c => c.UserId).Distinct().ToListAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var result = new List<LeagueDto>();
-        foreach (var l in leagues.OrderBy(l => l.GapTier))
+        var result = new List<CircleDto>();
+        foreach (var l in circles.OrderBy(l => l.GapTier))
         {
             var contribs = l.Members
                 .Select(m => contrib.TryGetValue(m.UserId, out var c) ? c : new PlayerContribution(m.UserId, 0, 0, 0, 0))
@@ -918,7 +893,7 @@ public class CoalitionLoopService
                 return new StandingRowDto(idx + 1, s.UserId, Pretty(s.UserId, isAgent), isAgent, s.Score,
                     c.CoalitionsSigned, c.TotalBreadthOfSignedCoalitions, c.MovedCount);
             }).ToList();
-            result.Add(new LeagueDto(l.Id.ToString(), l.Name, l.GapTier, DifficultyLabel(l.GapTier),
+            result.Add(new CircleDto(l.Id.ToString(), l.Name, l.GapTier, DifficultyLabel(l.GapTier),
                 l.Members.Select(m => m.SpectrumBucket).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), rows));
         }
         return result;

@@ -9,7 +9,7 @@ import {
   listProvisions,
   seedCoalition,
   getMe,
-  composeLeagues,
+  composeCircles,
   type ProvisionSummary,
   type Me,
 } from "@/api/coalition";
@@ -159,7 +159,7 @@ function RecordCard({ me }: { me: Me }) {
 
       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[var(--muted)]">
         <span className="flex items-center gap-1"><Trophy size={13} /> score {me.record.weightedScore.toFixed(1)}</span>
-        <span className="flex items-center gap-1"><Scale size={13} /> {me.leagueName ?? "Unassigned"} (gap {(me.leagueGapTier * 100).toFixed(0)}%)</span>
+        <span className="flex items-center gap-1"><Scale size={13} /> {me.circleName ?? "Unassigned"} (gap {(me.circleGapTier * 100).toFixed(0)}%)</span>
         <span className={`flex items-center gap-1 font-semibold ${moveColor}`}><TrendingUp size={13} /> <Term term={me.movement}>{me.movement}</Term></span>
       </div>
 
@@ -349,7 +349,7 @@ export default function CoalitionProvisions() {
 
   async function reseed() {
     setSeeding(true);
-    try { await seedCoalition(); await composeLeagues(); load(); } finally { setSeeding(false); }
+    try { await seedCoalition(); await composeCircles(); load(); } finally { setSeeding(false); }
   }
 
   return (
@@ -359,8 +359,8 @@ export default function CoalitionProvisions() {
         <h1 className="display mt-1 text-4xl">Bridge the spectrum</h1>
         <p className="mt-2 max-w-prose text-[var(--fg-soft)]">
           Take a position, propose a carve-out, and co-sign the version that pulls a cross-spectrum
-          coalition together before the deadline. Your record and league reward breadth and
-          bridging — not volume. (League standings live on the Cohort page.)
+          coalition together before the deadline. Your record and circle reward breadth and
+          bridging — not volume. (Circle standings live on the Cohort page.)
         </p>
       </header>
 

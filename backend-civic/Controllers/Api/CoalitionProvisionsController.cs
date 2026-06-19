@@ -140,18 +140,18 @@ public class CoalitionProvisionsController : ControllerBase
     public async Task<ActionResult<MeDto>> Me(CancellationToken ct)
         => Ok(await _loop.GetMeAsync(_user.GetCurrentUserId(), ct));
 
-    /// <summary>Composed leagues with breadth-favoring standings.</summary>
-    [HttpGet("/api/coalition/leagues")]
-    public async Task<ActionResult<IReadOnlyList<LeagueDto>>> Leagues(CancellationToken ct)
-        => Ok(await _loop.GetLeaguesAsync(ct));
+    /// <summary>Composed circles (skill/engagement cohorts) with breadth-favoring standings.</summary>
+    [HttpGet("/api/coalition/circles")]
+    public async Task<ActionResult<IReadOnlyList<CircleDto>>> Circles(CancellationToken ct)
+        => Ok(await _loop.GetCirclesAsync(ct));
 
-    /// <summary>Dev helper: (re)compose leagues from the current player pool. Development-only
-    /// (the lifecycle scheduler composes/re-balances leagues automatically in prod).</summary>
-    [HttpPost("/api/coalition/leagues/compose")]
-    public async Task<ActionResult> ComposeLeagues(CancellationToken ct)
+    /// <summary>Dev helper: (re)compose circles from the current player pool. Development-only
+    /// (the lifecycle scheduler composes/re-balances circles automatically in prod).</summary>
+    [HttpPost("/api/coalition/circles/compose")]
+    public async Task<ActionResult> ComposeCircles(CancellationToken ct)
     {
         if (!_env.IsDevelopment()) return NotFound();
-        await _loop.ComposeLeaguesAsync(4, ct);
-        return Ok(await _loop.GetLeaguesAsync(ct));
+        await _loop.ComposeCirclesAsync(4, ct);
+        return Ok(await _loop.GetCirclesAsync(ct));
     }
 }

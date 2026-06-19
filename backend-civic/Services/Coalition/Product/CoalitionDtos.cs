@@ -93,9 +93,9 @@ public sealed record MeDto(
     string SkillLabel,
     CampaignRecordDto Record,
     CadenceDto Cadence,
-    string? LeagueId,
-    string? LeagueName,
-    double LeagueGapTier,
+    string? CircleId,
+    string? CircleName,
+    double CircleGapTier,
     string Movement,
     IReadOnlyList<PlankDto> RecentPlanks,
     IReadOnlyList<RecommendedProvisionDto> Recommended,
@@ -112,7 +112,7 @@ public sealed record StandingRowDto(
     int Rank, string UserId, string DisplayName, bool IsAgent, double Score,
     int CoalitionsSigned, int TotalBreadth, int MovedCount);
 
-public sealed record LeagueDto(
+public sealed record CircleDto(
     string Id, string Name, double GapTier, string DifficultyLabel,
     IReadOnlyList<string> Buckets, IReadOnlyList<StandingRowDto> Standings);
 

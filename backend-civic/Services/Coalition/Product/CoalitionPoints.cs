@@ -36,6 +36,9 @@ public static class CoalitionPoints
         Longform => 20,
         CoalitionPassReward => 30,   // + breadth bonus, added by the caller
         DiedReasoningPayout => 4,
+        CampaignNewsResponse => 5,   // a considered campaign response
+        BriefingRead => 2,           // light: showing up to read the briefing
+        CampaignReaction => 1,       // cheap; the daily cap is what really bounds it
         _ => 1,
     };
 

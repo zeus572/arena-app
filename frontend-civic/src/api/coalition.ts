@@ -111,9 +111,9 @@ export interface Me {
   skillLabel: string;
   record: CampaignRecord;
   cadence: Cadence;
-  leagueId: string | null;
-  leagueName: string | null;
-  leagueGapTier: number;
+  circleId: string | null;
+  circleName: string | null;
+  circleGapTier: number;
   movement: string;
   recentPlanks: Plank[];
   recommended: Recommended[];
@@ -139,7 +139,11 @@ export interface Standing {
   movedCount: number;
 }
 
-export interface League {
+/**
+ * A coalition Circle: the skill/engagement cohort (DuoLingo-style tier) a player is
+ * laddered through. Distinct from a social League (a private group of friends).
+ */
+export interface Circle {
   id: string;
   name: string;
   gapTier: number;
@@ -231,13 +235,13 @@ export async function getMe(): Promise<Me> {
   return data;
 }
 
-export async function getLeagues(): Promise<League[]> {
-  const { data } = await civicApi.get<League[]>("/coalition/leagues");
+export async function getCircles(): Promise<Circle[]> {
+  const { data } = await civicApi.get<Circle[]>("/coalition/circles");
   return data;
 }
 
-export async function composeLeagues(): Promise<League[]> {
-  const { data } = await civicApi.post<League[]>("/coalition/leagues/compose");
+export async function composeCircles(): Promise<Circle[]> {
+  const { data } = await civicApi.post<Circle[]>("/coalition/circles/compose");
   return data;
 }
 
@@ -253,6 +257,12 @@ export async function recordAct(
   versionId?: string,
 ): Promise<ActResult> {
   const { data } = await civicApi.post<ActResult>(`${BASE}/${id}/acts`, { type, payload, versionId });
+  return data;
+}
+
+/** Record a non-provision act (e.g. reading the daily briefing) and earn reasoning XP. */
+export async function recordStandaloneAct(type: string, payload?: string): Promise<ActResult> {
+  const { data } = await civicApi.post<ActResult>("/coalition/acts", { type, payload });
   return data;
 }
 
