@@ -6,6 +6,7 @@ import { getBriefings } from "@/api/briefings";
 import { localityLabel } from "@/api/profile";
 import { getConcepts } from "@/api/concepts";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
+import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { ButtonLink } from "../components/Button";
@@ -37,6 +38,7 @@ export default function MagazineHome() {
   const [page, setPage] = useState(1);
   const [concept, setConcept] = useState<Concept | null>(null);
   const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
+  const [campaigns, setCampaigns] = useState<CivicCampaignSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const explainersRef = useRef<HTMLElement>(null);
   const didMountRef = useRef(false);
@@ -74,8 +76,17 @@ export default function MagazineHome() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    void listCampaigns().then(setCampaigns).catch(() => {});
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rest = explainers;
+
+  // Feature the player's managed campaign in the Campaign Manager tile: the active
+  // one (most recently updated) if any, else the most recent finished campaign.
+  const sortedCampaigns = [...campaigns].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const featuredCampaign = sortedCampaigns.find((c) => c.status === "Active") ?? sortedCampaigns[0] ?? null;
 
   return (
     <div>
@@ -94,25 +105,58 @@ export default function MagazineHome() {
       )}
       <div className="my-10 grid items-stretch gap-4 md:grid-cols-2">
         <CountdownTimer scope="National" testId="countdown-national" className="h-full" />
-        <Link
-          to="/campaigns"
-          data-testid="campaign-cta"
-          className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-        >
-          <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-              <Megaphone className="h-4 w-4" /> Campaign Manager
-            </p>
-            <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-              Take the reins for a candidate, respond to the real headlines, and try to win the race
-              before the clock runs out.
-            </p>
-          </div>
-          <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-            Manage a campaign →
-          </span>
-        </Link>
+        {featuredCampaign ? (
+          <Link
+            to={`/campaigns/${featuredCampaign.id}`}
+            data-testid="campaign-cta"
+            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
+          >
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+                <Megaphone className="h-4 w-4" /> Campaign Manager
+                <span className="text-[var(--muted)]">· {featuredCampaign.status === "Active" ? "in progress" : "finished"}</span>
+              </p>
+              <h2 className="display mt-2 text-3xl">{featuredCampaign.candidateName}</h2>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
+                {featuredCampaign.raceLabel} · {featuredCampaign.party}
+              </p>
+              {featuredCampaign.status === "Active" ? (
+                <p className="mt-3 text-sm text-[var(--fg)]">
+                  <span className="font-semibold">{featuredCampaign.playerSupport.toFixed(0)}% support</span>
+                  {" — "}{featuredCampaign.isLeading ? "leading the race" : "trailing"} · day {featuredCampaign.currentDay} of {featuredCampaign.totalDays} ({featuredCampaign.daysRemaining}d left)
+                </p>
+              ) : (
+                <p className="mt-3 text-sm text-[var(--fg)]">
+                  <span className="font-semibold">{featuredCampaign.won ? "Won the race" : "Lost the race"}</span>
+                  {" — "}finished at {featuredCampaign.playerSupport.toFixed(0)}% support
+                </p>
+              )}
+            </div>
+            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+              {featuredCampaign.status === "Active" ? "Resume campaign →" : "View result →"}
+            </span>
+          </Link>
+        ) : (
+          <Link
+            to="/campaigns"
+            data-testid="campaign-cta"
+            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
+          >
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+                <Megaphone className="h-4 w-4" /> Campaign Manager
+              </p>
+              <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
+                Take the reins for a candidate, respond to the real headlines, and try to win the race
+                before the clock runs out.
+              </p>
+            </div>
+            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
+              Manage a campaign →
+            </span>
+          </Link>
+        )}
       </div>
 
       {cover && <CoverStory briefing={cover} />}
