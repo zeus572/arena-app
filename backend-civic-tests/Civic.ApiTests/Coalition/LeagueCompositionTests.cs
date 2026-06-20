@@ -17,15 +17,15 @@ public class LeagueCompositionTests
     public void ComposedLeagues_SpanTheSpectrum_AndNeverMixAgeBands()
     {
         // 9 adults + 6 minors, evenly across the three buckets.
-        var pool = new List<LeagueMemberSpec>();
+        var pool = new List<CircleMemberSpec>();
         var n = 0;
         foreach (var bucket in Spectrum)
         {
-            for (var i = 0; i < 3; i++) pool.Add(new LeagueMemberSpec($"a{n++}", bucket, AgeBand.Adult));
-            for (var i = 0; i < 2; i++) pool.Add(new LeagueMemberSpec($"m{n++}", bucket, AgeBand.Minor));
+            for (var i = 0; i < 3; i++) pool.Add(new CircleMemberSpec($"a{n++}", bucket, AgeBand.Adult));
+            for (var i = 0; i < 2; i++) pool.Add(new CircleMemberSpec($"m{n++}", bucket, AgeBand.Minor));
         }
 
-        var leagues = LeagueComposer.Compose(pool, Spectrum, leagueSize: 3);
+        var leagues = CircleComposer.Compose(pool, Spectrum, circleSize: 3);
 
         leagues.Should().NotBeEmpty();
         // Age-banding: no league mixes adults and minors.

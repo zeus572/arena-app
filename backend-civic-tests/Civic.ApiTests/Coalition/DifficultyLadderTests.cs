@@ -14,18 +14,18 @@ public class DifficultyLadderTests
     // A fixed curriculum pool spanning narrow → wide gaps.
     private static readonly double[] Pool = { 0.1, 0.3, 0.5, 0.7, 0.9 };
 
-    private static LeagueHistory History(int attempts, int closed, double maxClosedGap)
+    private static CircleHistory History(int attempts, int closed, double maxClosedGap)
     {
-        var outcomes = new List<LeagueOutcome>();
-        for (var i = 0; i < closed; i++) outcomes.Add(new LeagueOutcome(maxClosedGap, true));
-        for (var i = 0; i < attempts - closed; i++) outcomes.Add(new LeagueOutcome(maxClosedGap, false));
-        return new LeagueHistory(outcomes);
+        var outcomes = new List<CircleOutcome>();
+        for (var i = 0; i < closed; i++) outcomes.Add(new CircleOutcome(maxClosedGap, true));
+        for (var i = 0; i < attempts - closed; i++) outcomes.Add(new CircleOutcome(maxClosedGap, false));
+        return new CircleHistory(outcomes);
     }
 
     [Fact]
     public void NewLeague_GetsNarrowGap_VeteranLeague_GetsWiderGap()
     {
-        var newLeague = new LeagueHistory(Array.Empty<LeagueOutcome>());
+        var newLeague = new CircleHistory(Array.Empty<CircleOutcome>());
         var veteran = History(attempts: 20, closed: 18, maxClosedGap: 0.9);
 
         var newSkill = GroupSkill.Estimate(newLeague);
@@ -46,7 +46,7 @@ public class DifficultyLadderTests
         // Simulated leagues of increasing track record.
         var histories = new[]
         {
-            new LeagueHistory(Array.Empty<LeagueOutcome>()),  // new
+            new CircleHistory(Array.Empty<CircleOutcome>()),  // new
             History(10, 3, 0.2),                              // weak
             History(10, 6, 0.45),                             // improving
             History(10, 8, 0.7),                              // strong
