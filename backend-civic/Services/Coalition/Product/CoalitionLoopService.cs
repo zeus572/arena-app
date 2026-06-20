@@ -243,11 +243,11 @@ public class CoalitionLoopService
         await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
 
         var positions = new Dictionary<string, string>(req.Positions, StringComparer.OrdinalIgnoreCase);
-        await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
+        var version = await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
         await RecordActAsync(userId, provisionId, CoalitionActType.Amend,
-            string.Join("; ", positions.Select(k => $"{k.Key}={k.Value}")), ct);
+            string.Join("; ", positions.Select(k => $"{k.Key}={k.Value}")), ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -291,7 +291,7 @@ public class CoalitionLoopService
         await _db.SaveChangesAsync(ct);
 
         await RecomputeAndSaveAsync(provisionId, ct);
-        await RecordActAsync(userId, provisionId, CoalitionActType.Amend, text, ct);
+        await RecordActAsync(userId, provisionId, CoalitionActType.Amend, text, ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -318,7 +318,7 @@ public class CoalitionLoopService
         await UpsertAcceptanceAsync(provisionId, userId, version.Id, req.Accept, ParseIntensity(req.Intensity), ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
-        if (req.Accept) await RecordActAsync(userId, provisionId, CoalitionActType.CoSign, null, ct);
+        if (req.Accept) await RecordActAsync(userId, provisionId, CoalitionActType.CoSign, null, ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
