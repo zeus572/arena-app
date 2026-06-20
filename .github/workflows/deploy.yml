@@ -3,6 +3,11 @@ name: Deploy Arena App
 on:
   push:
     branches: [release]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'shared/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 jobs:
