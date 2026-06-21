@@ -11,8 +11,8 @@ namespace Civic.API.Services.Coalition.Product;
 /// </summary>
 public static class CoalitionPoints
 {
-    public const int DailyReasoningCap = 30;
-    public const double DiminishingFactor = 0.6; // each further reasoning act earns 60% of the previous
+    public const int DailyReasoningCap = 150;
+    public const double DiminishingFactor = 0.8; // each further reasoning act earns 80% of the previous
 
     public static string Currency(CoalitionActType t) => t switch
     {
