@@ -7,8 +7,8 @@ import {
   type CivicCampaignDetail,
   type CivicCampaignSummary,
 } from "@/api/campaignManager";
-import type { Me, ProvisionSummary } from "@/api/coalition";
-import { isQuestDone } from "@/lib/questProgress";
+import { getQuests } from "@/api/coalition";
+import type { Me, ProvisionSummary, Quest as ApiQuest } from "@/api/coalition";
 import { PlayReadToggle, MAGAZINE_HOME } from "../components/PlayReadToggle";
 
 // The gamified, resume-first home ("Mission Control") for a signed-in player
@@ -21,10 +21,19 @@ import { PlayReadToggle, MAGAZINE_HOME } from "../components/PlayReadToggle";
 const CLOSED_STATES = ["Passed", "Forked", "Died"];
 
 // Level ladder. There's no discrete "level" field yet, so we derive it from
-// reasoning XP (500 XP/level) and name the tiers from this ladder; tiers outside
-// the named range fall back to the player's circle/skill label.
+// reasoning XP (500 XP/level) and name the tiers from this ladder. Every level in
+// the rendered range (1–10) has a DISTINCT name; levels past it fall back to a
+// unique "Level N" label. (Earlier this fell back to the player's circle name for
+// any unnamed level, which made low levels all render the same name — e.g. four
+// "Citizen" rungs. This ladder is separate from the coalition Circle ladder.)
 const XP_PER_LEVEL = 500;
 const TIER_NAMES: Record<number, string> = {
+  // Names are kept distinct from the Circle ladder (Citizen/Delegate/Framer/…) so the
+  // two systems never echo the same word on the page.
+  1: "Voter",
+  2: "Advocate",
+  3: "Organizer",
+  4: "Aspirant",
   5: "Apprentice",
   6: "Co-signer",
   7: "Bridgewright",
@@ -96,8 +105,7 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
   const level = Math.max(1, Math.floor(reasoningXp / XP_PER_LEVEL) + 1);
   const xpInto = reasoningXp % XP_PER_LEVEL;
   const xpFraction = xpInto / XP_PER_LEVEL;
-  const tierName = (lvl: number) =>
-    TIER_NAMES[lvl] ?? me.circleName ?? me.skillLabel ?? `Level ${lvl}`;
+  const tierName = (lvl: number) => TIER_NAMES[lvl] ?? `Level ${lvl}`;
 
   const skillPct = Math.round((me.skill ?? 0) * 100);
   const governancePct = Math.round((me.record?.governanceRatio ?? 0) * 100);
@@ -107,17 +115,49 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
   const streak = trailingStreak(cadence);
   const bestRun = longestRun(cadence);
 
-  // ----- Quests (derived client-side from available signals) -----
-  const quests = buildQuests({
-    campaignId: activeCampaign?.id ?? null,
-    candidateName: activeCampaign?.candidateName ?? null,
-    newsWaiting,
-    firstNewsSlug,
-    todayReasoning: me.todayReasoning ?? 0,
-    resumeBillId: resumeBill?.id ?? null,
-    cultureBillId: cultureBill?.id ?? null,
-    cultureBillTitle: cultureBill?.title ?? null,
-  });
+  // ----- Quests -----
+  // The backend is the source of truth: it computes each quest's done-state from the
+  // acts ledger and grants reward XP once per day. Reading /coalition/quests also
+  // triggers that grant, so we refetch when today's activity changes. The client only
+  // owns presentation — routing + subtitle, resolved from the quest id below.
+  const [serverQuests, setServerQuests] = useState<ApiQuest[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void getQuests().then((qs) => {
+      if (!cancelled) setServerQuests(qs);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [me.todayReasoning, newsWaiting]);
+
+  const campaignTo =
+    activeCampaign?.id && firstNewsSlug
+      ? `/campaigns/${activeCampaign.id}/news/${firstNewsSlug}`
+      : activeCampaign?.id
+        ? `/campaigns/${activeCampaign.id}`
+        : "/campaigns";
+  const questPresentation: Record<string, { to: string; subtitle?: string }> = {
+    "briefing-read": { to: MAGAZINE_HOME },
+    "co-sign": { to: resumeBill ? `/coalition/${resumeBill.id}` : "/coalition" },
+    "campaign-headline": {
+      to: campaignTo,
+      subtitle: activeCampaign?.candidateName
+        ? `${newsWaiting} waiting · ${activeCampaign.candidateName}`
+        : undefined,
+    },
+    "bridge-culture": {
+      to: cultureBill ? `/coalition/${cultureBill.id}` : "/coalition",
+      subtitle: cultureBill?.title ?? "Find a culture bill with a carve-out both sides can sign",
+    },
+  };
+  const quests: Quest[] = serverQuests.map((q) => ({
+    title: q.title,
+    xp: q.xp,
+    done: q.done,
+    to: questPresentation[q.id]?.to ?? "/coalition",
+    subtitle: questPresentation[q.id]?.subtitle,
+  }));
   const questsDone = quests.filter((q) => q.done).length;
   const questXpLeft = quests.filter((q) => !q.done).reduce((sum, q) => sum + q.xp, 0);
 
@@ -849,66 +889,3 @@ function weekdayLabels(count: number): string[] {
   return out;
 }
 
-// The four daily quests, derived from signals the app already has. There's no
-// quests API yet, so done-state is inferred (briefing-read has no signal and
-// stays a to-do). Each routes to the relevant game screen.
-function buildQuests(args: {
-  campaignId: string | null;
-  candidateName: string | null;
-  newsWaiting: number;
-  firstNewsSlug: string | null;
-  todayReasoning: number;
-  resumeBillId: string | null;
-  cultureBillId: string | null;
-  cultureBillTitle: string | null;
-}): Quest[] {
-  const {
-    campaignId,
-    candidateName,
-    newsWaiting,
-    firstNewsSlug,
-    todayReasoning,
-    resumeBillId,
-    cultureBillId,
-    cultureBillTitle,
-  } = args;
-
-  const campaignTo =
-    campaignId && firstNewsSlug
-      ? `/campaigns/${campaignId}/news/${firstNewsSlug}`
-      : campaignId
-        ? `/campaigns/${campaignId}`
-        : "/campaigns";
-
-  return [
-    {
-      title: "Read today's briefing",
-      xp: 10,
-      done: isQuestDone("briefing-read"),
-      to: MAGAZINE_HOME,
-    },
-    {
-      title: "Co-sign one coalition position",
-      xp: 20,
-      done: todayReasoning > 0,
-      to: resumeBillId ? `/coalition/${resumeBillId}` : "/coalition",
-    },
-    {
-      title: "Respond to a headline in your campaign",
-      subtitle: candidateName ? `${newsWaiting} waiting · ${candidateName}` : undefined,
-      xp: 30,
-      // Done once there are no headlines left to respond to.
-      done: !!campaignId && newsWaiting === 0,
-      to: campaignTo,
-    },
-    {
-      title: "Bridge a culture-war provision",
-      // Name the specific bill this routes to (a Culture-tagged open coalition),
-      // so it's clear where the quest takes you.
-      subtitle: cultureBillTitle ?? "Find a culture bill with a carve-out both sides can sign",
-      xp: 30,
-      done: false,
-      to: cultureBillId ? `/coalition/${cultureBillId}` : "/coalition",
-    },
-  ];
-}

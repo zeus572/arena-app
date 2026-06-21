@@ -39,6 +39,7 @@ public static class CoalitionPoints
         CampaignNewsResponse => 5,   // a considered campaign response
         BriefingRead => 2,           // light: showing up to read the briefing
         CampaignReaction => 1,       // cheap; the daily cap is what really bounds it
+        QuestReward => 0,            // per-quest reward; the caller passes the explicit amount
         _ => 1,
     };
 

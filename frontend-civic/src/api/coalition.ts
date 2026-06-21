@@ -128,6 +128,19 @@ export interface ActResult {
   currency: string;
 }
 
+/**
+ * A daily quest as computed by the backend. `done` reflects the acts ledger (the
+ * server is the source of truth), and `xp` is the reward granted once per day when
+ * the quest completes. Routing/subtitle are presentation, resolved client-side from
+ * `id` (see PlayerHome).
+ */
+export interface Quest {
+  id: string;
+  title: string;
+  xp: number;
+  done: boolean;
+}
+
 export interface Standing {
   rank: number;
   userId: string;
@@ -237,6 +250,13 @@ export async function getMe(): Promise<Me> {
 
 export async function getCircles(): Promise<Circle[]> {
   const { data } = await civicApi.get<Circle[]>("/coalition/circles");
+  return data;
+}
+
+/** The player's daily quests with server-computed completion; reading also grants
+ * reward XP for any freshly-completed quest (once per day). */
+export async function getQuests(): Promise<Quest[]> {
+  const { data } = await civicApi.get<Quest[]>("/coalition/quests");
   return data;
 }
 
