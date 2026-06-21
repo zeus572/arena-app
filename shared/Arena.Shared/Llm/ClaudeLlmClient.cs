@@ -50,6 +50,11 @@ public class ClaudeLlmClient : ILlmClient
         int? maxTokens = null,
         CancellationToken ct = default)
     {
+        if (!_opts.Enabled)
+        {
+            throw new LlmException("Anthropic LLM is disabled (Anthropic:Enabled=false).");
+        }
+
         if (string.IsNullOrWhiteSpace(_opts.ApiKey))
         {
             throw new LlmException("Anthropic:ApiKey not configured.");
@@ -95,7 +100,19 @@ public class ClaudeLlmClient : ILlmClient
         {
             model,
             max_tokens = maxTokens ?? _opts.DefaultMaxTokens,
-            system = systemPrompt,
+            // Cache the system prompt with an ephemeral breakpoint. Most callers reuse
+            // the same system prompt across many requests (judges, framings, campaign
+            // posts), so repeated prefixes bill at cache-read rates instead of full
+            // input. Below the model's minimum cacheable prefix it simply won't cache.
+            system = new object[]
+            {
+                new
+                {
+                    type = "text",
+                    text = systemPrompt,
+                    cache_control = new { type = "ephemeral" },
+                },
+            },
             messages = new[]
             {
                 new { role = "user", content = userPrompt },

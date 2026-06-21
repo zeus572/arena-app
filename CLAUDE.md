@@ -83,6 +83,34 @@ arena-app/
 
 Set `Anthropic:ApiKey` in appsettings or environment variable to enable AI debate generation.
 
+### `Anthropic:Enabled` — local LLM kill-switch
+
+Boolean flag (**default `true`**) that gates every live Claude call in both apps
+(Arena `ClaudeLlmService` + `BotHeartbeatService` + `TopicModerationService`, and
+the shared `ClaudeLlmClient` used by Civic). When `false`, the code behaves exactly
+as if no key were configured — background generators skip, on-demand callers fall
+back to heuristics — **without deleting the key from secrets**. Use it to pause API
+spend on a dev box while keeping the (one-time-shown, unrecoverable) key intact.
+
+Toggle locally via user-secrets so the key is never touched:
+
+```bash
+# OFF (pause LLM spend on this machine)
+dotnet user-secrets set "Anthropic:Enabled" "false" --project backend
+dotnet user-secrets set "Anthropic:Enabled" "false" --project backend-civic
+# ON
+dotnet user-secrets set "Anthropic:Enabled" "true"  --project backend
+dotnet user-secrets set "Anthropic:Enabled" "true"  --project backend-civic
+```
+
+Restart the backend after toggling (config is read at startup).
+
+> ⚠️ **Never set `Anthropic:Enabled` in a committed `appsettings*.json` or in prod
+> config.** It must stay implicit-`true` everywhere except dev user-secrets (which
+> are machine-local and load only in the Development environment). Committing
+> `"Anthropic": { "Enabled": false }` — or adding `Anthropic__Enabled=false` to the
+> Azure App Service settings — is the *only* way to accidentally turn prod off.
+
 ## Ranking Formula
 
 `Score = relevance + quality + engagement + diversity + novelty + recency + reputation - penalties`
