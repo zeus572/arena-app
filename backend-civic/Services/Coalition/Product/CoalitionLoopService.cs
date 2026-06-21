@@ -243,11 +243,11 @@ public class CoalitionLoopService
         await EnsureParticipantAsync(provisionId, userId, "center", isAgent: false, ct);
 
         var positions = new Dictionary<string, string>(req.Positions, StringComparer.OrdinalIgnoreCase);
-        await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
+        var version = await FindOrCreateVersionAsync(provisionId, positions, req.Label, userId, ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
         await RecordActAsync(userId, provisionId, CoalitionActType.Amend,
-            string.Join("; ", positions.Select(k => $"{k.Key}={k.Value}")), ct);
+            string.Join("; ", positions.Select(k => $"{k.Key}={k.Value}")), ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -291,7 +291,7 @@ public class CoalitionLoopService
         await _db.SaveChangesAsync(ct);
 
         await RecomputeAndSaveAsync(provisionId, ct);
-        await RecordActAsync(userId, provisionId, CoalitionActType.Amend, text, ct);
+        await RecordActAsync(userId, provisionId, CoalitionActType.Amend, text, ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -318,7 +318,7 @@ public class CoalitionLoopService
         await UpsertAcceptanceAsync(provisionId, userId, version.Id, req.Accept, ParseIntensity(req.Intensity), ct);
         await _db.SaveChangesAsync(ct);
         await RecomputeAndSaveAsync(provisionId, ct);
-        if (req.Accept) await RecordActAsync(userId, provisionId, CoalitionActType.CoSign, null, ct);
+        if (req.Accept) await RecordActAsync(userId, provisionId, CoalitionActType.CoSign, null, ct, version.Id);
         return await GetDetailAsync(provisionId, userId, ct);
     }
 
@@ -643,6 +643,17 @@ public class CoalitionLoopService
     /// </summary>
     public async Task<(int Points, string Currency)> RecordActAsync(string userId, Guid? provisionId, CoalitionActType type, string? payload, CancellationToken ct = default, Guid? versionId = null)
     {
+        // Briefing reads are a once-per-day quest signal: collapse repeats so re-opening
+        // today's briefing can't re-earn points or spam the ledger. The client no longer
+        // guards this — the server is the source of truth for the quest's done-state.
+        if (type == CoalitionActType.BriefingRead && !string.IsNullOrWhiteSpace(userId))
+        {
+            var today = DateTime.UtcNow.Date;
+            if (await _db.CoalitionActs.AnyAsync(a => a.UserId == userId
+                    && a.Type == CoalitionActType.BriefingRead && a.CreatedAt >= today, ct))
+                return (0, "reasoning");
+        }
+
         string[] axes = Array.Empty<string>();
         var provisionText = "";
         if (provisionId is Guid pid)
@@ -800,6 +811,84 @@ public class CoalitionLoopService
 
         return new MeDto(userId, skill, SkillLabel(skill), recordDto, cadence, circleId, circleName, tier, movement,
             recentPlanks, recommended, reasoningXp, scarce, todayReasoning, CoalitionPoints.DailyReasoningCap);
+    }
+
+    // The daily quest set (id, title, reward XP). Completion is derived from the acts
+    // ledger; the reward is granted once per quest per day (clamped to the daily cap).
+    private static readonly (string Id, string Title, int Xp)[] DailyQuests =
+    {
+        ("briefing-read",     "Read today's briefing",              10),
+        ("co-sign",           "Co-sign one coalition position",     20),
+        ("campaign-headline", "Respond to a headline in your campaign", 30),
+        ("bridge-culture",    "Bridge a culture-war provision",     30),
+    };
+
+    /// <summary>
+    /// The player's daily quests with completion computed from today's ledger acts.
+    /// Newly-completed quests have their reward XP granted exactly once per day
+    /// (idempotent via a QuestReward marker act keyed by quest id), clamped to the
+    /// remaining daily reasoning cap so quests can't be farmed past it.
+    /// </summary>
+    public async Task<IReadOnlyList<QuestDto>> GetQuestsAsync(string userId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return Array.Empty<QuestDto>();
+
+        var today = DateTime.UtcNow.Date;
+        var todays = await _db.CoalitionActs
+            .Where(a => a.UserId == userId && a.CreatedAt >= today).ToListAsync(ct);
+
+        bool Done(string id) => id switch
+        {
+            "briefing-read"     => todays.Any(a => a.Type == CoalitionActType.BriefingRead),
+            "co-sign"           => todays.Any(a => a.Type is CoalitionActType.CoSign or CoalitionActType.Amend),
+            "campaign-headline" => todays.Any(a => a.Type == CoalitionActType.CampaignNewsResponse),
+            "bridge-culture"    => todays.Any(a => a.Type is CoalitionActType.CultureGovernanceSort or CoalitionActType.ReactAndRoute),
+            _ => false,
+        };
+
+        // Grant the reward for each freshly-completed quest. The QuestReward act doubles
+        // as the "already granted today" marker (Payload = quest id), so repeated reads
+        // never double-pay. Points are clamped to what's left under the daily cap.
+        var granted = todays.Where(a => a.Type == CoalitionActType.QuestReward)
+            .Select(a => a.Payload).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+        foreach (var q in DailyQuests)
+        {
+            if (!Done(q.Id) || granted.Contains(q.Id)) continue;
+            var earnedToday = todays.Where(a => a.Currency == "reasoning").Sum(a => a.Points);
+            var pts = Math.Max(0, Math.Min(q.Xp, CoalitionPoints.DailyReasoningCap - earnedToday));
+            var reward = new CoalitionAct
+            {
+                Id = Guid.NewGuid(), UserId = userId, Type = CoalitionActType.QuestReward,
+                Payload = q.Id, Points = pts, Currency = "reasoning",
+            };
+            _db.CoalitionActs.Add(reward);
+            todays.Add(reward);
+            granted.Add(q.Id);
+            changed = true;
+        }
+
+        // Finishing every daily quest claims a single scarce coalition point (once per
+        // day) — the premium currency the per-quest reasoning rewards don't grant. Keyed
+        // separately from the quest ids so it can't collide with a per-quest marker.
+        const string allCompleteKey = "all-complete";
+        if (DailyQuests.All(q => Done(q.Id)) && !granted.Contains(allCompleteKey))
+        {
+            _db.CoalitionActs.Add(new CoalitionAct
+            {
+                Id = Guid.NewGuid(), UserId = userId, Type = CoalitionActType.QuestReward,
+                Payload = allCompleteKey, Points = 1, Currency = "scarce",
+            });
+            changed = true;
+        }
+
+        if (changed)
+        {
+            await _db.SaveChangesAsync(ct);
+            await _ledger.LogActivityAsync(userId, ct);
+        }
+
+        return DailyQuests.Select(q => new QuestDto(q.Id, q.Title, q.Xp, Done(q.Id))).ToList();
     }
 
     private async Task<CadenceDto> CadenceAsync(string userId, CancellationToken ct)

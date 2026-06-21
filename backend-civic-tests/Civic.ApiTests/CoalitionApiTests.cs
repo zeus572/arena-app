@@ -146,9 +146,9 @@ public class CoalitionApiTests : IAsyncLifetime
             detail = await PostAsync($"/api/coalition/provisions/{ai.Id}/agent-step");
         detail.State.Should().Be("Passed");
 
-        var leagues = await _client.GetFromJsonAsync<List<LeagueDto>>("/api/coalition/leagues");
-        leagues.Should().NotBeNullOrEmpty();
-        var rows = leagues!.SelectMany(l => l.Standings).ToList();
+        var circles = await _client.GetFromJsonAsync<List<CircleDto>>("/api/coalition/circles");
+        circles.Should().NotBeNullOrEmpty();
+        var rows = circles!.SelectMany(l => l.Standings).ToList();
         rows.Should().Contain(r => r.IsAgent && r.CoalitionsSigned >= 1 && r.TotalBreadth >= 3,
             "agents who signed the cross-spectrum coalition should appear in the breadth-favoring standings");
         // breadth-favoring: a signer of a broad coalition outscores a non-signer.
@@ -214,7 +214,7 @@ public class CoalitionApiTests : IAsyncLifetime
         me.Record.TotalBreadth.Should().BeGreaterThanOrEqualTo(2);
         me.Cadence.Score.Should().BeGreaterThan(0, "the player was active today");
         me.Cadence.Last7Days.Should().HaveCount(7);
-        me.LeagueId.Should().NotBeNullOrEmpty("the player is auto-placed in a league");
+        me.CircleId.Should().NotBeNullOrEmpty("the player is auto-placed in a circle");
         me.Recommended.Should().NotBeNull();
         me.SkillLabel.Should().NotBeNullOrEmpty();
     }
@@ -268,5 +268,37 @@ public class CoalitionApiTests : IAsyncLifetime
 
         detail.State.Should().Be("Died");
         detail.Outcome!.DiedReason.Should().Contain("No bridge");
+    }
+
+    [Fact]
+    public async Task CoSignAndAmend_RecordActs_AttributedToTheVersion()
+    {
+        var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
+        var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
+
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/positions",
+            new { stance = "for with carve-out", intensity = "Medium", bucket = "left" });
+
+        // A freeform amendment creates a new version; the Amend act must point at it.
+        var detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/amendments/freeform",
+            new { text = "I'd sign it if existing facilities are exempt and it stays large-only." });
+        var bridge = detail.Versions.First(HasGfExempt);
+
+        // Co-signing that version must record a CoSign act attributed to the same version.
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/acceptances",
+            new { versionId = bridge.Id, accept = true, intensity = "Medium" });
+
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Civic.API.Data.CivicDbContext>();
+        var acts = await db.CoalitionActs.Where(a => a.ProvisionId == dc.Id).ToListAsync();
+        var versionIds = detail.Versions.Select(v => v.Id).ToHashSet();
+
+        acts.Should().Contain(
+            a => a.Type == Civic.API.Models.CoalitionActType.Amend && a.VersionId != null && versionIds.Contains(a.VersionId.Value),
+            "a freeform amendment records an Amend act attributed to the version it created");
+        acts.Should().Contain(
+            a => a.Type == Civic.API.Models.CoalitionActType.CoSign && a.VersionId == bridge.Id,
+            "co-signing a version records a CoSign act attributed to that exact version");
     }
 }

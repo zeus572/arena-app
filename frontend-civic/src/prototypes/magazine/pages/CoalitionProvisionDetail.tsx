@@ -233,6 +233,54 @@ export default function CoalitionProvisionDetail() {
             </div>
           )}
 
+          {/* Bridge the divide — culture bills only. Sorting the culture-war framing
+              toward a carve-out both sides can sign records a CultureGovernanceSort act,
+              which earns reasoning XP and completes the "Bridge a culture-war provision"
+              daily quest (see PlayerHome / GetQuestsAsync). */}
+          {!resolved && !d.governance && (
+            <div className="mt-4 rounded-2xl border border-[var(--accent)]/40 p-4" data-testid="bridge-divide">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Compass size={16} className="text-[var(--accent)]" /> Bridge the divide
+                </h3>
+                <span className="rounded-full bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+                  earn reasoning XP
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                This is a culture-war bill. Sort it toward a carve-out both sides can sign — is the
+                workable path a governance mechanism, or shared cultural ground?
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[
+                  { key: "bridge-governance", label: "Route to a governance mechanism", payload: "governance" },
+                  { key: "bridge-culture", label: "Name the shared cultural value", payload: "culture" },
+                ].map((opt) => {
+                  const lit = lastAward?.key === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => act("CultureGovernanceSort", opt.key, opt.payload, leadingVersion?.id)}
+                      disabled={busy}
+                      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:opacity-50 ${
+                        lit ? "border-emerald-400 bg-emerald-50" : "border-[var(--line)] hover:border-[var(--accent)]"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                          lit ? "text-emerald-600" : "text-[var(--muted)]"
+                        }`}
+                      >
+                        {lit ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Prevailing position */}
           <div
             className="mt-6 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4"

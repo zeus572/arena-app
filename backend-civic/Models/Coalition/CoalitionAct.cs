@@ -31,6 +31,8 @@ public enum CoalitionActType
     CampaignNewsResponse,     // responded to a news item in your campaign
     CampaignReaction,         // reacted to a candidate post (cheap; anti-farm via daily cap)
     BriefingRead,             // read a daily briefing (the "read today's briefing" quest)
+    // daily-quest completion bonus (reasoning currency, once per quest per day; Payload = quest id)
+    QuestReward,              // awarded when a daily quest's underlying condition is met
 }
 
 /// <summary>A recorded act in the ledger: what was done, how it scored, and what it paid.</summary>
