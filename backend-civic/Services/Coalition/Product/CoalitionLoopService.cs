@@ -867,6 +867,21 @@ public class CoalitionLoopService
             granted.Add(q.Id);
             changed = true;
         }
+
+        // Finishing every daily quest claims a single scarce coalition point (once per
+        // day) — the premium currency the per-quest reasoning rewards don't grant. Keyed
+        // separately from the quest ids so it can't collide with a per-quest marker.
+        const string allCompleteKey = "all-complete";
+        if (DailyQuests.All(q => Done(q.Id)) && !granted.Contains(allCompleteKey))
+        {
+            _db.CoalitionActs.Add(new CoalitionAct
+            {
+                Id = Guid.NewGuid(), UserId = userId, Type = CoalitionActType.QuestReward,
+                Payload = allCompleteKey, Points = 1, Currency = "scarce",
+            });
+            changed = true;
+        }
+
         if (changed)
         {
             await _db.SaveChangesAsync(ct);
