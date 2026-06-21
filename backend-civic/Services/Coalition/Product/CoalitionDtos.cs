@@ -116,6 +116,14 @@ public sealed record CircleDto(
     string Id, string Name, double GapTier, string DifficultyLabel,
     IReadOnlyList<string> Buckets, IReadOnlyList<StandingRowDto> Standings);
 
+/// <summary>
+/// A daily quest with its completion computed server-side from the acts ledger.
+/// <see cref="Xp"/> is the reward granted (once per day, clamped to the daily cap)
+/// when <see cref="Done"/> first becomes true. Routing/subtitle are presentation,
+/// resolved on the client from the quest <see cref="Id"/>.
+/// </summary>
+public sealed record QuestDto(string Id, string Title, int Xp, bool Done);
+
 public sealed record JoinRequest(string? Bucket, string? AgeBand = null);
 public sealed record PositionRequest(string Stance, string Intensity = "Medium", string? Bucket = null, string? ReasoningTag = null);
 public sealed record AmendmentRequest(Dictionary<string, string> Positions, string? Label = null);

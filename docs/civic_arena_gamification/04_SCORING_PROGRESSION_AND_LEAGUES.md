@@ -80,3 +80,139 @@ What this achieves:
 ## Streaks (philosophical fork — leaning gentle)
 
 Streaks are the strongest return mechanic ever built, but they punish the reflective, occasional, busy user a civics product should respect, and can manufacture compulsive engagement the wellbeing concerns in this space warn against. For a mixed-age public audience including minors, lean toward a **softer "campaign participation" cadence** — rewards consistency over a week without anxiety-inducing all-or-nothing daily breaks — rather than a hard daily streak. (Named as a real fork, not silently defaulted.)
+
+---
+
+# Implementation reference (as built)
+
+This section pins the prose above to the concrete numbers in code, so the economy is auditable without reading the source. When the two disagree, the code wins — keep this section updated alongside it.
+
+**Where it lives**
+- `CoalitionPoints.cs` — base points, currency mapping, quality gating, the diminishing curve + daily cap. *Pure, no I/O — the single source of truth for "what an act is worth."*
+- `ReasoningLedger.cs` — writes one `CoalitionAct` row per scored action, applies the curve, logs the active day. All XP-earning paths funnel through here.
+- `CoalitionLoopService.cs` — `RecordActAsync` (judging + ledger write), `GetQuestsAsync` (daily quests + rewards), `GetMeAsync` (totals shown on the dashboard).
+- `frontend-civic/.../PlayerHome.tsx` — level/tier ladder derived from reasoning XP.
+
+## The two currencies
+
+Every `CoalitionAct` is paid in exactly one currency (`CoalitionPoints.Currency`):
+
+| Currency | Earned by | Rules | Drives |
+|---|---|---|---|
+| **reasoning** | daily micro/mid acts (reactions, positions, steelmans, co-signs, briefing reads, campaign responses, the culture↔governance sort) | **diminishing returns + daily cap** | your **level** (the daily grind / leaderboard floor) |
+| **scarce** | macro/coalition acts (`AuthorProvision`, `WritePlank`, `PrincipledDissent`, `Longform`, `CoalitionPassReward`) + the all-quests bonus | **uncapped, no diminishing** | **prestige** (the "Coalition pts" tile; the biggest standing jumps) |
+
+This is the structural guard against volume dominance from the prose above: showing up daily is necessary but plateaus (capped reasoning); climbing requires the rarer cross-spectrum moves (uncapped scarce).
+
+## Act base points (`CoalitionPoints.BasePoints`)
+
+| Act | Base | Currency | Quality-gated? |
+|---|---|---|---|
+| `BriefingRead` | 2 | reasoning | — |
+| `CampaignReaction` | 1 | reasoning | — |
+| `CoSign` | 2 | reasoning | — | 
+| `ReactionWithReason` | 3 | reasoning | — |
+| `ClaimTag` | 3 | reasoning | — |
+| `Position` | 5 | reasoning | — |
+| `ReactAndRoute` | 5 | reasoning | — |
+| `CampaignNewsResponse` | 5 | reasoning | — |
+| `CultureGovernanceSort` | 6 | reasoning | — |
+| `Steelman` | 8 | reasoning | ✅ |
+| `Amend` | 12 | reasoning | — |
+| `DiedReasoningPayout` | 4 | reasoning | — |
+| `PrincipledDissent` | 20 | scarce | ✅ |
+| `Longform` | 20 | scarce | ✅ |
+| `AuthorProvision` | 25 | scarce | ✅ |
+| `WritePlank` | 30 | scarce | ✅ |
+| `CoalitionPassReward` | 30 (+breadth bonus) | scarce | — |
+| `QuestReward` | 0 (caller sets the amount) | reasoning¹ | — |
+
+The **agree-vs-amend asymmetry** is encoded here: a bare `CoSign` is worth 2, a substantive `Amend` is worth 12. Mush is cheap; carve-outs pay.
+
+¹ `QuestReward` is reasoning for the per-quest daily rewards, and scarce for the once-per-day "all quests complete" bonus (see below).
+
+**Quality gating** (`QualityGated`): for `Steelman`, `Longform`, `PrincipledDissent`, `WritePlank`, `AuthorProvision`, the base is first scaled by `max(0.2, judgeQuality/100)` — a weak contribution earns as little as 20% of base.
+
+## The reasoning curve (diminishing returns + daily cap)
+
+Reasoning acts are scored by `CoalitionPoints.ApplyDiminishing`:
+
+```
+factor    = DiminishingFactor ^ (reasoning acts already done today)   // DiminishingFactor = 0.8
+points    = max(1, round(base * factor))                             // never below 1
+remaining = max(0, DailyReasoningCap - reasoning earned today)        // DailyReasoningCap = 150
+award     = min(points, remaining)                                    // clamp to the cap
+```
+
+Two knobs: **`DailyReasoningCap = 150`** (hard daily ceiling) and **`DiminishingFactor = 0.8`** (each successive reasoning act of the day pays 80% of the previous one, with a floor of 1).
+
+Worked example — repeating a base-5 act through one day:
+
+| Act # | factor (0.8ⁿ) | award |
+|---|---|---|
+| 1 | 1.00 | 5 |
+| 2 | 0.80 | 4 |
+| 3 | 0.64 | 3 |
+| 4 | 0.51 | 3 |
+| 5 | 0.41 | 2 |
+| 6 | 0.33 | 2 |
+| 7 | 0.26 | 1 |
+| 8+ | … | 1 (floor) |
+
+So raw acting front-loads (~19 XP over the first six acts) and then pays a flat **1 XP/act** tail — a deliberate anti-farm shape. Pure act-grinding plateaus well under the cap; the cap (150) is really only reachable in combination with quest rewards.
+
+**History / tuning note:** the cap was **30** and the factor **0.6** until 2026-06. That compressed everyone toward the same ~30/day ceiling, so engagement barely differentiated. Raised to **150 / 0.8** to let sustained effort spread scores out while keeping a hard ceiling against runaway farming.
+
+## Daily quests (`GetQuestsAsync`)
+
+Four daily quests, with completion computed **server-side from the acts ledger** (the client owns only routing/subtitle). This is the source of truth — there is no client-side "done" bookkeeping.
+
+| Quest id | Title | Reward | "Done" when, today, there is a … |
+|---|---|---|---|
+| `briefing-read` | Read today's briefing | 10 | `BriefingRead` act (deduped to once/day) |
+| `co-sign` | Co-sign one coalition position | 20 | `CoSign` **or** `Amend` act |
+| `campaign-headline` | Respond to a headline in your campaign | 30 | `CampaignNewsResponse` act |
+| `bridge-culture` | Bridge a culture-war provision | 30 | `CultureGovernanceSort` **or** `ReactAndRoute` act |
+
+**Quest rewards** are the main XP engine and behave differently from raw acts:
+- granted **once per day per quest** (idempotent — a `QuestReward` act keyed by the quest id is the marker, so repeated dashboard loads never double-pay),
+- **not** subject to the diminishing curve (granted at full value),
+- still **clamped to the daily cap** (`min(reward, 150 - earnedToday)`).
+
+The four rewards total **90 reasoning XP/day**. Because they bypass diminishing, *completing your dailies* — not grinding acts — is how an engaged player approaches the cap. Raw acts then add a diminishing, effort-proportional margin on top.
+
+**All-quests bonus:** finishing all four in a day grants **1 scarce coalition point**, once per day (idempotent via an `all-complete` marker). This is the only scarce point earnable from the daily loop; it backs the "claim a scarce coalition point" promise on the dashboard's quest card.
+
+### Rough daily distribution (with the 150/0.8 curve + quests)
+
+| Engagement | Reasoning XP/day | Composition |
+|---|---|---|
+| Casual (reads briefing) | ~12 | briefing act + 10 quest |
+| Moderate (briefing + co-sign) | ~34 | acts + 30 quests |
+| Engaged (all 4 quests) | ~100 | ~10 acts + 90 quests |
+| Grinder (all quests + heavy acting) | up to 150 | + diminishing act margin to the ceiling |
+
+Known soft spot: among players who *all* complete their quests (all carry the 90 base), further separation comes only from the 1-XP/act raw tail, so the very top end is gently compressed. Acceptable for now; raise the per-act floor or flatten the curve if more top-end spread is wanted.
+
+## Progression: levels & tiers (`PlayerHome.tsx`)
+
+There is no stored "level" field; it is derived from lifetime reasoning XP:
+
+```
+XP_PER_LEVEL = 500
+level        = floor(reasoningXp / 500) + 1
+```
+
+Each level has a distinct name (`TIER_NAMES`), shown on the progression rail. Levels past 10 fall back to `Level N`:
+
+`1 Voter · 2 Advocate · 3 Organizer · 4 Aspirant · 5 Apprentice · 6 Co-signer · 7 Bridgewright · 8 Statewright · 9 Whip · 10 Speaker`
+
+This level ladder is **separate from the Circle ladder** below and deliberately shares no names, so the dashboard never shows the same tier word twice.
+
+## Circles (skill cohorts) vs the level ladder
+
+A **Circle** is the skill/engagement cohort a player is grouped into (the "league" of the prose above), distinct from an individual's XP level. Circles are composed by skill (`ComposeCirclesAsync`) and **named by their rank in gap-tier order** (`CircleTierLadder` in `CoalitionLoopService.cs`):
+
+`Citizen · Delegate · Framer · Senator · Statesman · Founder` (ascending gap difficulty)
+
+The name is derived from rank at read time, so existing rows show the ladder name without a recompose. Ranks beyond the ladder fall back to `Circle N`.

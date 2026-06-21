@@ -39,8 +39,8 @@ public class CoalitionPointsTests
     public void Diminishing_DecaysWithinDay_AndRespectsCap()
     {
         CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 0, reasoningEarnedToday: 0).Should().Be(10);
-        CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 1, reasoningEarnedToday: 10).Should().Be(6); // 10*0.6
-        CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 2, reasoningEarnedToday: 16).Should().Be(4); // 10*0.36→4
+        CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 1, reasoningEarnedToday: 10).Should().Be(8); // 10*0.8
+        CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 2, reasoningEarnedToday: 16).Should().Be(6); // 10*0.64→6
         // Cap: only 2 points of headroom left under the daily cap.
         CoalitionPoints.ApplyDiminishing(10, priorReasoningActsToday: 0, reasoningEarnedToday: CoalitionPoints.DailyReasoningCap - 2)
             .Should().Be(2);

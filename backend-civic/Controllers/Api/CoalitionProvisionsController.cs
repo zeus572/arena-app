@@ -145,6 +145,13 @@ public class CoalitionProvisionsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<CircleDto>>> Circles(CancellationToken ct)
         => Ok(await _loop.GetCirclesAsync(ct));
 
+    /// <summary>The player's daily quests with server-computed completion (from the acts
+    /// ledger). Reading this also grants the reward XP for any freshly-completed quest,
+    /// once per day.</summary>
+    [HttpGet("/api/coalition/quests")]
+    public async Task<ActionResult<IReadOnlyList<QuestDto>>> Quests(CancellationToken ct)
+        => Ok(await _loop.GetQuestsAsync(_user.GetCurrentUserId(), ct));
+
     /// <summary>Dev helper: (re)compose circles from the current player pool. Development-only
     /// (the lifecycle scheduler composes/re-balances circles automatically in prod).</summary>
     [HttpPost("/api/coalition/circles/compose")]
