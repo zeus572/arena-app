@@ -17,7 +17,10 @@ public sealed record LoopConfig(
     int NearCoalitionMaxUncovered = 0,   // CONTESTED -> NEAR: best version may miss at most this many required regions
     int NearCoalitionMinBuckets = 2,     // ...and its supporters must cover at least this many spectrum buckets
     int MinTeethSpecificity = 1,         // a passing plank must resolve at least this many sub-questions
-    bool RequireMovementToPass = true,   // all signers must have moved (reject->accept) to pass
+    bool RequireMovementToPass = false,  // off: a toothful version co-signed by all required signers with
+                                         // spectrum breadth passes whether or not anyone bargained in. (A
+                                         // unanimous-preference coalition is a valid pass; MovedSigners is
+                                         // still recorded on the outcome for scoring.)
     ForkOptions? ForkOptions = null);
 
 /// <summary>A player's accept/decline of a specific version, with intensity and a logical timestamp.</summary>
