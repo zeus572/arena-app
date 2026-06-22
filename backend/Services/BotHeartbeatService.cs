@@ -14,6 +14,7 @@ public class BotHeartbeatService : BackgroundService
     private readonly ILogger<BotHeartbeatService> _logger;
     private readonly int _maxActiveDebates;
     private readonly int _turnDelaySeconds;
+    private readonly bool _llmEnabled;
 
     // Weighted format selection for bot-generated debates
     private static readonly (string format, double weight)[] FormatWeights =
@@ -56,6 +57,7 @@ public class BotHeartbeatService : BackgroundService
         _logger = logger;
         _maxActiveDebates = config.GetValue("BotHeartbeat:MaxActiveDebates", 5);
         _turnDelaySeconds = config.GetValue("BotHeartbeat:TurnDelaySeconds", 30);
+        _llmEnabled = config.GetValue("Anthropic:Enabled", true);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -393,6 +395,12 @@ public class BotHeartbeatService : BackgroundService
                 "roast" => TurnType.Roast,
                 _ => TurnType.Argument,
             };
+        }
+
+        if (!_llmEnabled)
+        {
+            _logger.LogDebug("LLM disabled (Anthropic:Enabled=false); skipping turn generation");
+            return;
         }
 
         if (!_budget.CanGenerateTurn(agent.Id))

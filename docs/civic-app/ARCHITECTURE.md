@@ -278,3 +278,18 @@ npm run test:e2e --prefix frontend-civic
 
 Set `Anthropic:ApiKey` (user-secrets or env) to enable live news → content
 generation; without it the app runs fine on seeded content only.
+
+**`Anthropic:Enabled` (default `true`) — local LLM kill-switch.** Set it to `false`
+in user-secrets to pause all live Claude calls (the shared `ClaudeLlmClient` then
+throws `LlmException` and every Civic service falls back to its heuristic path)
+*without* removing the API key — useful for stopping API spend on a dev box while
+keeping the one-time-shown key intact:
+
+```bash
+dotnet user-secrets set "Anthropic:Enabled" "false" --project backend-civic   # off
+dotnet user-secrets set "Anthropic:Enabled" "true"  --project backend-civic   # on
+```
+
+⚠️ Keep this flag out of committed `appsettings*.json` and prod config — it must
+stay implicit-`true` everywhere except dev user-secrets, or prod could be turned
+off by accident. See the root `CLAUDE.md` → Configuration for the full rationale.

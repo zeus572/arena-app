@@ -34,6 +34,11 @@ public class TopicModerationService
         }
 
         // LLM moderation check
+        if (!_config.GetValue("Anthropic:Enabled", true))
+        {
+            return null; // LLM disabled — keyword pre-filter above still applies
+        }
+
         var apiKey = _config["Anthropic:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
