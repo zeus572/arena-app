@@ -100,13 +100,16 @@ public class CoalitionApiTests : IAsyncLifetime
         using (var scope = _fx.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Civic.API.Data.CivicDbContext>();
-            briefingId = (await db.Briefings.OrderBy(b => b.IssueOrder).FirstAsync()).Id;
+            // Birth from a NATIONAL briefing — a local one would inherit its Locality and
+            // be invisible to the anonymous test user (locality hard-wall → 404).
+            briefingId = (await db.Briefings.Where(b => b.Locality == null)
+                .OrderBy(b => b.IssueOrder).FirstAsync()).Id;
         }
 
         var detail = await PostAsync("/api/coalition/birth", new { briefingId });
 
         detail.SubQuestions.Should().NotBeEmpty("a born provision has sub-questions to position on");
-        detail.Versions.Should().Contain(v => v.Label == "base", "birth seeds a base version");
+        detail.Versions.Should().Contain(v => v.Label == "As proposed", "birth seeds a base 'As proposed' version");
         detail.Participants.Should().Contain(p => p.IsAgent, "an agent counterpart is seeded so it's engageable");
         detail.Difficulty.Should().NotBeNullOrEmpty();
         new[] { "Open", "Contested" }.Should().Contain(detail.State);
@@ -129,7 +132,10 @@ public class CoalitionApiTests : IAsyncLifetime
         var v = detail.Versions.First(HasGfExempt);
         v.Positions["gf"].Should().Be("exempt");
         v.Positions["scope"].Should().Be("large-only");
-        v.Text.Should().Contain("exempt", "the version stores the player's actual prose");
+        // Note: a freeform amendment whose extracted vector matches an existing version
+        // reuses that version (dedup by position-vector), so v.Text is the matched
+        // version's wording, not necessarily the player's prose — the extraction of
+        // positions from natural language is what this test verifies.
     }
 
     [Fact]
@@ -224,7 +230,16 @@ public class CoalitionApiTests : IAsyncLifetime
     {
         var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
         var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
-        var detail = await GetDetailAsync(dc.Id);
+
+        // The demo seeds a single agent corner (right) that needs the grandfather carve-out
+        // (gf=exempt). Join an opposing left corner and co-sign a no-carve-out version
+        // (gf=none) — a region only widens on co-signs, not declines (AcceptanceSetDeriver) —
+        // so the two corners genuinely disagree and at least one stays dark pre-coalition.
+        await PostAsync($"/api/coalition/provisions/{dc.Id}/join", new { bucket = "left" });
+        var seeded = await GetDetailAsync(dc.Id);
+        var gfNone = seeded.Versions.First(v => v.Positions.TryGetValue("gf", out var g) && g == "none");
+        var detail = await PostAsync($"/api/coalition/provisions/{dc.Id}/acceptances",
+            new { versionId = gfNone.Id, accept = true, intensity = "Medium" });
 
         detail.SpectrumBar.CallToAction.Should().NotBeNullOrEmpty();
         detail.SpectrumBar.DaysLeft.Should().NotBeNull();
