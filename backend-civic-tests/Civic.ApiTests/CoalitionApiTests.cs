@@ -133,7 +133,7 @@ public class CoalitionApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Leagues_ShowBreadthFavoringStandings_AfterAnAgentCoalition()
+    public async Task Circles_ShowBreadthFavoringStandings_AfterAnAgentCoalition()
     {
         var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
         var ai = provisions!.Single(p => p.Slug == "ai-hiring-disclosure-demo");
@@ -146,9 +146,9 @@ public class CoalitionApiTests : IAsyncLifetime
             detail = await PostAsync($"/api/coalition/provisions/{ai.Id}/agent-step");
         detail.State.Should().Be("Passed");
 
-        var leagues = await _client.GetFromJsonAsync<List<LeagueDto>>("/api/coalition/leagues");
-        leagues.Should().NotBeNullOrEmpty();
-        var rows = leagues!.SelectMany(l => l.Standings).ToList();
+        var circles = await _client.GetFromJsonAsync<List<CircleDto>>("/api/coalition/circles");
+        circles.Should().NotBeNullOrEmpty();
+        var rows = circles!.SelectMany(l => l.Standings).ToList();
         rows.Should().Contain(r => r.IsAgent && r.CoalitionsSigned >= 1 && r.TotalBreadth >= 3,
             "agents who signed the cross-spectrum coalition should appear in the breadth-favoring standings");
         // breadth-favoring: a signer of a broad coalition outscores a non-signer.
@@ -191,7 +191,7 @@ public class CoalitionApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Me_ReflectsSignedPlank_AndLeaguePlacement()
+    public async Task Me_ReflectsSignedPlank_AndCirclePlacement()
     {
         var provisions = await _client.GetFromJsonAsync<List<ProvisionSummaryDto>>("/api/coalition/provisions");
         var dc = provisions!.Single(p => p.Slug == "data-center-grid-fee-demo");
@@ -214,7 +214,7 @@ public class CoalitionApiTests : IAsyncLifetime
         me.Record.TotalBreadth.Should().BeGreaterThanOrEqualTo(2);
         me.Cadence.Score.Should().BeGreaterThan(0, "the player was active today");
         me.Cadence.Last7Days.Should().HaveCount(7);
-        me.LeagueId.Should().NotBeNullOrEmpty("the player is auto-placed in a league");
+        me.CircleId.Should().NotBeNullOrEmpty("the player is auto-placed in a circle");
         me.Recommended.Should().NotBeNull();
         me.SkillLabel.Should().NotBeNullOrEmpty();
     }

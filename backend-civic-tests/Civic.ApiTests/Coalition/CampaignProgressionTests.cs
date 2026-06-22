@@ -6,7 +6,7 @@ namespace Civic.ApiTests.Coalition;
 
 /// <summary>
 /// Phase 3.4 gate: a simulated campaign produces sensible records, breadth meters,
-/// governance ratios, league movement, and a soft (non-all-or-nothing) cadence.
+/// governance ratios, circle movement, and a soft (non-all-or-nothing) cadence.
 /// Pure — no DB, no LLM.
 /// </summary>
 public class CampaignProgressionTests
@@ -49,15 +49,15 @@ public class CampaignProgressionTests
     {
         var tiers = new[] { 0.2, 0.4, 0.6, 0.8 };
 
-        PromotionService.Decide(skill: 0.9, leagueGapTier: 0.3).Should().Be(LeagueMovement.Promote);
-        PromotionService.Decide(skill: 0.35, leagueGapTier: 0.3).Should().Be(LeagueMovement.Stay);
-        PromotionService.Decide(skill: 0.1, leagueGapTier: 0.6).Should().Be(LeagueMovement.Relegate);
+        PromotionService.Decide(skill: 0.9, circleGapTier: 0.3).Should().Be(CircleMovement.Promote);
+        PromotionService.Decide(skill: 0.35, circleGapTier: 0.3).Should().Be(CircleMovement.Stay);
+        PromotionService.Decide(skill: 0.1, circleGapTier: 0.6).Should().Be(CircleMovement.Relegate);
 
         // A promoted player moves up a tier (wider gap); a relegated one moves down; bounded.
-        PromotionService.NextTier(LeagueMovement.Promote, 0.4, tiers).Should().Be(0.6);
-        PromotionService.NextTier(LeagueMovement.Relegate, 0.4, tiers).Should().Be(0.2);
-        PromotionService.NextTier(LeagueMovement.Promote, 0.8, tiers).Should().Be(0.8, "already at the top");
-        PromotionService.NextTier(LeagueMovement.Relegate, 0.2, tiers).Should().Be(0.2, "already at the bottom");
+        PromotionService.NextTier(CircleMovement.Promote, 0.4, tiers).Should().Be(0.6);
+        PromotionService.NextTier(CircleMovement.Relegate, 0.4, tiers).Should().Be(0.2);
+        PromotionService.NextTier(CircleMovement.Promote, 0.8, tiers).Should().Be(0.8, "already at the top");
+        PromotionService.NextTier(CircleMovement.Relegate, 0.2, tiers).Should().Be(0.2, "already at the bottom");
     }
 
     [Fact]
@@ -105,12 +105,12 @@ public class CampaignProgressionTests
         summary.WeightedScore.Should().BeGreaterThan(summary.TotalBreadth, "payout coupling lifts the harder closes");
 
         // Skill from this track record (3.2) lands the player above an entry tier -> promotion.
-        var history = new LeagueHistory(planks.Select(p => new LeagueOutcome(p.GapWidthAtBirth, Closed: true)).ToList());
+        var history = new CircleHistory(planks.Select(p => new CircleOutcome(p.GapWidthAtBirth, Closed: true)).ToList());
         var skill = GroupSkill.Estimate(history);
         skill.Should().BeGreaterThan(0.5);
 
-        var movement = PromotionService.Decide(skill, leagueGapTier: 0.3);
-        movement.Should().Be(LeagueMovement.Promote, "an over-skilled player is moved to wider gaps");
+        var movement = PromotionService.Decide(skill, circleGapTier: 0.3);
+        movement.Should().Be(CircleMovement.Promote, "an over-skilled player is moved to wider gaps");
         PromotionService.NextTier(movement, 0.3, new[] { 0.2, 0.4, 0.6, 0.8 })
             .Should().BeGreaterThan(0.3);
 

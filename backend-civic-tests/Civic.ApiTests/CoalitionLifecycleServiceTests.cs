@@ -94,7 +94,7 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ComposeLeagues_NeverMixesAgeBands()
+    public async Task ComposeCircles_NeverMixesAgeBands()
     {
         var pid = Guid.NewGuid();
         using (var s = _fx.Factory.Services.CreateScope())
@@ -110,17 +110,17 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
         using (var s = _fx.Factory.Services.CreateScope())
         {
             var loop = s.ServiceProvider.GetRequiredService<CoalitionLoopService>();
-            await loop.ComposeLeaguesAsync(4);
+            await loop.ComposeCirclesAsync(4);
         }
 
         using (var s = _fx.Factory.Services.CreateScope())
         {
             var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
-            var members = await db.CoalitionLeagueMembers.ToListAsync();
+            var members = await db.CoalitionCircleMembers.ToListAsync();
             members.Should().NotBeEmpty();
-            members.GroupBy(m => m.LeagueId)
+            members.GroupBy(m => m.CircleId)
                 .Should().OnlyContain(g => g.Select(m => m.AgeBand).Distinct().Count() == 1,
-                    "a league must never mix adults and minors (A8)");
+                    "a circle must never mix adults and minors (A8)");
             members.Single(m => m.UserId == "minor1").AgeBand.Should().Be("Minor");
         }
     }
@@ -133,12 +133,12 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
         using (var s = _fx.Factory.Services.CreateScope())
         {
             var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
-            db.CoalitionLeagues.Add(new CoalitionLeague { Id = lowId, Name = "Low", GapTier = 0.2 });
-            db.CoalitionLeagues.Add(new CoalitionLeague { Id = highId, Name = "High", GapTier = 0.9 });
-            // A skill-0 player parked in the hardest league should be relegated.
-            db.CoalitionLeagueMembers.Add(new CoalitionLeagueMember
+            db.CoalitionCircles.Add(new CoalitionCircle { Id = lowId, Name = "Low", GapTier = 0.2 });
+            db.CoalitionCircles.Add(new CoalitionCircle { Id = highId, Name = "High", GapTier = 0.9 });
+            // A skill-0 player parked in the hardest circle should be relegated.
+            db.CoalitionCircleMembers.Add(new CoalitionCircleMember
             {
-                Id = Guid.NewGuid(), LeagueId = highId, UserId = "rookie", SpectrumBucket = "left",
+                Id = Guid.NewGuid(), CircleId = highId, UserId = "rookie", SpectrumBucket = "left",
             });
             await db.SaveChangesAsync();
         }
@@ -153,8 +153,8 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
         using (var s = _fx.Factory.Services.CreateScope())
         {
             var db = s.ServiceProvider.GetRequiredService<CivicDbContext>();
-            (await db.CoalitionLeagueMembers.SingleAsync(m => m.UserId == "rookie")).LeagueId
-                .Should().Be(lowId, "a skill-0 player is relegated out of the hardest league");
+            (await db.CoalitionCircleMembers.SingleAsync(m => m.UserId == "rookie")).CircleId
+                .Should().Be(lowId, "a skill-0 player is relegated out of the hardest circle");
         }
     }
 }

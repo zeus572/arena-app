@@ -5,38 +5,38 @@ using Xunit;
 namespace Civic.ApiTests.Coalition;
 
 /// <summary>
-/// Phase 3.3 gate: composed leagues span the intended spectrum; scoring rewards
+/// Phase 3.3 gate: composed circles span the intended spectrum; scoring rewards
 /// breadth over volume; age-banding prevents adult↔minor exposure. Pure — no DB,
 /// no LLM.
 /// </summary>
-public class LeagueCompositionTests
+public class CircleCompositionTests
 {
     private static readonly string[] Spectrum = { "left", "center", "right" };
 
     [Fact]
-    public void ComposedLeagues_SpanTheSpectrum_AndNeverMixAgeBands()
+    public void ComposedCircles_SpanTheSpectrum_AndNeverMixAgeBands()
     {
         // 9 adults + 6 minors, evenly across the three buckets.
-        var pool = new List<LeagueMemberSpec>();
+        var pool = new List<CircleMemberSpec>();
         var n = 0;
         foreach (var bucket in Spectrum)
         {
-            for (var i = 0; i < 3; i++) pool.Add(new LeagueMemberSpec($"a{n++}", bucket, AgeBand.Adult));
-            for (var i = 0; i < 2; i++) pool.Add(new LeagueMemberSpec($"m{n++}", bucket, AgeBand.Minor));
+            for (var i = 0; i < 3; i++) pool.Add(new CircleMemberSpec($"a{n++}", bucket, AgeBand.Adult));
+            for (var i = 0; i < 2; i++) pool.Add(new CircleMemberSpec($"m{n++}", bucket, AgeBand.Minor));
         }
 
-        var leagues = LeagueComposer.Compose(pool, Spectrum, leagueSize: 3);
+        var circles = CircleComposer.Compose(pool, Spectrum, circleSize: 3);
 
-        leagues.Should().NotBeEmpty();
-        // Age-banding: no league mixes adults and minors.
-        leagues.Should().OnlyContain(l => !l.MixesAgeBands, "adults and minors must never share a league");
+        circles.Should().NotBeEmpty();
+        // Age-banding: no circle mixes adults and minors.
+        circles.Should().OnlyContain(l => !l.MixesAgeBands, "adults and minors must never share a circle");
 
-        // Spectrum span: every full (size-3) league covers all three buckets.
-        leagues.Where(l => l.Members.Count == 3)
-            .Should().OnlyContain(l => l.Buckets.Count == 3, "a full league should span the whole spectrum");
+        // Spectrum span: every full (size-3) circle covers all three buckets.
+        circles.Where(l => l.Members.Count == 3)
+            .Should().OnlyContain(l => l.Buckets.Count == 3, "a full circle should span the whole spectrum");
 
         // No member is lost or duplicated.
-        leagues.SelectMany(l => l.Members).Select(m => m.UserId).Should().BeEquivalentTo(pool.Select(p => p.UserId));
+        circles.SelectMany(l => l.Members).Select(m => m.UserId).Should().BeEquivalentTo(pool.Select(p => p.UserId));
     }
 
     [Fact]
