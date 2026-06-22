@@ -77,16 +77,48 @@ public class NewsIngestionService : BackgroundService
         using var scope = _scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
 
-        var total = await IngestFeedAsync(_feed, locality: null, db, ct);
+        // Each feed is ingested in its own try/catch so one failing feed (a flaky
+        // RSS source, or an item that trips a DB constraint) can't starve the
+        // others. Before this guard, a single oversized WA item aborted the whole
+        // tick, taking national + MD + CA down with it.
+        var total = await SafeIngestAsync(_feed, locality: null, db, ct);
 
         foreach (var (state, sources) in _opts.CurrentValue.LocalSources)
         {
             var feed = BuildLocalFeed(state, sources);
             if (feed is null) continue;
-            total += await IngestFeedAsync(feed, locality: state, db, ct);
+            total += await SafeIngestAsync(feed, locality: state, db, ct);
         }
 
         return total;
+    }
+
+    /// <summary>
+    /// Ingest a single feed, swallowing and logging any failure so the caller can
+    /// continue with the remaining feeds. A failed feed contributes 0 fresh items.
+    /// EF tracked entities from the failed SaveChanges are detached so they don't
+    /// re-poison the next feed's save on the shared <paramref name="db"/>.
+    /// </summary>
+    private async Task<int> SafeIngestAsync(INewsFeed feed, string? locality, CivicDbContext db, CancellationToken ct)
+    {
+        var label = locality ?? "national";
+        try
+        {
+            return await IngestFeedAsync(feed, locality, db, ct);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "NewsIngestionService: {Label} feed ingestion failed; skipping to next feed", label);
+            DetachPending(db);
+            return 0;
+        }
+    }
+
+    /// <summary>Detach any entities still pending after a failed save so they don't leak into the next feed's SaveChanges.</summary>
+    private static void DetachPending(CivicDbContext db)
+    {
+        foreach (var entry in db.ChangeTracker.Entries().ToList())
+            entry.State = EntityState.Detached;
     }
 
     /// <summary>Build an aggregate feed for one locality from its configured RSS sources.</summary>
@@ -137,11 +169,15 @@ public class NewsIngestionService : BackgroundService
             .Select(i => new DbNewsItem
             {
                 Id = Guid.NewGuid(),
-                ExternalId = i.ExternalId,
-                Headline = i.Headline,
-                Source = i.Source,
-                Url = i.Url,
-                Summary = i.Summary,
+                // Clamp every string field to its column limit. RSS feeds vary
+                // wildly — some put the full article body in <description> — and
+                // an over-long value otherwise throws Postgres 22001 on save,
+                // aborting the feed. Summary is a preview, so clipping is benign.
+                ExternalId = Clamp(i.ExternalId, NewsFieldLimits.ExternalId)!,
+                Headline = Clamp(i.Headline, NewsFieldLimits.Headline)!,
+                Source = Clamp(i.Source, NewsFieldLimits.Source)!,
+                Url = Clamp(i.Url, NewsFieldLimits.Url)!,
+                Summary = Clamp(i.Summary, NewsFieldLimits.Summary),
                 PublishedAt = DateTime.SpecifyKind(i.PublishedAt, DateTimeKind.Utc),
                 IngestedAt = DateTime.UtcNow,
                 Status = NewsItemStatus.Ingested,
@@ -155,9 +191,38 @@ public class NewsIngestionService : BackgroundService
             return 0;
         }
 
+        // Metric: how long are the raw summaries, and how much are we clipping?
+        // Logged as structured fields so the trend (truncated rate, longest seen)
+        // is visible over time in the log store without a DB query.
+        var summaryLengths = fresh
+            .Select(f => items.First(i => i.ExternalId == f.ExternalId).Summary?.Length ?? 0)
+            .ToList();
+        var truncated = summaryLengths.Count(len => len > NewsFieldLimits.Summary);
+        var longest = summaryLengths.Count > 0 ? summaryLengths.Max() : 0;
+
         db.NewsItems.AddRange(fresh);
         await db.SaveChangesAsync(ct);
-        _log.LogInformation("NewsIngestionService: {Label} — ingested {Added} new items", label, fresh.Count);
+        _log.LogInformation(
+            "NewsIngestionService: {Label} — ingested {Added} new items; summaries: longest {Longest} chars, {Truncated}/{Added} truncated to {Limit}",
+            label, fresh.Count, longest, truncated, fresh.Count, NewsFieldLimits.Summary);
         return fresh.Count;
     }
+
+    /// <summary>Trim a string to <paramref name="max"/> chars; null/short values pass through unchanged.</summary>
+    private static string? Clamp(string? value, int max) =>
+        value is null || value.Length <= max ? value : value[..max];
+}
+
+/// <summary>
+/// String-column limits for <see cref="DbNewsItem"/>, mirroring the
+/// <c>[MaxLength]</c> attributes on the model. Kept here so ingestion can clamp
+/// inbound RSS values before they hit Postgres. Update both together.
+/// </summary>
+internal static class NewsFieldLimits
+{
+    public const int ExternalId = 600;
+    public const int Headline = 400;
+    public const int Source = 60;
+    public const int Url = 800;
+    public const int Summary = 2000;
 }
