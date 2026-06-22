@@ -86,6 +86,31 @@ public class NewsIngestionServiceTests
         var added = await svc.IngestOnceAsync();
         added.Should().Be(0);
     }
+
+    [Fact]
+    public async Task IngestOnce_OverlongSummary_IsTruncatedAndPersisted()
+    {
+        // Regression: full-content RSS feeds (e.g. WA's Cascade PBS) emit a
+        // <description> longer than the Summary varchar(2000) column. Before the
+        // clamp, SaveChanges threw Postgres 22001 and aborted the whole tick, so
+        // no local news ever persisted. The item must now survive, clipped to 2000.
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        var hugeSummary = new string('x', 5000);
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-huge", "Story with a giant body", "TEST", "https://example.com/huge", hugeSummary, DateTime.UtcNow),
+        };
+
+        var added = await svc.IngestOnceAsync();
+
+        added.Should().Be(1, "an over-long summary must not abort ingestion");
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var row = await db.NewsItems.SingleAsync(n => n.ExternalId == "ext-huge");
+        row.Summary.Should().NotBeNull();
+        row.Summary!.Length.Should().Be(2000, "the summary should be clamped to the column limit");
+    }
 }
 
 internal class TestOptionsMonitor<T> : IOptionsMonitor<T>
