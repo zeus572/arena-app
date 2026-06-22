@@ -1,0 +1,58 @@
+name: CI
+
+# Runs the .NET test suites on every PR and on pushes to master, so regressions
+# are caught before they reach the `release` branch (which is what the deploy-*.yml
+# workflows act on). Previously nothing ran `dotnet test` in CI, so the test
+# projects silently bit-rotted.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet-tests:
+    name: .NET test suites
+    runs-on: ubuntu-latest
+
+    # Civic.ApiTests is an integration suite that talks to PostgreSQL. The test
+    # host's connection string is hard-coded to localhost:5433 / postgres / postgres
+    # (see CivicApiFactory.TestConnectionString); the civic_test database itself is
+    # created by the fixture's EF MigrateAsync, so we only need the server running.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # No Anthropic key is configured, so the LLM clients throw and every caller
+      # falls back to its heuristic path — the same way the suites are run locally.
+      - name: Shared unit tests
+        run: dotnet test shared/Arena.Shared.Tests --logger "console;verbosity=normal"
+
+      - name: Civic unit tests
+        run: dotnet test backend-civic-tests/Civic.UnitTests --logger "console;verbosity=normal"
+
+      - name: Civic API integration tests
+        run: dotnet test backend-civic-tests/Civic.ApiTests --logger "console;verbosity=normal"
