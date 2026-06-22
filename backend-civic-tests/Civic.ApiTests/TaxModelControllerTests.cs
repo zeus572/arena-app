@@ -17,12 +17,15 @@ public class TaxModelControllerTests
     }
 
     [Fact]
-    public async Task States_ReturnsEightVerifiedStates()
+    public async Task States_ReturnsAllFiftyVerifiedStates()
     {
         var states = await _client.GetFromJsonAsync<List<TaxStateSummaryDto>>("/api/tax-model/states");
 
         states.Should().NotBeNull();
-        states!.Should().HaveCount(8);
+        // The catalog grew from the original 8 spotlight states to all 50 (the remaining
+        // 42 verified against Tax Foundation 2025 — see StateProfiles.cs).
+        states!.Should().HaveCount(50);
+        // The 8 fully-verified spotlight states must still be present.
         states.Select(s => s.Code).Should().Contain(new[] { "CA", "NY", "TX", "FL", "WA", "CO", "PA", "IL" });
         states.First(s => s.Code == "TX").IncomeSummary.Should().Be("None");
         states.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Notes));
