@@ -3,10 +3,13 @@ using Arena.Shared.Llm;
 using Arena.Shared.News;
 using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Civic.API.Data;
 using Civic.API.Services;
+using Civic.API.Services.Auth;
 using Civic.API.Services.Campaign;
 using Civic.API.Services.Generation;
 using Civic.API.Services.Leagues;
@@ -131,7 +134,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+// "VerifiedEmail" policy: authenticated AND email_verified=true. Gates account-bound
+// Civic write/participation actions so unverified (throwaway) accounts can't spam them.
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("VerifiedEmail", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.Requirements.Add(new VerifiedEmailRequirement());
+    });
+});
+builder.Services.AddSingleton<IAuthorizationHandler, VerifiedEmailHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CivicAuthorizationResultHandler>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

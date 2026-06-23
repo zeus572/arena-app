@@ -11,6 +11,10 @@ namespace Civic.API.Controllers.Api;
 /// rounds. Every endpoint requires a signed-in user (a JWT minted by the debate backend) — there is
 /// no anonymous league play, since membership needs a stable identity. League-scoped reads treat a
 /// non-member like a missing league (404) so existence never leaks.
+///
+/// Write/participation actions additionally require a verified email
+/// (<c>[Authorize(Policy = "VerifiedEmail")]</c>) so unverified throwaway accounts can't spam
+/// leagues. Reads stay accessible to any signed-in user so they can still browse.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -31,6 +35,7 @@ public class LeaguesController : ControllerBase
     // ---------------------------------------------------------------- Leagues
 
     [HttpPost]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> Create([FromBody] CreateLeagueRequest req, CancellationToken ct)
         => Execute(() => _leagues.CreateAsync(RequireUserId(), req, ct));
 
@@ -43,20 +48,24 @@ public class LeaguesController : ControllerBase
         => Execute(() => _leagues.GetDetailAsync(RequireUserId(), id, ct));
 
     [HttpPost("{id:guid}/link-campaign")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> LinkCampaign(Guid id, [FromBody] LinkCampaignRequest req, CancellationToken ct)
         => Execute(() => _leagues.LinkCampaignAsync(RequireUserId(), id, req, ct));
 
     [HttpPost("{id:guid}/refresh-identity")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> RefreshIdentity(Guid id, [FromBody] RefreshIdentityRequest req, CancellationToken ct)
         => Execute(() => _leagues.RefreshIdentityAsync(RequireUserId(), id, req, ct));
 
     [HttpPost("{id:guid}/leave")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> Leave(Guid id, CancellationToken ct)
         => Execute(() => _leagues.LeaveAsync(RequireUserId(), id, ct));
 
     // ---------------------------------------------------------------- Invites
 
     [HttpPost("{id:guid}/invites")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> CreateInvite(Guid id, [FromBody] CreateInviteRequest req, CancellationToken ct)
         => Execute(() => _leagues.CreateInviteAsync(RequireUserId(), id, req, ct));
 
@@ -65,10 +74,12 @@ public class LeaguesController : ControllerBase
         => Execute(() => _leagues.ListInvitesAsync(RequireUserId(), id, ct));
 
     [HttpPost("{id:guid}/invites/email")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> InviteByEmail(Guid id, [FromBody] InviteByEmailRequest req, CancellationToken ct)
         => Execute(() => _leagues.CreateEmailInvitesAsync(RequireUserId(), id, req ?? new InviteByEmailRequest(), ct));
 
     [HttpDelete("{id:guid}/invites/{inviteId:guid}")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> RevokeInvite(Guid id, Guid inviteId, CancellationToken ct)
         => Execute(() => _leagues.RevokeInviteAsync(RequireUserId(), id, inviteId, ct));
 
@@ -87,6 +98,7 @@ public class LeaguesController : ControllerBase
         => Execute(() => _leagues.PublicPreviewInviteAsync(code, ct));
 
     [HttpPost("join/{code}")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> Join(string code, [FromBody] JoinLeagueRequest req, CancellationToken ct)
         => Execute(() => _leagues.JoinAsync(RequireUserId(), code, req ?? new JoinLeagueRequest(), ct));
 
@@ -97,6 +109,7 @@ public class LeaguesController : ControllerBase
         => Execute(() => _rounds.ListRoundsAsync(RequireUserId(), id, ct));
 
     [HttpPost("{id:guid}/rounds")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> OpenRound(Guid id, [FromBody] OpenRoundRequest req, CancellationToken ct)
         => Execute(() => _rounds.OpenRoundAsync(RequireUserId(), id, req, ct));
 
@@ -105,22 +118,27 @@ public class LeaguesController : ControllerBase
         => Execute(() => _rounds.GetRoundAsync(RequireUserId(), id, roundId, ct));
 
     [HttpPost("{id:guid}/rounds/{roundId:guid}/entries")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> SubmitEntry(Guid id, Guid roundId, [FromBody] SubmitRoundEntryRequest req, CancellationToken ct)
         => Execute(() => _rounds.SubmitEntryAsync(RequireUserId(), id, roundId, req, ct));
 
     [HttpPost("{id:guid}/rounds/{roundId:guid}/entries/{entryId:guid}/vote")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> VoteEntry(Guid id, Guid roundId, Guid entryId, [FromBody] ReactionRequestDto req, CancellationToken ct)
         => Execute(() => _rounds.VoteEntryAsync(RequireUserId(), id, roundId, entryId, req, ct));
 
     [HttpDelete("{id:guid}/rounds/{roundId:guid}/entries/{entryId:guid}/vote")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> UnvoteEntry(Guid id, Guid roundId, Guid entryId, CancellationToken ct)
         => Execute(() => _rounds.UnvoteEntryAsync(RequireUserId(), id, roundId, entryId, ct));
 
     [HttpPost("{id:guid}/rounds/{roundId:guid}/start-voting")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> StartVoting(Guid id, Guid roundId, CancellationToken ct)
         => Execute(() => _rounds.StartVotingAsync(RequireUserId(), id, roundId, ct));
 
     [HttpPost("{id:guid}/rounds/{roundId:guid}/close")]
+    [Authorize(Policy = "VerifiedEmail")]
     public Task<IActionResult> CloseRound(Guid id, Guid roundId, CancellationToken ct)
         => Execute(() => _rounds.CloseRoundAsync(RequireUserId(), id, roundId, ct));
 
