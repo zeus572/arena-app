@@ -16,8 +16,21 @@ internal static class JwtTestHelper
     public const string Secret = "PoliticalArenaDevSecretKeyThatIsAtLeast32Characters!!";
 
     public static string MintAccessToken(Guid userId, string email = "user@example.com", string plan = "Free")
+        => Mint(userId, email, plan, Secret, DateTime.UtcNow.AddMinutes(30));
+
+    /// <summary>A correctly-shaped token signed with the WRONG secret — models the
+    /// prod failure where civic's signing key doesn't match the debate backend's.</summary>
+    public static string MintWronglySignedToken(Guid userId)
+        => Mint(userId, "user@example.com", "Free",
+            "TotallyDifferentSecretThatIsAlsoAtLeast32Characters!!", DateTime.UtcNow.AddMinutes(30));
+
+    /// <summary>A properly-signed token whose lifetime has already elapsed.</summary>
+    public static string MintExpiredToken(Guid userId)
+        => Mint(userId, "user@example.com", "Free", Secret, DateTime.UtcNow.AddMinutes(-5));
+
+    private static string Mint(Guid userId, string email, string plan, string secret, DateTime expires)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
@@ -32,7 +45,7 @@ internal static class JwtTestHelper
             issuer: Issuer,
             audience: Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(30),
+            expires: expires,
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
