@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Arena.API.Data;
 using Arena.API.Services;
+using Arena.API.Services.Email;
 using Arena.API.Services.FactProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,19 @@ builder.Services.AddTransient<FactCheckService>();
 builder.Services.AddScoped<TaggingService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<FormatSampleSeederService>();
+
+// Account email: verification + password reset. IEmailSender is the swap point —
+// ACS in prod, a logging no-op everywhere else. The dispatch/policy/token services
+// layer suppression, rate limiting, safety checks and one-time tokens on top.
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+var emailProvider = (builder.Configuration["Email:Provider"] ?? "none").Trim().ToLowerInvariant();
+if (emailProvider == "acs")
+    builder.Services.AddSingleton<IEmailSender, AcsEmailSender>();
+else
+    builder.Services.AddSingleton<IEmailSender, NoOpEmailSender>();
+builder.Services.AddScoped<EmailPolicyService>();
+builder.Services.AddScoped<AccountTokenService>();
+builder.Services.AddScoped<EmailDispatchService>();
 
 // Authentication
 builder.Services.AddAuthentication(options =>

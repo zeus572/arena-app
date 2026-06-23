@@ -51,6 +51,9 @@ jobs:
       - name: Shared unit tests
         run: dotnet test shared/Arena.Shared.Tests --logger "console;verbosity=normal"
 
+      - name: Arena unit tests
+        run: dotnet test backend-tests/Arena.UnitTests --logger "console;verbosity=normal"
+
       - name: Civic unit tests
         run: dotnet test backend-civic-tests/Civic.UnitTests --logger "console;verbosity=normal"
 

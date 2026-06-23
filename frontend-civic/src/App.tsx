@@ -15,6 +15,9 @@ import MagazineBudget from "@/prototypes/magazine/pages/Budget";
 import MagazineReceipt from "@/prototypes/magazine/pages/Receipt";
 import MagazineLogin from "@/prototypes/magazine/pages/Login";
 import MagazineRegister from "@/prototypes/magazine/pages/Register";
+import MagazineForgotPassword from "@/prototypes/magazine/pages/ForgotPassword";
+import MagazineResetPassword from "@/prototypes/magazine/pages/ResetPassword";
+import MagazineVerifyEmail from "@/prototypes/magazine/pages/VerifyEmail";
 import MagazineQuizzes from "@/prototypes/magazine/pages/Quizzes";
 import MagazineConceptDetail from "@/prototypes/magazine/pages/ConceptDetail";
 import MagazineTeachers from "@/prototypes/magazine/pages/Teachers";
@@ -64,6 +67,9 @@ function App() {
             <Route path="receipt/:id" element={<MagazineReceipt />} />
             <Route path="login" element={<MagazineLogin />} />
             <Route path="register" element={<MagazineRegister />} />
+            <Route path="forgot-password" element={<MagazineForgotPassword />} />
+            <Route path="reset-password" element={<MagazineResetPassword />} />
+            <Route path="verify-email" element={<MagazineVerifyEmail />} />
             <Route path="quizzes" element={<MagazineQuizzes />} />
             <Route path="concepts/:slug" element={<MagazineConceptDetail />} />
             <Route path="teachers" element={<MagazineTeachers />} />

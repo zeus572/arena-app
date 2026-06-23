@@ -283,4 +283,26 @@ export async function fetchForks(debateId: string) {
   return res.data;
 }
 
+// Account email flows (verification + password reset). `app` tells the backend
+// which frontend to build the email link for.
+export async function requestPasswordReset(email: string) {
+  const res = await api.post<{ status: string }>("/auth/forgot-password", { email, app: "arena" });
+  return res.data;
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const res = await api.post<{ status: string }>("/auth/reset-password", { token, newPassword });
+  return res.data;
+}
+
+export async function verifyEmail(token: string) {
+  const res = await api.get<{ status: string }>("/auth/verify-email", { params: { token } });
+  return res.data;
+}
+
+export async function resendVerification() {
+  const res = await api.post<{ status: string }>("/auth/resend-verification", { app: "arena" });
+  return res.data;
+}
+
 export default api;

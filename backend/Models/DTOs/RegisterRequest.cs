@@ -1,3 +1,3 @@
 namespace Arena.API.Models.DTOs;
 
-public record RegisterRequest(string Email, string Password, string? DisplayName, string? InviteCode);
+public record RegisterRequest(string Email, string Password, string? DisplayName, string? InviteCode, string? App);
