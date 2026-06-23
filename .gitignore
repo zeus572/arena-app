@@ -20,6 +20,8 @@ backend-civic/**/bin/
 backend-civic/**/obj/
 backend-civic-tests/**/bin/
 backend-civic-tests/**/obj/
+backend-tests/**/bin/
+backend-tests/**/obj/
 shared/**/bin/
 shared/**/obj/
 *.user
@@ -38,6 +40,7 @@ frontend-civic/.env.*.local
 # Test / tooling artifacts
 **/playwright-report/
 **/test-results/
+**/TestResults/
 .playwright-mcp/
 azlogs/
 

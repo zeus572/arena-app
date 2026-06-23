@@ -9,6 +9,9 @@ import Agents from "@/pages/Agents";
 import Topics from "@/pages/Topics";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import VerifyEmail from "@/pages/VerifyEmail";
 import AuthCallback from "@/pages/AuthCallback";
 import Profile from "@/pages/Profile";
 import Sources from "@/pages/Sources";
@@ -35,6 +38,9 @@ function App() {
           <Route path="/arenas/:slug" element={<ArenaDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/sources" element={<Sources />} />

@@ -26,6 +26,9 @@ public class ArenaDbContext : DbContext
     public DbSet<DebateParticipant> DebateParticipants => Set<DebateParticipant>();
     public DbSet<DebateArena> Arenas => Set<DebateArena>();
     public DbSet<BudgetFact> BudgetFacts => Set<BudgetFact>();
+    public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
+    public DbSet<EmailSuppression> EmailSuppressions => Set<EmailSuppression>();
+    public DbSet<EmailSendLog> EmailSendLogs => Set<EmailSendLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -136,6 +139,26 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<BudgetFact>(e =>
         {
             e.HasIndex(f => new { f.FactDate, f.IsActive });
+        });
+
+        modelBuilder.Entity<AccountToken>(e =>
+        {
+            e.HasIndex(t => t.TokenHash);
+            e.HasIndex(t => new { t.UserId, t.Purpose });
+            e.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EmailSuppression>(e =>
+        {
+            e.HasIndex(s => s.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<EmailSendLog>(e =>
+        {
+            e.HasIndex(l => new { l.Email, l.SentAt });
         });
     }
 }

@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -50,8 +49,8 @@ public class JwtTokenService
 
     public async Task<string> GenerateRefreshTokenAsync(User user)
     {
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        var hash = ComputeHash(token);
+        var token = TokenHasher.NewToken();
+        var hash = TokenHasher.Hash(token);
 
         var days = _config.GetValue("Jwt:RefreshTokenDays", 30);
         var refreshToken = new RefreshToken
@@ -70,7 +69,7 @@ public class JwtTokenService
 
     public async Task<User?> ValidateRefreshTokenAsync(string token)
     {
-        var hash = ComputeHash(token);
+        var hash = TokenHasher.Hash(token);
         var rt = await _db.RefreshTokens
             .Include(r => r.User)
             .FirstOrDefaultAsync(r => r.TokenHash == hash && r.RevokedAt == null);
@@ -87,7 +86,7 @@ public class JwtTokenService
 
     public async Task RevokeRefreshTokenAsync(string token)
     {
-        var hash = ComputeHash(token);
+        var hash = TokenHasher.Hash(token);
         var rt = await _db.RefreshTokens
             .FirstOrDefaultAsync(r => r.TokenHash == hash && r.RevokedAt == null);
 
@@ -96,11 +95,5 @@ public class JwtTokenService
             rt.RevokedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
         }
-    }
-
-    private static string ComputeHash(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes);
     }
 }

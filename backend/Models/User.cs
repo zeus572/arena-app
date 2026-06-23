@@ -13,7 +13,6 @@ public class User
     public string? AuthProvider { get; set; }
     public string? ExternalId { get; set; }
     public bool EmailVerified { get; set; }
-    public string? EmailVerifyToken { get; set; }
     public bool IsAnonymous { get; set; }
     public int Xp { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

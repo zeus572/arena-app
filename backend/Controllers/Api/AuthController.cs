@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +6,7 @@ using Arena.API.Data;
 using Arena.API.Models;
 using Arena.API.Models.DTOs;
 using Arena.API.Services;
+using Arena.API.Services.Email;
 
 namespace Arena.API.Controllers.Api;
 
@@ -17,13 +17,25 @@ public class AuthController : ControllerBase
     private readonly ArenaDbContext _db;
     private readonly JwtTokenService _jwt;
     private readonly IConfiguration _config;
+    private readonly EmailPolicyService _emailPolicy;
+    private readonly AccountTokenService _accountTokens;
+    private readonly EmailDispatchService _emailDispatch;
     private readonly PasswordHasher<User> _hasher = new();
 
-    public AuthController(ArenaDbContext db, JwtTokenService jwt, IConfiguration config)
+    public AuthController(
+        ArenaDbContext db,
+        JwtTokenService jwt,
+        IConfiguration config,
+        EmailPolicyService emailPolicy,
+        AccountTokenService accountTokens,
+        EmailDispatchService emailDispatch)
     {
         _db = db;
         _jwt = jwt;
         _config = config;
+        _emailPolicy = emailPolicy;
+        _accountTokens = accountTokens;
+        _emailDispatch = emailDispatch;
     }
 
     [HttpPost("register")]
@@ -31,33 +43,50 @@ public class AuthController : ControllerBase
     {
         if (!ValidateInviteCode(request.InviteCode))
             return BadRequest(new { error = "Invalid invite code." });
-        if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
-            return BadRequest(new { error = "Valid email is required." });
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             return BadRequest(new { error = "Password must be at least 8 characters." });
 
-        var emailLower = request.Email.Trim().ToLowerInvariant();
+        var check = await _emailPolicy.ValidateAsync(request.Email);
+        if (!check.Accepted)
+            return BadRequest(new { error = check.Message });
+
+        var emailLower = check.Normalized;
         var exists = await _db.Users.AnyAsync(u => u.Email == emailLower && !u.IsAnonymous);
         if (exists)
             return Conflict(new { error = "An account with this email already exists." });
 
+        var baseUsername = request.DisplayName?.Trim() is { Length: > 0 } dn ? dn : emailLower.Split('@')[0];
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = emailLower,
-            Username = request.DisplayName?.Trim() ?? emailLower.Split('@')[0],
+            Username = await EnsureUniqueUsernameAsync(baseUsername),
             DisplayName = request.DisplayName?.Trim(),
             AuthProvider = "local",
             IsAnonymous = false,
             EmailVerified = false,
-            EmailVerifyToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
             Plan = UserPlan.Free,
         };
         user.PasswordHash = _hasher.HashPassword(user, request.Password);
 
         _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Unique-index violation under a concurrent signup race: another request
+            // inserted the same email between our check above and this save. Surface
+            // the same clean 409 rather than a 500.
+            return Conflict(new { error = "An account with this email already exists." });
+        }
+
+        // Send a real verification email (token lives only in the link, never the response).
+        var verifyToken = await _accountTokens.IssueAsync(user, AccountTokenPurpose.EmailVerify);
+        await _emailDispatch.SendAccountEmailAsync(
+            user, AccountTokenPurpose.EmailVerify, verifyToken, request.App ?? "arena", ClientIp());
 
         var accessToken = _jwt.GenerateAccessToken(user);
         var refreshToken = await _jwt.GenerateRefreshTokenAsync(user);
@@ -67,7 +96,6 @@ public class AuthController : ControllerBase
             accessToken,
             refreshToken,
             user = ProjectUser(user),
-            emailVerifyToken = user.EmailVerifyToken, // MVP: return token directly
         });
     }
 
@@ -133,7 +161,7 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("resend-verification")]
-    public async Task<IActionResult> ResendVerification()
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest? request)
     {
         var userId = Guid.Parse(User.FindFirst("sub")!.Value);
         var user = await _db.Users.FindAsync(userId);
@@ -142,32 +170,73 @@ public class AuthController : ControllerBase
         if (user.EmailVerified)
             return Ok(new { status = "already verified" });
 
-        if (string.IsNullOrEmpty(user.EmailVerifyToken))
-        {
-            user.EmailVerifyToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-            await _db.SaveChangesAsync();
-        }
+        var token = await _accountTokens.IssueAsync(user, AccountTokenPurpose.EmailVerify);
+        var result = await _emailDispatch.SendAccountEmailAsync(
+            user, AccountTokenPurpose.EmailVerify, token, request?.App ?? "arena", ClientIp());
 
-        // MVP: return token directly (no actual email sent)
-        return Ok(new { emailVerifyToken = user.EmailVerifyToken });
+        if (result == DispatchResult.RateLimited)
+            return StatusCode(429, new { error = "Too many requests. Please try again later." });
+
+        return Ok(new { status = "verification email sent" });
     }
 
     [HttpGet("verify-email")]
     public async Task<IActionResult> VerifyEmail([FromQuery] string token)
     {
-        if (string.IsNullOrWhiteSpace(token))
-            return BadRequest(new { error = "Token is required." });
-
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.EmailVerifyToken == token);
+        var user = await _accountTokens.ConsumeAsync(token, AccountTokenPurpose.EmailVerify);
         if (user is null)
-            return NotFound(new { error = "Invalid verification token." });
+            return BadRequest(new { error = "This verification link is invalid or has expired." });
 
         user.EmailVerified = true;
-        user.EmailVerifyToken = null;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         return Ok(new { status = "email verified" });
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        // Always return the same 200 regardless of whether the account exists —
+        // never reveal which addresses are registered (no user enumeration).
+        var emailLower = EmailPolicyService.Normalize(request.Email);
+        if (emailLower is not null)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u =>
+                u.Email == emailLower && u.AuthProvider == "local" && !u.IsAnonymous);
+            if (user is not null)
+            {
+                var token = await _accountTokens.IssueAsync(user, AccountTokenPurpose.PasswordReset);
+                await _emailDispatch.SendAccountEmailAsync(
+                    user, AccountTokenPurpose.PasswordReset, token, request.App ?? "arena", ClientIp());
+            }
+        }
+
+        return Ok(new { status = "If an account exists for that email, a reset link is on its way." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            return BadRequest(new { error = "Password must be at least 8 characters." });
+
+        var user = await _accountTokens.ConsumeAsync(request.Token, AccountTokenPurpose.PasswordReset);
+        if (user is null)
+            return BadRequest(new { error = "This reset link is invalid or has expired." });
+
+        user.PasswordHash = _hasher.HashPassword(user, request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // Security: revoke every outstanding refresh token so a thief who already
+        // had a session is forced back to login with the new password.
+        var sessions = await _db.RefreshTokens
+            .Where(r => r.UserId == user.Id && r.RevokedAt == null)
+            .ToListAsync();
+        foreach (var s in sessions) s.RevokedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(new { status = "password reset" });
     }
 
     [Authorize]
@@ -221,6 +290,32 @@ public class AuthController : ControllerBase
     /// Validates the invite code. Returns true if valid or if no invite code is configured.
     /// Used by both register and OAuth callback endpoints.
     /// </summary>
+    /// <summary>Pick a username that doesn't collide with the unique index. Two
+    /// distinct emails can derive the same base (john@a.com / john@b.com → "john"),
+    /// so append a short random suffix until it's free.</summary>
+    private async Task<string> EnsureUniqueUsernameAsync(string baseUsername)
+    {
+        var candidate = baseUsername;
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            if (!await _db.Users.AnyAsync(u => u.Username == candidate))
+                return candidate;
+            candidate = $"{baseUsername}-{TokenHasher.NewToken(2)}";
+        }
+        // Extremely unlikely fallback: guarantee uniqueness.
+        return $"{baseUsername}-{Guid.NewGuid():N}";
+    }
+
+    /// <summary>Best-effort client IP for rate limiting (honors a reverse-proxy
+    /// X-Forwarded-For when present).</summary>
+    private string? ClientIp()
+    {
+        var fwd = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(fwd))
+            return fwd.Split(',')[0].Trim();
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
+    }
+
     private bool ValidateInviteCode(string? inviteCode)
     {
         var requiredCode = _config["Auth:InviteCode"];

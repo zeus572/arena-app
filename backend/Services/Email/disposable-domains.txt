@@ -1,0 +1,37 @@
+# Bundled default disposable / throwaway email domains. One domain per line,
+# lower-case. Lines starting with '#' and blank lines are ignored. Extend at
+# runtime via the Email:DisposableDomains config array (no redeploy needed).
+0-mail.com
+10minutemail.com
+20minutemail.com
+33mail.com
+anonbox.net
+dispostable.com
+emailondeck.com
+fakeinbox.com
+getairmail.com
+getnada.com
+guerrillamail.com
+guerrillamail.info
+guerrillamail.net
+guerrillamail.org
+inboxbear.com
+mailcatch.com
+maildrop.cc
+mailinator.com
+mailnesia.com
+mintemail.com
+mohmal.com
+mytemp.email
+sharklasers.com
+spam4.me
+temp-mail.org
+tempmail.com
+tempmailo.com
+tempr.email
+throwawaymail.com
+trashmail.com
+trbvm.com
+yopmail.com
+yopmail.fr
+yopmail.net

@@ -65,6 +65,12 @@ export default function Login() {
           </Button>
         </form>
 
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          <Link to="/forgot-password" className="text-primary hover:underline">
+            Forgot your password?
+          </Link>
+        </p>
+
         <div className="relative my-5">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-border" />

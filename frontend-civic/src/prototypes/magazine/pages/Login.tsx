@@ -85,6 +85,12 @@ export default function MagazineLogin() {
         </Button>
       </form>
 
+      <p className="mt-4 text-sm text-[var(--fg-soft)]">
+        <Link to="/forgot-password" className="text-[var(--accent)] underline">
+          Forgot your password?
+        </Link>
+      </p>
+
       <p className="mt-6 text-sm text-[var(--fg-soft)]">
         New here?{" "}
         <Link
