@@ -118,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       displayName,
       inviteCode,
+      app: "civic",
     });
     storeTokens(res.data);
     setUser(res.data.user);
