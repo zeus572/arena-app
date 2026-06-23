@@ -70,17 +70,12 @@ export default function Profile() {
     setVerifying(true);
     setVerifyMsg(null);
     try {
-      // For MVP, request verification token from a resend endpoint
-      // Since we don't have actual email sending, we'll call verify-email with the stored token
-      const res = await api.post<{ emailVerifyToken?: string }>("/auth/resend-verification", {});
-      if (res.data.emailVerifyToken) {
-        // Auto-verify for MVP (no actual email)
-        await api.get(`/auth/verify-email?token=${res.data.emailVerifyToken}`);
-        await refreshUser();
-        setVerifyMsg("Email verified!");
-      }
+      // Sends a real verification email; the link in it lands on /verify-email,
+      // which confirms the address (no token is returned to the client anymore).
+      await api.post("/auth/resend-verification", { app: "arena" });
+      setVerifyMsg("Verification email sent — check your inbox.");
     } catch {
-      setVerifyMsg("Verification failed. Please try again.");
+      setVerifyMsg("Couldn't send the email. Please try again.");
     } finally {
       setVerifying(false);
     }
@@ -130,7 +125,7 @@ export default function Profile() {
               className="text-[10px] h-7 gap-1 shrink-0"
             >
               <Mail size={10} />
-              {verifying ? "Verifying..." : "Verify Now"}
+              {verifying ? "Sending..." : "Send link"}
             </Button>
           </div>
         )}
