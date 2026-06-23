@@ -1,7 +1,7 @@
 import axios from "axios";
+import { attach401Refresh, getFreshAccessToken } from "@/auth/tokenManager";
 
 const USER_ID_KEY = "civic-user-id";
-const ACCESS_TOKEN_KEY = "arena-access-token";
 
 export function getAnonymousUserId(): string {
   let id = localStorage.getItem(USER_ID_KEY);
@@ -17,8 +17,13 @@ export const civicApi = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-civicApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+civicApi.interceptors.request.use(async (config) => {
+  // Proactively renew an expired/near-expiry token BEFORE attaching it. Civic's
+  // open endpoints return 200-with-anonymous for a stale token (never 401), so
+  // without this the caller silently degrades to the "anonymous" identity even
+  // though they're signed in. getFreshAccessToken refreshes (single-flight) when
+  // needed and returns null only when truly logged out / refresh failed.
+  const token = await getFreshAccessToken();
   if (token) {
     // Authenticated: send Bearer; the civic backend resolves the user id from
     // the JWT 'sub' claim (minted by the debate backend).
@@ -29,3 +34,6 @@ civicApi.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Backstop for civic's [Authorize] endpoints (Leagues, Campaign Manager, …).
+attach401Refresh(civicApi);

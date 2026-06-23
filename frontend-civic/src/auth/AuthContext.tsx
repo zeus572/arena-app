@@ -8,6 +8,12 @@ import {
 } from "react";
 import { arenaApi } from "./arenaAuthClient";
 import { civicApi, getAnonymousUserId } from "@/api/client";
+import {
+  clearTokens,
+  getFreshAccessToken,
+  getRefreshToken,
+  storeTokens,
+} from "./tokenManager";
 
 export type AuthUser = {
   id: string;
@@ -36,19 +42,7 @@ type AuthContextValue = {
   refreshUser: () => Promise<void>;
 };
 
-const ACCESS_KEY = "arena-access-token";
-const REFRESH_KEY = "arena-refresh-token";
 const AuthCtx = createContext<AuthContextValue | null>(null);
-
-function storeTokens({ accessToken, refreshToken }: AuthTokens) {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
-}
-
-function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
 
 async function postLinkAnonymous(anonymousUserId: string) {
   try {
@@ -64,31 +58,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const token = localStorage.getItem(ACCESS_KEY);
+    // Proactively renew the token if it's expired/near-expiry (single-flight in
+    // the token manager). Null means no token or the refresh failed → logged out.
+    const token = await getFreshAccessToken();
     if (!token) {
+      clearTokens();
       setUser(null);
       setIsLoading(false);
       return;
     }
     try {
+      // The arena client's 401 backstop covers a token that fails for a non-
+      // expiry reason; if it still throws, the session is genuinely over.
       const res = await arenaApi.get<AuthUser>("/profile/me");
       setUser(res.data);
     } catch {
-      const refreshToken = localStorage.getItem(REFRESH_KEY);
-      if (refreshToken) {
-        try {
-          const r = await arenaApi.post<AuthTokens>("/auth/refresh", { refreshToken });
-          storeTokens(r.data);
-          const profileRes = await arenaApi.get<AuthUser>("/profile/me");
-          setUser(profileRes.data);
-        } catch {
-          clearTokens();
-          setUser(null);
-        }
-      } else {
-        clearTokens();
-        setUser(null);
-      }
+      clearTokens();
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    const refreshToken = getRefreshToken();
     if (refreshToken) {
       try {
         await arenaApi.post("/auth/logout", { refreshToken });
