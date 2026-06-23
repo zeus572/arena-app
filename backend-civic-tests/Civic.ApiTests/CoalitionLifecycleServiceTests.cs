@@ -1,9 +1,14 @@
+using Arena.Shared.Llm;
 using Civic.API.Data;
 using Civic.API.Models;
+using Civic.API.Services.Coalition;
+using Civic.API.Services.Coalition.Judges;
 using Civic.API.Services.Coalition.Product;
+using Civic.ApiTests.Fakes;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Civic.ApiTests;
@@ -90,6 +95,61 @@ public class CoalitionLifecycleServiceTests : IAsyncLifetime
             var born = await svc.TopUpAsync(target: 2);
             born.Should().BeGreaterThanOrEqualTo(1, "there are seeded briefings to birth from");
             (await db.Provisions.CountAsync(p => p.SourceBriefingId != null)).Should().BeGreaterThanOrEqualTo(born);
+        }
+    }
+
+    // Build a lifecycle whose birth path is backed by a LIVE-FAILING LLM (out-of-credits style),
+    // reusing the real DI graph for every other dependency.
+    private (CoalitionLifecycleService lifecycle, CoalitionLoopService loop, CivicDbContext db, IServiceScope scope) BuildWithFailingLlm()
+    {
+        var scope = _fx.Factory.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+        var db = sp.GetRequiredService<CivicDbContext>();
+        var birth = new ProvisionBirthService(db, new FailingLlmClient(), NullLogger<ProvisionBirthService>.Instance);
+        var loop = new CoalitionLoopService(
+            db,
+            sp.GetRequiredService<IExtractionService>(),
+            birth,
+            sp.GetRequiredService<ICoalitionJudge>(),
+            sp.GetRequiredService<ITwoFramingsService>(),
+            sp.GetRequiredService<ReasoningLedger>());
+        return (new CoalitionLifecycleService(db, loop), loop, db, scope);
+    }
+
+    [Fact]
+    public async Task TopUp_WhenLlmCallFails_BirthsNothing_AndPersistsNoDeadProvision()
+    {
+        var (lifecycle, _, db, scope) = BuildWithFailingLlm();
+        using (scope)
+        {
+            (await db.Provisions.CountAsync()).Should().Be(0, "mutable tables were reset");
+
+            // A live LLM failure (e.g. out of credits) must NOT fall back to a heuristic provision.
+            var born = await lifecycle.TopUpAsync(target: 2);
+
+            born.Should().Be(0, "top-up bails on a live LLM failure instead of birthing dead provisions");
+        }
+
+        using (var s = _fx.Factory.Services.CreateScope())
+        {
+            var db2 = s.ServiceProvider.GetRequiredService<CivicDbContext>();
+            (await db2.Provisions.CountAsync()).Should().Be(0, "no generic 'dead' provision should be persisted");
+        }
+    }
+
+    [Fact]
+    public async Task BirthFromBriefing_WhenLlmCallFails_Throws_AndPersistsNothing()
+    {
+        var (_, loop, db, scope) = BuildWithFailingLlm();
+        using (scope)
+        {
+            var briefingId = await db.Briefings.OrderBy(b => b.IssueOrder).Select(b => b.Id).FirstAsync();
+
+            var act = async () => await loop.BirthFromBriefingAsync(briefingId, currentUserId: null);
+
+            (await act.Should().ThrowAsync<LlmException>())
+                .Which.Kind.Should().Be(LlmFailureKind.CallFailed);
+            (await db.Provisions.CountAsync(p => p.SourceBriefingId == briefingId)).Should().Be(0);
         }
     }
 

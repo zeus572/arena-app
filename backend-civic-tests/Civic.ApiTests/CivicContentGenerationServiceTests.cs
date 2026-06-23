@@ -47,7 +47,7 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private CivicContentGenerationService BuildSvc(StubLlmClient llm)
+    private CivicContentGenerationService BuildSvc(Arena.Shared.Llm.ILlmClient llm)
     {
         var scopes = _fx.Factory.Services.GetRequiredService<IServiceScopeFactory>();
         return new CivicContentGenerationService(
@@ -159,6 +159,30 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
         var item = await db.NewsItems.SingleAsync(n => n.Id == _newsItemId);
         item.Status.Should().Be(NewsItemStatus.Failed);
         item.LastError.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task GenerateBatch_LiveLlmOutageMidItem_DiscardsOrphanBriefing_AndRequeuesItem()
+    {
+        // Relevance + briefing succeed, then the LLM goes out of credits on the ThinkDeeper call.
+        var llm = new OutageLlmClient(new Dictionary<string, string>
+        {
+            ["RelevanceJudgeDto"] = "{\"isCivic\":true,\"reason\":\"agency rulemaking\"}",
+            ["GeneratedBriefingDto"] = BriefingJson(),
+        });
+        await SeedIngestedAsync();
+
+        var done = await BuildSvc(llm).GenerateBatchAsync();
+
+        done.Should().Be(0);
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        // The briefing was Added before the failing call — it must NOT be flushed as a half-story.
+        (await db.Briefings.AnyAsync(b => b.SourceNewsItemId == _newsItemId))
+            .Should().BeFalse("a mid-generation live outage must not persist an orphan briefing");
+        // The item is requeued (not permanently Failed) so it retries once credits return.
+        (await db.NewsItems.SingleAsync(n => n.Id == _newsItemId))
+            .Status.Should().Be(NewsItemStatus.Ingested, "a live LLM outage requeues the story rather than failing it");
     }
 
     [Fact]

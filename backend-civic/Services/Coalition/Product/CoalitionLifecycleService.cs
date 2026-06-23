@@ -1,3 +1,4 @@
+using Arena.Shared.Llm;
 using Civic.API.Data;
 using Civic.API.Models;
 using Civic.API.Services.Coalition.Curriculum;
@@ -17,13 +18,16 @@ public class CoalitionLifecycleService
 {
     private readonly CivicDbContext _db;
     private readonly CoalitionLoopService _loop;
+    private readonly ILogger<CoalitionLifecycleService>? _log;
 
     public const int TargetActiveProvisions = 7;
 
-    public CoalitionLifecycleService(CivicDbContext db, CoalitionLoopService loop)
+    public CoalitionLifecycleService(CivicDbContext db, CoalitionLoopService loop,
+        ILogger<CoalitionLifecycleService>? log = null)
     {
         _db = db;
         _loop = loop;
+        _log = log;
     }
 
     private static readonly ProvisionState[] Active =
@@ -60,8 +64,20 @@ public class CoalitionLifecycleService
             // rolling window is established immediately and provisions expire one per day.
             // When topping up a partially-populated pool, give each new provision the full lifetime.
             var daysOut = needed >= target ? born + 1 : target;
-            await _loop.BirthFromBriefingAsync(briefing.Id, currentUserId: null, ct,
-                deadline: DateTime.UtcNow.AddDays(daysOut));
+            try
+            {
+                await _loop.BirthFromBriefingAsync(briefing.Id, currentUserId: null, ct,
+                    deadline: DateTime.UtcNow.AddDays(daysOut));
+            }
+            catch (LlmException ex)
+            {
+                // A live LLM call failed (e.g. Anthropic out of credits). Birthing now would only
+                // persist generic "dead" provisions, so stop topping up this tick and retry next
+                // tick — by when the key may have credit again.
+                _log?.LogWarning(ex,
+                    "Coalition top-up halted: LLM unavailable, birthed {Born} before bailing (won't synthesize dead provisions)", born);
+                break;
+            }
             born++;
         }
         return born;

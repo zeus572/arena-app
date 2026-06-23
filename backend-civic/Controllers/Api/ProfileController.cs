@@ -94,6 +94,56 @@ public class ProfileController : ControllerBase
         return Ok(BuildDto(profile, answerCount));
     }
 
+    /// <summary>
+    /// Save the personalization fields collected at sign-up (ZIP code + age range)
+    /// and derive the local-news region from the ZIP. Both fields are optional;
+    /// upserts the profile row so brand-new users get one on first save.
+    /// </summary>
+    [HttpPut("me/demographics")]
+    public async Task<ActionResult<ProfileDto>> SetDemographics([FromBody] UpdateDemographicsRequest req)
+    {
+        // Normalize ZIP to 5 digits; tolerate ZIP+4. Empty ⇒ cleared.
+        string? zip = null;
+        if (!string.IsNullOrWhiteSpace(req.ZipCode))
+        {
+            var digits = new string(req.ZipCode.Where(char.IsDigit).ToArray());
+            if (digits.Length != 5 && digits.Length != 9)
+                return BadRequest(new { error = "ZIP code must be 5 digits." });
+            zip = digits[..5];
+        }
+
+        if (!Models.AgeRanges.TryNormalize(req.AgeRange, out var ageRange))
+            return BadRequest(new { error = $"Unsupported age range '{req.AgeRange}'." });
+
+        var userId = _user.GetCurrentUserId();
+        var profile = await _db.UserProfiles
+            .Include(p => p.AxisScores)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile is null)
+        {
+            profile = new Models.UserProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ProfileVersion = 0,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _db.UserProfiles.Add(profile);
+        }
+
+        profile.ZipCode = zip;
+        profile.AgeRange = ageRange;
+        // Derive the local-news region from the ZIP so new users get local stories
+        // without a separate question. Out-of-area ZIPs resolve to national (null).
+        profile.LocalityState = Models.Localities.StateForZip(zip);
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var answerCount = await _db.CivicAnswers.CountAsync(a => a.UserId == userId);
+        return Ok(BuildDto(profile, answerCount));
+    }
+
     private ProfileDto EmptyProfile(string userId, int answerCount) => new()
     {
         UserId = userId,
@@ -164,6 +214,8 @@ public class ProfileController : ControllerBase
             UpdatedAt = profile.UpdatedAt,
             AnswerCount = answerCount,
             LocalityState = profile.LocalityState,
+            ZipCode = profile.ZipCode,
+            AgeRange = profile.AgeRange,
             Axes = axes,
             ArchetypeBlend = blend,
         };
