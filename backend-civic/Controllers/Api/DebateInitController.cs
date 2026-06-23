@@ -48,6 +48,7 @@ public class DebateInitController : ControllerBase
         string DebateUrl);
 
     [HttpPost]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<IActionResult> StartFromBriefing(
         string slug,
         [FromBody] InitDebateRequest? body,

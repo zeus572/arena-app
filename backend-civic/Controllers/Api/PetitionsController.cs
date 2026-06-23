@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Civic.API.Data;
@@ -37,7 +38,10 @@ public class PetitionsController : ControllerBase
         return petition is null ? NotFound() : Ok(petition);
     }
 
+    // Creating a petition requires a signed-in, email-verified account (anti-spam);
+    // browsing (GET) stays open to everyone.
     [HttpPost]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<Petition>> Create([FromBody] CreatePetitionRequest req)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);

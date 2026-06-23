@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Civic.API.Services.Coalition.Product;
 using Civic.ApiTests;
@@ -24,6 +25,9 @@ public class CoalitionApiTests : IAsyncLifetime
     {
         _fx = fx;
         _client = fx.Factory.CreateClient();
+        // Coalition acts now require a verified, signed-in user; authenticate as one.
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTestHelper.MintAccessToken(Guid.NewGuid()));
     }
 
     public async Task InitializeAsync()

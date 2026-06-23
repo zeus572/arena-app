@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Civic.API.Data;
 using Civic.API.Models;
@@ -29,10 +30,15 @@ public class LocalityScopingTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
+    // Authenticate as the logical user id (JWT 'sub' = userId) so writes pass the
+    // verified-email gate; identity/locality scoping is unchanged since the backend
+    // keys users by the raw 'sub'. Pass null for a truly anonymous client.
     private HttpClient ClientFor(string? userId)
     {
         var client = _fx.Factory.CreateClient();
-        if (userId is not null) client.DefaultRequestHeaders.Add("X-User-Id", userId);
+        if (userId is not null)
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", JwtTestHelper.MintAccessToken(userId));
         return client;
     }
 

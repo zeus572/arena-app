@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
+import EmailVerificationGateModal from "@/auth/EmailVerificationGateModal";
 
 import MagazineLayout from "@/prototypes/magazine/Layout";
 import MagazineHomeIndex from "@/prototypes/magazine/pages/HomeIndex";
@@ -46,6 +47,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <EmailVerificationGateModal />
         <Routes>
           <Route path="/" element={<MagazineLayout />}>
             <Route index element={<MagazineHomeIndex />} />

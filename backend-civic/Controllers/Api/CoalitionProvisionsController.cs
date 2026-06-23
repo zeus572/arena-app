@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Arena.Shared.Llm;
 using Civic.API.Models;
@@ -40,6 +41,7 @@ public class CoalitionProvisionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/join")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ProvisionDetailDto>> Join(Guid id, [FromBody] JoinRequest req, CancellationToken ct)
     {
         await _loop.JoinAsync(id, _user.GetCurrentUserId(), req.Bucket, req.AgeBand, ct);
@@ -48,6 +50,7 @@ public class CoalitionProvisionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/positions")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ProvisionDetailDto>> Position(Guid id, [FromBody] PositionRequest req, CancellationToken ct)
     {
         var detail = await _loop.TakePositionAsync(id, _user.GetCurrentUserId(), req, ct);
@@ -55,6 +58,7 @@ public class CoalitionProvisionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/amendments")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ProvisionDetailDto>> Amend(Guid id, [FromBody] AmendmentRequest req, CancellationToken ct)
     {
         var detail = await _loop.ProposeAmendmentAsync(id, _user.GetCurrentUserId(), req, ct);
@@ -63,6 +67,7 @@ public class CoalitionProvisionsController : ControllerBase
 
     /// <summary>Free-form amendment: write natural-language text; extraction maps it to positions.</summary>
     [HttpPost("{id:guid}/amendments/freeform")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ProvisionDetailDto>> AmendFreeform(Guid id, [FromBody] FreeformAmendmentRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.Text)) return BadRequest(new { error = "Text is required." });
@@ -71,6 +76,7 @@ public class CoalitionProvisionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/acceptances")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ProvisionDetailDto>> Accept(Guid id, [FromBody] AcceptanceRequest req, CancellationToken ct)
     {
         var detail = await _loop.CastAcceptanceAsync(id, _user.GetCurrentUserId(), req, ct);
@@ -79,6 +85,7 @@ public class CoalitionProvisionsController : ControllerBase
 
     /// <summary>Record a daily/scarce act on a provision (reaction-with-reason, steelman, claim-tag, etc.) and earn points.</summary>
     [HttpPost("{id:guid}/acts")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ActResultDto>> Act(Guid id, [FromBody] ActRequest req, CancellationToken ct)
     {
         if (!Enum.TryParse<CoalitionActType>(req.Type, ignoreCase: true, out var type))
@@ -89,6 +96,7 @@ public class CoalitionProvisionsController : ControllerBase
 
     /// <summary>Record a non-provision act (e.g. longform, author-a-provision draft) and earn points.</summary>
     [HttpPost("/api/coalition/acts")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<ActionResult<ActResultDto>> GlobalAct([FromBody] ActRequest req, CancellationToken ct)
     {
         if (!Enum.TryParse<CoalitionActType>(req.Type, ignoreCase: true, out var type))

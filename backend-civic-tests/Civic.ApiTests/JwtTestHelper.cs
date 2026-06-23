@@ -15,30 +15,47 @@ internal static class JwtTestHelper
     public const string Audience = "arena-app";
     public const string Secret = "PoliticalArenaDevSecretKeyThatIsAtLeast32Characters!!";
 
-    public static string MintAccessToken(Guid userId, string email = "user@example.com", string plan = "Free")
-        => Mint(userId, email, plan, Secret, DateTime.UtcNow.AddMinutes(30));
+    public static string MintAccessToken(
+        Guid userId,
+        string email = "user@example.com",
+        string plan = "Free",
+        bool emailVerified = true)
+        => MintAccessToken(userId.ToString(), email, plan, emailVerified);
+
+    /// <summary>
+    /// Mint a token for an arbitrary string subject (the civic backend keys users by the
+    /// raw 'sub' claim). Lets tests authenticate as a stable logical id (e.g. "ca-reader")
+    /// while still satisfying JWT-only gates like the verified-email policy.
+    /// </summary>
+    public static string MintAccessToken(
+        string subject,
+        string email = "user@example.com",
+        string plan = "Free",
+        bool emailVerified = true)
+        => Mint(subject, email, plan, Secret, DateTime.UtcNow.AddMinutes(30), emailVerified);
 
     /// <summary>A correctly-shaped token signed with the WRONG secret — models the
     /// prod failure where civic's signing key doesn't match the debate backend's.</summary>
     public static string MintWronglySignedToken(Guid userId)
-        => Mint(userId, "user@example.com", "Free",
-            "TotallyDifferentSecretThatIsAlsoAtLeast32Characters!!", DateTime.UtcNow.AddMinutes(30));
+        => Mint(userId.ToString(), "user@example.com", "Free",
+            "TotallyDifferentSecretThatIsAlsoAtLeast32Characters!!", DateTime.UtcNow.AddMinutes(30), true);
 
     /// <summary>A properly-signed token whose lifetime has already elapsed.</summary>
     public static string MintExpiredToken(Guid userId)
-        => Mint(userId, "user@example.com", "Free", Secret, DateTime.UtcNow.AddMinutes(-5));
+        => Mint(userId.ToString(), "user@example.com", "Free", Secret, DateTime.UtcNow.AddMinutes(-5), true);
 
-    private static string Mint(Guid userId, string email, string plan, string secret, DateTime expires)
+    private static string Mint(
+        string subject, string email, string plan, string secret, DateTime expires, bool emailVerified)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Sub, subject),
             new(JwtRegisteredClaimNames.Email, email),
             new("plan", plan),
-            new("email_verified", "true"),
+            new("email_verified", emailVerified ? "true" : "false"),
         };
 
         var token = new JwtSecurityToken(

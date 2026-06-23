@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Civic.API.Data;
@@ -43,6 +44,10 @@ public class CoalitionDevGateTests
     {
         using var factory = new StagingCivicApiFactory();
         var client = factory.CreateClient();
+        // A normal user act requires a verified, signed-in user; authenticate as one.
+        // (The dev-only affordances below stay blocked regardless of auth.)
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTestHelper.MintAccessToken(Guid.NewGuid()));
 
         // Dev-only affordances are blocked by the backend (not just hidden in the UI).
         (await client.PostAsync("/api/coalition/seed", Json())).StatusCode.Should().Be(HttpStatusCode.NotFound);

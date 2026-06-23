@@ -51,6 +51,7 @@ public class CampaignManagerController : ControllerBase
 
     // POST /api/campaign-manager/campaigns
     [HttpPost("campaigns")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<IActionResult> Create([FromBody] CreateCivicCampaignRequest request, CancellationToken ct)
     {
         try
@@ -91,6 +92,7 @@ public class CampaignManagerController : ControllerBase
 
     // POST /api/campaign-manager/campaigns/{id}/actions
     [HttpPost("campaigns/{id:guid}/actions")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<IActionResult> TakeAction(Guid id, [FromBody] TakeActionRequest request, CancellationToken ct)
     {
         try { return Ok(await _campaigns.TakeActionAsync(RequireUserId(), id, request, ct)); }
@@ -102,6 +104,7 @@ public class CampaignManagerController : ControllerBase
 
     // POST /api/campaign-manager/campaigns/{id}/advance — advance one campaign day.
     [HttpPost("campaigns/{id:guid}/advance")]
+    [Authorize(Policy = "VerifiedEmail")]
     public async Task<IActionResult> Advance(Guid id, CancellationToken ct)
     {
         try { return Ok(await _campaigns.AdvanceDayAsync(RequireUserId(), id, ct)); }
