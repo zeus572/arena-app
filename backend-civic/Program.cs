@@ -189,6 +189,28 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseAuthentication();
+
+// Explicit-bad-token guard. The AllowAnonymous endpoints resolve identity from
+// the JWT and otherwise fall back to the shared "anonymous" id, returning
+// 200-as-anonymous either way — so a client presenting an expired/invalid token
+// gets silently downgraded with no signal to refresh. Here we make that failure
+// loud: if a Bearer token is presented but did NOT authenticate, return 401.
+// Requests with no Authorization header (genuine anonymous browsing, optionally
+// via X-User-Id) are untouched, as are requests with a valid token.
+app.Use(async (context, next) =>
+{
+    var auth = context.Request.Headers.Authorization.ToString();
+    var presentedBearer = auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(auth["Bearer ".Length..]);
+    if (presentedBearer && context.User.Identity?.IsAuthenticated != true)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token." });
+        return;
+    }
+    await next();
+});
+
 app.UseAuthorization();
 app.MapControllers();
 
