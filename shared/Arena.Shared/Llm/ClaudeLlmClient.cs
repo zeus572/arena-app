@@ -84,7 +84,8 @@ public class ClaudeLlmClient : ILlmClient
                 throw new LlmException(
                     "Claude returned non-JSON after retry.",
                     rawResponse: rawRetry,
-                    inner: jex);
+                    inner: jex,
+                    kind: LlmFailureKind.CallFailed);
             }
         }
     }
@@ -133,7 +134,8 @@ public class ClaudeLlmClient : ILlmClient
         {
             throw new LlmException(
                 $"Anthropic API returned {(int)resp.StatusCode} {resp.ReasonPhrase}.",
-                rawResponse: respBody);
+                rawResponse: respBody,
+                kind: LlmFailureKind.CallFailed);
         }
 
         return ExtractText(respBody);
@@ -147,7 +149,8 @@ public class ClaudeLlmClient : ILlmClient
         {
             throw new LlmException(
                 "Anthropic response missing 'content' array.",
-                rawResponse: responseBody);
+                rawResponse: responseBody,
+                kind: LlmFailureKind.CallFailed);
         }
 
         foreach (var block in content.EnumerateArray())
@@ -161,7 +164,8 @@ public class ClaudeLlmClient : ILlmClient
         }
         throw new LlmException(
             "Anthropic response contained no text block.",
-            rawResponse: responseBody);
+            rawResponse: responseBody,
+            kind: LlmFailureKind.CallFailed);
     }
 
     private static T ParseJson<T>(string text)

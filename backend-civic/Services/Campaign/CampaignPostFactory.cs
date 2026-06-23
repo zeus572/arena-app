@@ -61,7 +61,13 @@ public class CampaignPostFactory : ICampaignPostFactory
                 return cached;
         }
 
-        var (options, llmGenerated) = await GenerateResponseOptionsAsync(candidate, briefing, ct);
+        var (options, llmGenerated, cache) = await GenerateResponseOptionsAsync(candidate, briefing, ct);
+
+        // A live LLM outage (out of credits) served templated options for this request only — do NOT
+        // persist them, or a transient failure would permanently lock this candidate+briefing onto
+        // non-LLM content (the reuse check below never regenerates a same-version cache row). Returning
+        // uncached means the next view retries the live model once credits return.
+        if (!cache) return options;
 
         // Cache for reuse across views/players. Tolerate a race on the unique index.
         try
@@ -99,7 +105,7 @@ public class CampaignPostFactory : ICampaignPostFactory
         return options;
     }
 
-    private async Task<(List<NewsResponseOption>, bool)> GenerateResponseOptionsAsync(
+    private async Task<(List<NewsResponseOption> Options, bool LlmGenerated, bool Cache)> GenerateResponseOptionsAsync(
         VirtualCandidate candidate, Briefing briefing, CancellationToken ct)
     {
         var count = Math.Clamp(_opts.ResponseOptionsPerItem, 2, 3);
@@ -122,11 +128,19 @@ public class CampaignPostFactory : ICampaignPostFactory
                     Body = Truncate(o.Body.Trim(), maxChars),
                 })
                 .ToList();
-            if (options.Count >= 2) return (options, true);
+            if (options.Count >= 2) return (options, true, true);
             _log.LogInformation("LLM returned too few response options; using templated fallback.");
+        }
+        catch (LlmException ex) when (ex.Kind == LlmFailureKind.CallFailed)
+        {
+            // Live outage (e.g. out of credits): serve templated for THIS request but signal the caller
+            // not to persist it, so the live model is retried on the next view rather than cached over.
+            _log.LogWarning("LLM call failed ({Message}); serving templated news-response fallback without caching.", ex.Message);
+            return (TemplatedResponseOptions(candidate, briefing, count, maxChars), false, false);
         }
         catch (LlmException ex)
         {
+            // Unavailable by design (dev / no key / non-premium): templated is the expected content, cache it.
             _log.LogInformation("LLM unavailable ({Message}); using templated news-response fallback.", ex.Message);
         }
         catch (Exception ex)
@@ -134,7 +148,7 @@ public class CampaignPostFactory : ICampaignPostFactory
             _log.LogWarning(ex, "News-response generation failed; using templated fallback.");
         }
 
-        return (TemplatedResponseOptions(candidate, briefing, count, maxChars), false);
+        return (TemplatedResponseOptions(candidate, briefing, count, maxChars), false, true);
     }
 
     /// <summary>
