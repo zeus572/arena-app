@@ -24,6 +24,8 @@ export default function MagazineSettings() {
   const [savingName, setSavingName] = useState(false);
   const [savingLocality, setSavingLocality] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void getMyProfile().then(setProfile);
@@ -32,6 +34,21 @@ export default function MagazineSettings() {
   useEffect(() => {
     setDisplayName(user?.displayName ?? "");
   }, [user?.displayName]);
+
+  async function resendVerification() {
+    setVerifying(true);
+    setVerifyMsg(null);
+    try {
+      // Sends a real verification email via the shared Debate Arena backend; the
+      // link in it lands on /verify-email here in Civic.
+      await arenaApi.post("/auth/resend-verification", { app: "civic" });
+      setVerifyMsg("Verification email sent — check your inbox.");
+    } catch {
+      setVerifyMsg("Couldn't send the email. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   async function saveDisplayName() {
     setSavingName(true);
@@ -140,6 +157,21 @@ export default function MagazineSettings() {
                 Email and password are managed through your shared Debate Arena
                 account.
               </p>
+              {!user.emailVerified && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={resendVerification}
+                    disabled={verifying}
+                    data-testid="settings-resend-verification"
+                  >
+                    {verifying ? "Sending…" : "Send verification link"}
+                  </Button>
+                  {verifyMsg && (
+                    <span className="text-xs text-[var(--accent)]">{verifyMsg}</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
