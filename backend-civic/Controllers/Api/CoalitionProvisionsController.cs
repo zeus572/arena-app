@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Arena.Shared.Llm;
 using Civic.API.Models;
 using Civic.API.Services;
 using Civic.API.Services.Coalition.Product;
@@ -129,8 +130,18 @@ public class CoalitionProvisionsController : ControllerBase
     public async Task<ActionResult<ProvisionDetailDto>> Birth([FromBody] BirthRequest req, CancellationToken ct)
     {
         if (!_env.IsDevelopment()) return NotFound();
-        var detail = await _loop.BirthFromBriefingAsync(req.BriefingId, _user.GetCurrentUserId(), ct);
-        return detail is null ? NotFound(new { error = "Briefing not found." }) : Ok(detail);
+        try
+        {
+            var detail = await _loop.BirthFromBriefingAsync(req.BriefingId, _user.GetCurrentUserId(), ct);
+            return detail is null ? NotFound(new { error = "Briefing not found." }) : Ok(detail);
+        }
+        catch (LlmException ex) when (ex.Kind == LlmFailureKind.CallFailed)
+        {
+            // The LLM was configured but the live call failed (e.g. out of credits). Don't birth a
+            // dead heuristic provision — surface a retryable error instead.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { error = "Generation service is temporarily unavailable. Try again shortly." });
+        }
     }
 
     // ---- Layer 3 gamification ----

@@ -326,9 +326,13 @@ public class CoalitionLoopService
 
     /// <summary>
     /// Birth a provision from a briefing (system-extracted path). Uses the extraction-tier LLM
-    /// (ProvisionBirthService) in prod; on no-key falls back to a heuristic provision built from
-    /// the briefing's fields so the catalog still produces playable provisions in dev. Adds a base
-    /// version and a single agent counterpart so it's immediately engageable.
+    /// (ProvisionBirthService) in prod. When the LLM is unavailable BY DESIGN (no key / kill-switch
+    /// off — i.e. dev) it falls back to a heuristic provision built from the briefing's fields so
+    /// the catalog still produces playable provisions locally. When a live call FAILS (e.g. out of
+    /// credits in prod) it does NOT fall back — that would persist a generic, "dead" provision with
+    /// stub Coalition questions — and instead lets the <see cref="LlmException"/> propagate so the
+    /// caller can skip and retry later. Adds a base version and a single agent counterpart so a
+    /// born provision is immediately engageable.
     /// </summary>
     public async Task<ProvisionDetailDto?> BirthFromBriefingAsync(Guid briefingId, string? currentUserId, CancellationToken ct = default, DateTime? deadline = null)
     {
@@ -338,7 +342,10 @@ public class CoalitionLoopService
         Provision provision;
         GeneratedProvisionDto dto;
         try { (provision, dto) = await _birth.BirthFromBriefingAsync(briefing, ct, deadline); }
-        catch (LlmException) { dto = HeuristicBirthDto(briefing); provision = await _birth.MapAndPersistAsync(dto, briefing, ct, deadline); }
+        // LLM off by design (dev / no key): synthesize a playable heuristic provision so the catalog still works.
+        catch (LlmException ex) when (ex.Kind == LlmFailureKind.Unavailable)
+        { dto = HeuristicBirthDto(briefing); provision = await _birth.MapAndPersistAsync(dto, briefing, ct, deadline); }
+        // A live call failed (e.g. out of credits): let it propagate — do NOT persist a dead heuristic provision.
 
         var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provision.Id).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         if (subQs.Count > 0)

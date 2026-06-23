@@ -111,6 +111,9 @@ public class ClaudeLlmClientTests
 
         var ex = await act.Should().ThrowAsync<LlmException>();
         ex.Which.RawResponse.Should().Contain("bad");
+        // A live call that failed (e.g. out of credits → 400) must be tagged CallFailed so
+        // synthesis callers BAIL rather than persist heuristic "dead" data.
+        ex.Which.Kind.Should().Be(LlmFailureKind.CallFailed);
     }
 
     [Fact]
@@ -124,8 +127,10 @@ public class ClaudeLlmClientTests
         var client = new ClaudeLlmClient(http, Options.Create(opts));
         var act = async () => await client.GenerateStructuredAsync<Demo>("sys", "user");
 
-        await act.Should().ThrowAsync<LlmException>()
+        var ex = await act.Should().ThrowAsync<LlmException>()
             .WithMessage("*ApiKey*");
+        // No key configured is "unavailable by design" — callers fall back to heuristics, not bail.
+        ex.Which.Kind.Should().Be(LlmFailureKind.Unavailable);
     }
 
     [Fact]

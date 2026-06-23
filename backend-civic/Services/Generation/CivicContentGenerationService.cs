@@ -95,8 +95,13 @@ public class CivicContentGenerationService : BackgroundService
         if (batch.Count == 0) return 0;
 
         var generated = 0;
-        foreach (var item in batch)
+        foreach (var queued in batch)
         {
+            // Re-fetch each item fresh so a prior iteration's ChangeTracker.Clear() (used to discard
+            // partial work after a failure) never leaves this item detached and unsaveable.
+            var item = await db.NewsItems.FirstOrDefaultAsync(n => n.Id == queued.Id, ct);
+            if (item is null) continue;
+
             try
             {
                 item.Status = NewsItemStatus.Generating;
@@ -124,9 +129,30 @@ public class CivicContentGenerationService : BackgroundService
             }
             catch (Exception ex)
             {
-                _log.LogWarning(ex, "Generation failed for NewsItem {Id}", item.Id);
-                item.Status = NewsItemStatus.Failed;
-                item.LastError = ex.Message;
+                // GenerateForItemAsync may have already Added a briefing/think-deeper before failing
+                // partway. Discard that partial work so persisting the item's status below can't flush
+                // an orphan briefing (a "dead" half-story).
+                db.ChangeTracker.Clear();
+                var tracked = await db.NewsItems.FirstOrDefaultAsync(n => n.Id == queued.Id, ct);
+                if (tracked is null) continue;
+
+                if (ex is LlmException { Kind: LlmFailureKind.CallFailed })
+                {
+                    // A live LLM call failed (e.g. Anthropic out of credits) — not this story's fault.
+                    // Put it back in the queue (un-count the attempt) and stop the batch rather than
+                    // permanently marking good stories Failed and hammering a dead API.
+                    tracked.Status = NewsItemStatus.Ingested;
+                    if (tracked.AttemptCount > 0) tracked.AttemptCount--;
+                    await db.SaveChangesAsync(ct);
+                    _log.LogWarning(ex,
+                        "CivicContentGenerationService: LLM unavailable; requeued NewsItem {Id} and halting batch ({Done} generated this tick)",
+                        queued.Id, generated);
+                    break;
+                }
+
+                _log.LogWarning(ex, "Generation failed for NewsItem {Id}", queued.Id);
+                tracked.Status = NewsItemStatus.Failed;
+                tracked.LastError = ex.Message;
                 await db.SaveChangesAsync(ct);
             }
         }
