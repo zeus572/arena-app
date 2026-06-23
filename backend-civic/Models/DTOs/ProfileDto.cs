@@ -31,6 +31,12 @@ public class ProfileDto
     /// <summary>The reader's chosen local-news region (state code), or null for national.</summary>
     public string? LocalityState { get; set; }
 
+    /// <summary>The reader's 5-digit ZIP code, or null if not provided.</summary>
+    public string? ZipCode { get; set; }
+
+    /// <summary>The reader's age bracket key (e.g. "25_34"), or null if not provided.</summary>
+    public string? AgeRange { get; set; }
+
     public List<AxisScoreDto> Axes { get; set; } = new();
     public List<ArchetypeBlendItemDto> ArchetypeBlend { get; set; } = new();
 }
@@ -39,4 +45,15 @@ public class ProfileDto
 public class UpdateLocalityRequest
 {
     public string? LocalityState { get; set; }
+}
+
+/// <summary>
+/// Request body for PUT /api/profile/me/demographics — the personalization fields
+/// collected at sign-up. Both are optional; the local-news region is derived from
+/// the ZIP server-side.
+/// </summary>
+public class UpdateDemographicsRequest
+{
+    public string? ZipCode { get; set; }
+    public string? AgeRange { get; set; }
 }

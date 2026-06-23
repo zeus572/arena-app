@@ -19,6 +19,21 @@ public class UserProfile
     [MaxLength(2)]
     public string? LocalityState { get; set; }
 
+    /// <summary>
+    /// The reader's 5-digit US ZIP code, collected at sign-up for personalization,
+    /// or null if not provided. <see cref="LocalityState"/> is derived from this
+    /// via <see cref="Localities.StateForZip"/>.
+    /// </summary>
+    [MaxLength(5)]
+    public string? ZipCode { get; set; }
+
+    /// <summary>
+    /// The reader's self-reported age bracket (an <see cref="AgeRanges"/> key such
+    /// as "25_34"), collected at sign-up for personalization, or null if not given.
+    /// </summary>
+    [MaxLength(20)]
+    public string? AgeRange { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
