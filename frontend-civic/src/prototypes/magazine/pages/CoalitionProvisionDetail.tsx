@@ -155,6 +155,9 @@ export default function CoalitionProvisionDetail() {
     !leadingVersion.text.trimStart().startsWith("Version —");
   const prevailingText = hasAgreedWording ? leadingVersion!.text.trim() : d.neutralText;
 
+  // How many cohort-presented positions are in play (drafts are neutral seeds, not "on the table").
+  const presentedCount = d.versions.filter((v) => v.authorUserId).length;
+
   // ─── Compass join widget — shared between inline (mobile) and rail (desktop) ───
   const compassJoin = !d.youJoined && !resolved && (
     <div
@@ -286,9 +289,19 @@ export default function CoalitionProvisionDetail() {
             className="mt-6 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4"
             data-testid="prevailing-position"
           >
-            <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-              <ScrollText size={14} /> Prevailing coalition position
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+                <ScrollText size={14} /> Prevailing coalition position
+              </p>
+              {presentedCount > 0 && (
+                <span
+                  className="rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                  data-testid="on-the-table-count"
+                >
+                  {presentedCount} on the table
+                </span>
+              )}
+            </div>
             <p className="mt-1.5 text-[15px] font-medium leading-snug text-[var(--fg)]">
               {prevailingText}
             </p>
@@ -296,10 +309,13 @@ export default function CoalitionProvisionDetail() {
               <p className="mt-1.5 text-xs text-[var(--muted)]">
                 Leading wording · {leadingVersion!.accepts} co-sign{leadingVersion!.accepts === 1 ? "" : "s"}
                 {leadingVersion!.declines > 0 && ` · ${leadingVersion!.declines} decline${leadingVersion!.declines === 1 ? "" : "s"}`}
+                {presentedCount > 1 && ` · leading ${presentedCount} positions`}
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-[var(--muted)]">
-                No agreed wording yet — this is the neutral starting point. Take a position to move it.
+                {presentedCount === 0
+                  ? "No agreed wording yet — this is the neutral starting point. Be the first to take a position."
+                  : "No agreed wording yet — this is the neutral starting point. Take a position to move it."}
               </p>
             )}
           </div>
@@ -315,13 +331,17 @@ export default function CoalitionProvisionDetail() {
             <Link
               to={`/coalition/${id}/participate`}
               data-testid="participate-cta"
-              className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4 transition hover:bg-[var(--accent)]/10"
+              className="group mt-6 flex items-center justify-between gap-3 rounded-2xl bg-[var(--accent)] p-5 text-white shadow-sm transition hover:opacity-95"
             >
               <div>
-                <p className="text-sm font-semibold text-[var(--accent)]">Take part in this coalition</p>
-                <p className="mt-0.5 text-xs text-[var(--muted)]">Answer the sub-questions, co-sign versions, take a position, or propose a carve-out.</p>
+                <p className="text-base font-semibold">
+                  {presentedCount === 0 ? "Be the first to take a position" : "Take your position"}
+                </p>
+                <p className="mt-0.5 text-xs text-white/80">
+                  Answer the sub-questions, co-sign the closest version, or put your own carve-out on the table.
+                </p>
               </div>
-              <ArrowRight size={18} className="shrink-0 text-[var(--accent)]" />
+              <ArrowRight size={20} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}
 
@@ -500,10 +520,10 @@ export default function CoalitionProvisionDetail() {
             {!resolved && (
               <Link
                 to={`/coalition/${id}/participate`}
-                className="flex items-center justify-between gap-2 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4 transition hover:bg-[var(--accent)]/10"
+                className="group flex items-center justify-between gap-2 rounded-2xl bg-[var(--accent)] p-4 text-white shadow-sm transition hover:opacity-95"
               >
-                <p className="text-sm font-semibold text-[var(--accent)]">Take your position →</p>
-                <ArrowRight size={16} className="shrink-0 text-[var(--accent)]" />
+                <p className="text-sm font-semibold">Take your position</p>
+                <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
               </Link>
             )}
 
