@@ -96,8 +96,13 @@ camelCase/UPPER and not picked up as components.
 ## Re-sync risks (watch-list)
 
 - **Compiled-CSS hash drift:** `cfg.cssEntry` points at `dist/assets/index-<hash>.css`. The
-  hash changes whenever `frontend` is rebuilt (`npm run build`). Re-point `cfg.cssEntry` at
-  the current `dist/assets/index-*.css` on re-sync (rebuild dist first if stale).
+  hash changes on EVERY `frontend` rebuild (`npm run build`) — even with no source change, the
+  content/hash drift slightly (Tailwind utility ordering), so a re-sync always shows
+  styleSha/bundleSha/sourceKeys "changed" while `renderHashes` stay identical (no visual change).
+  **Failure mode seen 2026-06-24:** the pointed-at hash file was gone (dist rebuilt out of band),
+  so the build silently `! cssEntry: … not found — skipped` and wrote a 73-byte `_ds_bundle.css`
+  STUB (`[CSS_RUNTIME]`) → unstyled DS. Always: rebuild dist, then re-point `cfg.cssEntry` at the
+  fresh `dist/assets/index-*.css`, and confirm `_ds_bundle.css` is ~150KB before trusting a build.
 - **Component set changes:** if `frontend` adds/removes/renames a synced component, update BOTH
   `frontend/.ds-barrel.ts` AND `cfg.componentSrcMap`. Especially watch `format-layouts.tsx`
   (8 components in one file).
@@ -111,3 +116,23 @@ camelCase/UPPER and not picked up as components.
 - The preview overlay/dark-wrapper/animation-freeze tricks are tied to the components' current
   markup (fixed positioning, dark gradients, the `preview` prop). If those components are
   reworked upstream, re-check the affected previews.
+
+## Design-app `check_design_system` findings — WON'T-FIX (by design)
+
+The claude.ai/design app's own checker reports two things that are NOT bugs and have no
+appropriate sync-side fix. Don't re-chase them; don't hand-edit the synced
+`_ds_bundle.css`/`styles.css` (generated, overwritten every sync).
+
+- **Fonts (Inter / Geist Mono / Cambria) "missing":** the Arena app *declares* these in
+  `--font-sans`/`--font-mono` but ships NO font files and loads none (no `@font-face`, no
+  font `<link>` in `index.html`) — it renders in the system fallback, and the DS faithfully
+  matches that. Shipping these fonts would make the DS diverge from the real product. Only act
+  if the *app* itself starts loading them (a product decision) — then add via `cfg.extraFonts`
+  and re-sync. Already suppressed in our validate via `cfg.runtimeFontPrefixes` (the app's own
+  checker is independent and will still list them — expected).
+- **"N component-selector properties / unclassified tokens"** (e.g. `--tw-translate-*`,
+  `--tw-scale-*`, `space-y-*`, `prose`): Tailwind v4 compiled machinery + the
+  `@tailwindcss/typography` plugin, inside the full compiled app stylesheet we ship as
+  `_ds_bundle.css` (shipped whole on purpose — it's what makes components render correctly).
+  They are generated output, not design tokens; there's nothing in repo source to annotate,
+  and stripping them would break component rendering. Informational noise, not an issue.

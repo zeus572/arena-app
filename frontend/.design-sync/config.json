@@ -5,7 +5,7 @@
   "globalName": "DebateArena",
   "srcDir": "src",
   "tsconfig": ".tsconfig.sync.json",
-  "cssEntry": "dist/assets/index-Dl5atB2o.css",
+  "cssEntry": "dist/assets/index-DYrbtVEA.css",
   "provider": { "component": "DesignProvider" },
   "readmeHeader": ".design-sync/conventions.md",
   "runtimeFontPrefixes": ["Inter", "Geist Mono", "Cambria"],
