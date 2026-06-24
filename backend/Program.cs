@@ -29,6 +29,11 @@ builder.Services.AddScoped<TaggingService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<FormatSampleSeederService>();
 
+// TOTP two-factor authentication. TotpService wraps Otp.NET; MfaSecretProtector
+// encrypts the secret at rest with a config-derived AES-GCM key.
+builder.Services.AddSingleton<Arena.API.Services.Mfa.TotpService>();
+builder.Services.AddSingleton<Arena.API.Services.Mfa.MfaSecretProtector>();
+
 // Account email: verification + password reset. IEmailSender is the swap point —
 // ACS in prod, a logging no-op everywhere else. The dispatch/policy/token services
 // layer suppression, rate limiting, safety checks and one-time tokens on top.

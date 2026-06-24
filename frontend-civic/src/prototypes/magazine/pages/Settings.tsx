@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, ButtonLink } from "../components/Button";
+import TwoFactorSettings from "../components/TwoFactorSettings";
 import { useAuth } from "@/auth/AuthContext";
 import { arenaApi } from "@/auth/arenaAuthClient";
 import {
@@ -208,6 +209,9 @@ export default function MagazineSettings() {
           </div>
         )}
       </section>
+
+      {/* Security — two-factor authentication (signed-in users only) */}
+      {isAuthenticated && user && <TwoFactorSettings />}
 
       {/* Locality */}
       <section

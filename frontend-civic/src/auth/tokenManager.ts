@@ -24,6 +24,9 @@ import axios, {
 
 const ACCESS_KEY = "arena-access-token";
 const REFRESH_KEY = "arena-refresh-token";
+// Identifies a "remembered" device for the 2FA bypass. Deliberately NOT cleared on
+// logout — it identifies the device, not the session — so 2FA stays bypassed here.
+const TRUSTED_DEVICE_KEY = "arena-trusted-device-token";
 
 // The debate backend owns identity + token issuance/refresh. Keep this in sync
 // with arenaAuthClient's baseURL (we use a bare axios call here to avoid routing
@@ -54,6 +57,14 @@ export function storeTokens({ accessToken, refreshToken }: Tokens): void {
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
+}
+
+export function getTrustedDeviceToken(): string | null {
+  return localStorage.getItem(TRUSTED_DEVICE_KEY);
+}
+
+export function storeTrustedDeviceToken(token: string): void {
+  localStorage.setItem(TRUSTED_DEVICE_KEY, token);
 }
 
 /** Decode a JWT's `exp` (seconds since epoch), or null if it can't be read. */
