@@ -3,6 +3,7 @@ import { Button, ButtonLink } from "@/prototypes/magazine/components/Button";
 import { arenaApi } from "@/auth/arenaAuthClient";
 import { useAuth } from "@/auth/AuthContext";
 import { subscribeEmailUnverified } from "@/auth/emailVerificationGate";
+import { refreshAccessToken } from "@/auth/tokenManager";
 
 /**
  * Mounted once at the app root. Listens for the global "email_unverified" signal
@@ -48,9 +49,19 @@ export default function EmailVerificationGateModal() {
     setChecking(true);
     setMessage(null);
     try {
-      // Re-fetch the profile (and rotate the access token) so a just-verified
-      // account picks up email_verified=true. If it's now verified, dismiss;
-      // otherwise the next write attempt will re-open this prompt.
+      // FORCE a token rotation. The civic write endpoints authorize off the JWT
+      // `email_verified` claim, which only updates when the access token is
+      // re-minted via /auth/refresh. refreshUser() alone won't do it: it calls
+      // getFreshAccessToken(), which keeps the existing (still-valid) token and
+      // skips the refresh — so the just-verified account would keep sending a
+      // stale email_verified=false token and stay gated. Rotate explicitly first.
+      const rotated = await refreshAccessToken();
+      if (!rotated) {
+        setMessage("Couldn't refresh your account. Please try again.");
+        return;
+      }
+      // Now sync the user object off the freshly-rotated token and dismiss. If
+      // the email still isn't verified, the next write attempt re-opens this.
       await refreshUser();
       setOpen(false);
     } catch {
@@ -67,7 +78,7 @@ export default function EmailVerificationGateModal() {
       aria-modal="true"
       aria-labelledby="verify-email-gate-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-xl">
+      <div className="theme-magazine w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-xl">
         <h2
           id="verify-email-gate-title"
           className="font-serif text-xl text-[var(--fg)]"
