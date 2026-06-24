@@ -149,14 +149,16 @@ export default function CoalitionProvisionDetail() {
       (a, b) => b.accepts - b.declines - (a.accepts - a.declines),
     )[0] ??
     null;
+  // How many cohort-presented positions are in play (drafts are neutral seeds, not "on the table").
+  const presentedCount = d.versions.filter((v) => v.authorUserId).length;
+  // A prevailing position only exists once someone has actually presented one; until
+  // then a seeded draft's wording must not masquerade as it — fall back to neutral text.
   const hasAgreedWording =
+    presentedCount > 0 &&
     !!leadingVersion &&
     !!leadingVersion.text &&
     !leadingVersion.text.trimStart().startsWith("Version —");
   const prevailingText = hasAgreedWording ? leadingVersion!.text.trim() : d.neutralText;
-
-  // How many cohort-presented positions are in play (drafts are neutral seeds, not "on the table").
-  const presentedCount = d.versions.filter((v) => v.authorUserId).length;
 
   // ─── Compass join widget — shared between inline (mobile) and rail (desktop) ───
   const compassJoin = !d.youJoined && !resolved && (
@@ -291,7 +293,7 @@ export default function CoalitionProvisionDetail() {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-                <ScrollText size={14} /> Prevailing coalition position
+                <ScrollText size={14} /> {presentedCount === 0 ? "Starting point" : "Prevailing coalition position"}
               </p>
               {presentedCount > 0 && (
                 <span
@@ -305,7 +307,11 @@ export default function CoalitionProvisionDetail() {
             <p className="mt-1.5 text-[15px] font-medium leading-snug text-[var(--fg)]">
               {prevailingText}
             </p>
-            {hasAgreedWording ? (
+            {presentedCount === 0 ? (
+              <p className="mt-1.5 text-xs text-[var(--muted)]">
+                The bill's neutral starting text — no one has taken a position yet. Be the first to move it.
+              </p>
+            ) : hasAgreedWording ? (
               <p className="mt-1.5 text-xs text-[var(--muted)]">
                 Leading wording · {leadingVersion!.accepts} co-sign{leadingVersion!.accepts === 1 ? "" : "s"}
                 {leadingVersion!.declines > 0 && ` · ${leadingVersion!.declines} decline${leadingVersion!.declines === 1 ? "" : "s"}`}
@@ -313,9 +319,7 @@ export default function CoalitionProvisionDetail() {
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-[var(--muted)]">
-                {presentedCount === 0
-                  ? "No agreed wording yet — this is the neutral starting point. Be the first to take a position."
-                  : "No agreed wording yet — this is the neutral starting point. Take a position to move it."}
+                No agreed wording yet — this is the neutral starting point. Take a position to move it.
               </p>
             )}
           </div>

@@ -179,8 +179,10 @@ export default function CoalitionProvisionParticipate() {
     d.versions.find((v) => v.id === d.spectrumBar.leadingVersionId) ??
     [...d.versions].sort((a, b) => b.accepts - b.declines - (a.accepts - a.declines))[0] ??
     null;
+  // A prevailing position only exists once someone in the cohort has actually
+  // presented one — until then a seeded draft's wording must not masquerade as it.
   const hasAgreedWording =
-    !!leadingVersion && !!leadingVersion.text && !leadingVersion.text.trimStart().startsWith("Version —");
+    !noOneHasPresented && !!leadingVersion && !!leadingVersion.text && !leadingVersion.text.trimStart().startsWith("Version —");
   const prevailingText = hasAgreedWording ? leadingVersion!.text.trim() : d.neutralText;
 
   // Rank presented positions and neutral drafts separately by closeness to the
@@ -227,31 +229,38 @@ export default function CoalitionProvisionParticipate() {
         own on the table for the cohort to rally behind.
       </p>
 
-      {/* ── Lay of the land: the prevailing position + how many wordings are in play ── */}
+      {/* ── Lay of the land: the bill's neutral starting text, or — once someone has
+          presented — the prevailing position and how many wordings are in play ── */}
       <div
         className="mt-5 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4"
         data-testid="prevailing-position"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-            <ScrollText size={14} /> Prevailing coalition position
+            <ScrollText size={14} /> {noOneHasPresented ? "Starting point" : "Prevailing coalition position"}
           </p>
-          <span
-            className="rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
-            data-testid="on-the-table-count"
-          >
-            {presented.length} on the table
-          </span>
+          {!noOneHasPresented && (
+            <span
+              className="rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+              data-testid="on-the-table-count"
+            >
+              {presented.length} on the table
+            </span>
+          )}
         </div>
         <p className="mt-1.5 text-[15px] font-medium leading-snug text-[var(--fg)]">{prevailingText}</p>
-        {hasAgreedWording ? (
+        {noOneHasPresented ? (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            The bill's neutral starting text — no one has taken a position yet.
+          </p>
+        ) : hasAgreedWording ? (
           <p className="mt-1.5 text-xs text-[var(--muted)]">
             Leading wording · {leadingVersion!.accepts} co-sign{leadingVersion!.accepts === 1 ? "" : "s"}
             {leadingVersion!.declines > 0 && ` · ${leadingVersion!.declines} decline${leadingVersion!.declines === 1 ? "" : "s"}`}
           </p>
         ) : (
           <p className="mt-1.5 text-xs text-[var(--muted)]">
-            No agreed wording yet — this is the neutral starting point. Take a position below to move it.
+            No agreed wording yet — take a position below to move it.
           </p>
         )}
       </div>
