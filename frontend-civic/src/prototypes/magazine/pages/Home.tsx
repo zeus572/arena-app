@@ -11,7 +11,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { ButtonLink } from "../components/Button";
 import { CoverStory } from "../components/CoverStory";
-import { CountdownTimer } from "../components/CountdownTimer";
+import { FeatureRotator } from "../components/FeatureRotator";
 import { PullQuote } from "../components/PullQuote";
 import { BudgetFactCard } from "../components/BudgetFactCard";
 
@@ -103,61 +103,7 @@ export default function MagazineHome() {
           This issue is still being assembled. Check back soon.
         </p>
       )}
-      <div className="my-10 grid items-stretch gap-4 md:grid-cols-2">
-        <CountdownTimer scope="National" testId="countdown-national" className="h-full" />
-        {featuredCampaign ? (
-          <Link
-            to={`/campaigns/${featuredCampaign.id}`}
-            data-testid="campaign-cta"
-            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-          >
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-                <Megaphone className="h-4 w-4" /> Campaign Manager
-                <span className="text-[var(--muted)]">· {featuredCampaign.status === "Active" ? "in progress" : "finished"}</span>
-              </p>
-              <h2 className="display mt-2 text-3xl">{featuredCampaign.candidateName}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-                {featuredCampaign.raceLabel} · {featuredCampaign.party}
-              </p>
-              {featuredCampaign.status === "Active" ? (
-                <p className="mt-3 text-sm text-[var(--fg)]">
-                  <span className="font-semibold">{featuredCampaign.playerSupport.toFixed(0)}% support</span>
-                  {" — "}{featuredCampaign.isLeading ? "leading the race" : "trailing"} · day {featuredCampaign.currentDay} of {featuredCampaign.totalDays} ({featuredCampaign.daysRemaining}d left)
-                </p>
-              ) : (
-                <p className="mt-3 text-sm text-[var(--fg)]">
-                  <span className="font-semibold">{featuredCampaign.won ? "Won the race" : "Lost the race"}</span>
-                  {" — "}finished at {featuredCampaign.playerSupport.toFixed(0)}% support
-                </p>
-              )}
-            </div>
-            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-              {featuredCampaign.status === "Active" ? "Resume campaign →" : "View result →"}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            to="/campaigns"
-            data-testid="campaign-cta"
-            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-          >
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-                <Megaphone className="h-4 w-4" /> Campaign Manager
-              </p>
-              <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-                Take the reins for a candidate, respond to the real headlines, and try to win the race
-                before the clock runs out.
-              </p>
-            </div>
-            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-              Manage a campaign →
-            </span>
-          </Link>
-        )}
-      </div>
+      <FeatureRotator budgetFacts={budgetFacts} featuredCampaign={featuredCampaign} />
 
       {cover && <CoverStory briefing={cover} />}
 

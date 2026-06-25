@@ -47,10 +47,31 @@
   color: var(--accent);
 }
 
+/* Feature rotator: each slot fades/rises in when the conveyor advances. Keyed on
+   the card so it replays only when the content actually changes. */
+@keyframes feature-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.theme-magazine .feature-slot {
+  animation: feature-fade-in 0.45s ease both;
+}
+
 /* Reduced-motion: the tax calculator's split bar animates its widths; honor the
    user's preference and snap instead of transition (TaxApportionment_Spec §10). */
 @media (prefers-reduced-motion: reduce) {
   .theme-magazine .tax-animate {
     transition: none !important;
+  }
+
+  .theme-magazine .feature-slot {
+    animation: none;
   }
 }
