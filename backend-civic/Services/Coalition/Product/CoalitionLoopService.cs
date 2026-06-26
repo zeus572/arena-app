@@ -68,16 +68,23 @@ public class CoalitionLoopService
         // to readers in the matching state. Resolve the caller's locality once.
         var userLocality = await ResolveUserLocalityAsync(currentUserId, ct);
 
-        var provisions = await _db.Provisions
+        var provisions = await _db.Provisions.AsNoTracking()
             .Where(p => p.Locality == null || p.Locality == userLocality)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
         var result = new List<ProvisionSummaryDto>();
         foreach (var p in provisions)
         {
-            var state = await LoadStateAsync(p.Id, ct);
+            // Load each provision's heavy data once (split + no-tracking) and reuse it
+            // for both state and meta, rather than loading it twice per row.
+            var full = await LoadProvisionForReadAsync(p.Id, ct);
+            var participants = full is null
+                ? (IReadOnlyList<CoalitionParticipant>)Array.Empty<CoalitionParticipant>()
+                : await _db.CoalitionParticipants.AsNoTracking()
+                    .Where(c => c.ProvisionId == p.Id).OrderBy(c => c.CreatedAt).ToListAsync(ct);
+            var state = full is null ? null : BuildState(full, participants);
             var bar = state is null ? null : SpectrumBarBuilder.Build(state);
-            var (gap, gov) = await ProvisionMetaAsync(p, ct);
+            var (gap, gov) = full is null ? (0.0, false) : ProvisionMeta(full, participants);
             result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.State.ToString(),
                 bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
                 gap, DifficultyLabel(gap), gov, p.Locality));
@@ -87,15 +94,22 @@ public class CoalitionLoopService
 
     public async Task<ProvisionDetailDto?> GetDetailAsync(Guid provisionId, string? currentUserId, CancellationToken ct = default)
     {
-        var p = await LoadProvisionAsync(provisionId, ct);
+        // One read-only, split load of the provision + participants, reused for the
+        // state, spectrum bar, agents, and meta below — instead of re-loading the
+        // provision (was 3×) and participants (was 3×) within a single request.
+        var p = await LoadProvisionForReadAsync(provisionId, ct);
         if (p is null) return null;
         // Hard wall: out-of-locality readers can't see a local provision's detail.
         if (!await CanAccessProvisionAsync(p.Locality, currentUserId, ct)) return null;
-        var state = await LoadStateAsync(provisionId, ct);
-        var bar = SpectrumBarBuilder.Build(state!);
 
-        var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provisionId).OrderBy(s => s.OrderIndex).ToListAsync(ct);
-        var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
+        var participants = await _db.CoalitionParticipants.AsNoTracking()
+            .Where(c => c.ProvisionId == provisionId).OrderBy(c => c.CreatedAt).ToListAsync(ct);
+
+        var state = BuildState(p, participants);
+        var bar = SpectrumBarBuilder.Build(state);
+
+        var subQs = await _db.SubQuestions.AsNoTracking()
+            .Where(s => s.ProvisionId == provisionId).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         var positionedUsers = p.Positions.Select(x => x.UserId).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var acceptsByVersion = p.AcceptanceRecords.GroupBy(a => a.VersionId)
@@ -110,7 +124,7 @@ public class CoalitionLoopService
 
         // Outcome isn't persisted; re-derive it from data for resolved provisions.
         OutcomeDto? outcome = null;
-        if (p.State == ProvisionState.Passed && _sm.ResolvePassOutcome(state!) is { } o)
+        if (p.State == ProvisionState.Passed && _sm.ResolvePassOutcome(state) is { } o)
         {
             Guid? plankId = o.Plank is not null && Guid.TryParse(o.Plank.Id, out var g) ? g : null;
             outcome = new OutcomeDto(o.FinalState.ToString(), plankId, o.Signers?.ToArray(),
@@ -118,7 +132,7 @@ public class CoalitionLoopService
         }
         else if (p.State == ProvisionState.Forked)
         {
-            var fork = _sm.DetectFork(state!);
+            var fork = _sm.DetectFork(state);
             outcome = new OutcomeDto("Forked", null, null,
                 fork.Basins.Count, 0, 0, $"forked into {fork.Basins.Count} basins");
         }
@@ -130,8 +144,8 @@ public class CoalitionLoopService
         }
 
         var barDto = ToBarDto(bar);
-        var (gap, gov) = await ProvisionMetaAsync(p, ct);
-        var probes = BuildProbes(state!, currentUserId);
+        var (gap, gov) = ProvisionMeta(p, participants);
+        var probes = BuildProbes(state, currentUserId);
 
         return new ProvisionDetailDto(
             p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(), p.RelevantAxes, p.Deadline,
@@ -174,9 +188,9 @@ public class CoalitionLoopService
             .ToList();
     }
 
-    private async Task<(double gap, bool governance)> ProvisionMetaAsync(Provision p, CancellationToken ct)
+    private (double gap, bool governance) ProvisionMeta(Provision p, IReadOnlyList<CoalitionParticipant> participants)
     {
-        var (agents, baseV) = await BuildAllAgentsAsync(p.Id, ct);
+        var (agents, baseV) = BuildAllAgents(p, participants);
         var gap = (baseV is not null && agents.Count > 0)
             ? GapWidthEstimator.NormalizedGap(agents, baseV)
             : 0.0;
@@ -490,6 +504,20 @@ public class CoalitionLoopService
 
     private async Task<Provision?> LoadProvisionAsync(Guid provisionId, CancellationToken ct) =>
         await _db.Provisions
+            // Split query: three collection Includes off one root would otherwise run
+            // as a single Versions×Positions×AcceptanceRecords cartesian-product SELECT.
+            .AsSplitQuery()
+            .Include(p => p.Versions)
+            .Include(p => p.Positions)
+            .Include(p => p.AcceptanceRecords)
+            .FirstOrDefaultAsync(p => p.Id == provisionId, ct);
+
+    /// <summary>Read-only variant for query endpoints: same split-query load, but
+    /// no-tracking to skip change-tracker overhead on a pure read.</summary>
+    private async Task<Provision?> LoadProvisionForReadAsync(Guid provisionId, CancellationToken ct) =>
+        await _db.Provisions
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(p => p.Versions)
             .Include(p => p.Positions)
             .Include(p => p.AcceptanceRecords)
@@ -522,7 +550,13 @@ public class CoalitionLoopService
         if (p is null) return null;
         var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId)
             .OrderBy(c => c.CreatedAt).ToListAsync(ct);
+        return BuildState(p, participants);
+    }
 
+    /// <summary>Build the loop state from already-loaded data (no DB access) so one
+    /// read of the provision + participants can feed state, agents, and meta.</summary>
+    private ProvisionLoopState BuildState(Provision p, IReadOnlyList<CoalitionParticipant> participants)
+    {
         // version points keyed by DB id string
         var versions = p.Versions.OrderBy(v => v.CreatedAt)
             .Select(v => new VersionPoint(v.Id.ToString(), v.ExtractedPositions)).ToList();
@@ -551,7 +585,7 @@ public class CoalitionLoopService
 
         var spectrum = new ComposedSpectrum(participants.Select(c => c.SpectrumBucket));
 
-        var state = new ProvisionLoopState(provisionId.ToString(), players, spectrum,
+        var state = new ProvisionLoopState(p.Id.ToString(), players, spectrum,
             start: DateTime.UtcNow, lifetime: null)
         {
             State = p.State,
@@ -712,7 +746,12 @@ public class CoalitionLoopService
         var p = await LoadProvisionAsync(provisionId, ct);
         if (p is null) return (new(), null);
         var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
+        return BuildAllAgents(p, participants);
+    }
 
+    /// <summary>Build CoalitionAgents from already-loaded data (no DB access).</summary>
+    private (List<CoalitionAgent> Agents, VersionPoint? BaseVersion) BuildAllAgents(Provision p, IReadOnlyList<CoalitionParticipant> participants)
+    {
         var versions = p.Versions.OrderBy(v => v.CreatedAt)
             .Select(v => new VersionPoint(v.Id.ToString(), v.ExtractedPositions)).ToList();
         var versionById = versions.ToDictionary(v => v.Id, StringComparer.OrdinalIgnoreCase);
