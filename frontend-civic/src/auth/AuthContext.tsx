@@ -12,7 +12,9 @@ import {
   clearTokens,
   getFreshAccessToken,
   getRefreshToken,
+  getTrustedDeviceToken,
   storeTokens,
+  storeTrustedDeviceToken,
 } from "./tokenManager";
 
 export type AuthUser = {
@@ -22,16 +24,21 @@ export type AuthUser = {
   avatarUrl: string | null;
   plan: "Free" | "Premium";
   emailVerified: boolean;
+  mfaEnabled?: boolean;
 };
 
 type AuthTokens = { accessToken: string; refreshToken: string };
-type AuthResponse = AuthTokens & { user: AuthUser };
+type AuthResponse = AuthTokens & { user: AuthUser; trustedDeviceToken?: string | null };
+
+/** Result of a password login: either a full session, or a 2FA challenge to complete. */
+export type LoginResult = { status: "ok" } | { status: "mfa"; mfaToken: string };
 
 type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  completeMfaChallenge: (mfaToken: string, code: string, rememberDevice: boolean) => Promise<void>;
   register: (
     email: string,
     password: string,
@@ -84,10 +91,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
+  const storeAuthResponse = (data: AuthResponse) => {
+    storeTokens(data);
+    if (data.trustedDeviceToken) storeTrustedDeviceToken(data.trustedDeviceToken);
+  };
+
+  const login = async (email: string, password: string): Promise<LoginResult> => {
+    const trustedDeviceToken = getTrustedDeviceToken() ?? undefined;
+    const res = await arenaApi.post<AuthResponse & { mfaRequired?: boolean; mfaToken?: string }>(
+      "/auth/login",
+      { email, password, trustedDeviceToken },
+    );
+    if (res.data.mfaRequired) {
+      return { status: "mfa", mfaToken: res.data.mfaToken! };
+    }
+    storeAuthResponse(res.data);
+    setUser(res.data.user);
+    await postLinkAnonymous(getAnonymousUserId());
+    return { status: "ok" };
+  };
+
+  const completeMfaChallenge = async (mfaToken: string, code: string, rememberDevice: boolean) => {
     const anonId = getAnonymousUserId();
-    const res = await arenaApi.post<AuthResponse>("/auth/login", { email, password });
-    storeTokens(res.data);
+    const res = await arenaApi.post<AuthResponse>("/auth/mfa/challenge", {
+      mfaToken,
+      code,
+      rememberDevice,
+    });
+    storeAuthResponse(res.data);
     setUser(res.data.user);
     await postLinkAnonymous(anonId);
   };
@@ -131,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: user !== null,
         isLoading,
         login,
+        completeMfaChallenge,
         register,
         logout,
         refreshUser,

@@ -10,6 +10,17 @@ export interface UserProfile {
   plan: "Free" | "Premium";
   emailVerified: boolean;
   authProvider: string | null;
+  mfaEnabled?: boolean;
+}
+
+/** Result of a password login: either a full session, or a 2FA challenge to complete. */
+export type LoginResult = { status: "ok" } | { status: "mfa"; mfaToken: string };
+
+interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  trustedDeviceToken?: string | null;
+  user: UserProfile;
 }
 
 interface AuthState {
@@ -17,7 +28,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isPremium: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  completeMfaChallenge: (mfaToken: string, code: string, rememberDevice: boolean) => Promise<void>;
   register: (email: string, password: string, displayName: string, inviteCode: string) => Promise<void>;
   loginWithGoogle: (inviteCode?: string) => void;
   loginWithMicrosoft: (inviteCode?: string) => void;
@@ -29,9 +41,18 @@ const AuthContext = createContext<AuthState | null>(null);
 
 const BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:5000/api").replace(/\/api$/, "");
 
+const TRUSTED_DEVICE_KEY = "arena-trusted-device-token";
+
 function storeTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem("arena-access-token", accessToken);
   localStorage.setItem("arena-refresh-token", refreshToken);
+}
+
+// A "remember this computer" token deliberately survives logout — it identifies the
+// device, not the session — so the second factor stays bypassed on next login.
+function storeAuthResponse(data: AuthResponse) {
+  storeTokens(data.accessToken, data.refreshToken);
+  if (data.trustedDeviceToken) localStorage.setItem(TRUSTED_DEVICE_KEY, data.trustedDeviceToken);
 }
 
 function clearTokens() {
@@ -79,9 +100,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post<{ accessToken: string; refreshToken: string; user: UserProfile }>("/auth/login", { email, password });
-    storeTokens(res.data.accessToken, res.data.refreshToken);
+  const login = async (email: string, password: string): Promise<LoginResult> => {
+    const trustedDeviceToken = localStorage.getItem(TRUSTED_DEVICE_KEY) ?? undefined;
+    const res = await api.post<AuthResponse & { mfaRequired?: boolean; mfaToken?: string }>(
+      "/auth/login",
+      { email, password, trustedDeviceToken },
+    );
+    if (res.data.mfaRequired) {
+      return { status: "mfa", mfaToken: res.data.mfaToken! };
+    }
+    storeAuthResponse(res.data);
+    setUser(res.data.user);
+    return { status: "ok" };
+  };
+
+  const completeMfaChallenge = async (mfaToken: string, code: string, rememberDevice: boolean) => {
+    const res = await api.post<AuthResponse>("/auth/mfa/challenge", { mfaToken, code, rememberDevice });
+    storeAuthResponse(res.data);
     setUser(res.data.user);
   };
 
@@ -120,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isPremium: user?.plan === "Premium",
         isLoading,
         login,
+        completeMfaChallenge,
         register,
         loginWithGoogle,
         loginWithMicrosoft,

@@ -7,6 +7,8 @@ using Arena.API.Models;
 using Arena.API.Models.DTOs;
 using Arena.API.Services;
 using Arena.API.Services.Email;
+using Arena.API.Services.Mfa;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Arena.API.Controllers.Api;
 
@@ -20,6 +22,9 @@ public class AuthController : ControllerBase
     private readonly EmailPolicyService _emailPolicy;
     private readonly AccountTokenService _accountTokens;
     private readonly EmailDispatchService _emailDispatch;
+    private readonly TotpService _totp;
+    private readonly MfaSecretProtector _mfaProtector;
+    private readonly IMemoryCache _cache;
     private readonly PasswordHasher<User> _hasher = new();
 
     public AuthController(
@@ -28,7 +33,10 @@ public class AuthController : ControllerBase
         IConfiguration config,
         EmailPolicyService emailPolicy,
         AccountTokenService accountTokens,
-        EmailDispatchService emailDispatch)
+        EmailDispatchService emailDispatch,
+        TotpService totp,
+        MfaSecretProtector mfaProtector,
+        IMemoryCache cache)
     {
         _db = db;
         _jwt = jwt;
@@ -36,6 +44,9 @@ public class AuthController : ControllerBase
         _emailPolicy = emailPolicy;
         _accountTokens = accountTokens;
         _emailDispatch = emailDispatch;
+        _totp = totp;
+        _mfaProtector = mfaProtector;
+        _cache = cache;
     }
 
     [HttpPost("register")]
@@ -122,15 +133,42 @@ public class AuthController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        var accessToken = _jwt.GenerateAccessToken(user);
-        var refreshToken = await _jwt.GenerateRefreshTokenAsync(user);
-
-        return Ok(new
+        // Second factor: if the user has 2FA on, the password alone isn't enough.
+        // A valid "remember this computer" token lets them skip it; otherwise we hand
+        // back a short-lived MFA token and the client must complete /mfa/challenge.
+        if (user.MfaEnabled)
         {
-            accessToken,
-            refreshToken,
-            user = ProjectUser(user),
-        });
+            if (!string.IsNullOrWhiteSpace(request.TrustedDeviceToken)
+                && await IsTrustedDeviceValidAsync(user.Id, request.TrustedDeviceToken))
+            {
+                return await IssueSessionAsync(user, rememberDevice: false);
+            }
+
+            return Ok(new { mfaRequired = true, mfaToken = _jwt.GenerateMfaPendingToken(user) });
+        }
+
+        return await IssueSessionAsync(user, rememberDevice: false);
+    }
+
+    [HttpPost("mfa/challenge")]
+    public async Task<IActionResult> MfaChallenge([FromBody] MfaChallengeRequest request)
+    {
+        var userId = _jwt.ValidateMfaPendingToken(request.MfaToken ?? string.Empty);
+        if (userId is null)
+            return Unauthorized(new { error = "Your sign-in session expired. Please log in again." });
+
+        // Throttle code guessing: cap attempts per user within a short window.
+        if (!RegisterMfaAttempt(userId.Value))
+            return StatusCode(429, new { error = "Too many attempts. Please wait a moment and try again." });
+
+        var user = await _db.Users.FindAsync(userId.Value);
+        if (user is null || !user.MfaEnabled || user.TotpSecretEnc is null)
+            return Unauthorized(new { error = "Invalid request." });
+
+        if (!await VerifySecondFactorAsync(user, request.Code))
+            return Unauthorized(new { error = "Invalid authentication code." });
+
+        return await IssueSessionAsync(user, request.RememberDevice);
     }
 
     [HttpPost("refresh")]
@@ -235,6 +273,13 @@ public class AuthController : ControllerBase
             .ToListAsync();
         foreach (var s in sessions) s.RevokedAt = DateTime.UtcNow;
 
+        // Likewise revoke "remember this computer" bypass tokens — a reset should
+        // force the second factor again on every device.
+        var trusted = await _db.TrustedDevices
+            .Where(d => d.UserId == user.Id && d.RevokedAt == null)
+            .ToListAsync();
+        foreach (var d in trusted) d.RevokedAt = DateTime.UtcNow;
+
         await _db.SaveChangesAsync();
         return Ok(new { status = "password reset" });
     }
@@ -262,6 +307,111 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { transferred = new { votes = votes.Count, reactions = reactions.Count } });
+    }
+
+    [Authorize]
+    [HttpGet("mfa/status")]
+    public async Task<IActionResult> MfaStatus()
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return NotFound();
+
+        var remaining = user.MfaEnabled
+            ? await _db.MfaBackupCodes.CountAsync(c => c.UserId == user.Id && c.UsedAt == null)
+            : 0;
+
+        return Ok(new
+        {
+            enabled = user.MfaEnabled,
+            enrolledAt = user.MfaEnrolledAt,
+            backupCodesRemaining = remaining,
+        });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/setup")]
+    public async Task<IActionResult> MfaSetup()
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return NotFound();
+        if (user.MfaEnabled)
+            return Conflict(new { error = "Two-factor authentication is already enabled." });
+
+        // Generate a fresh secret and stash it (encrypted) as pending. MfaEnabled stays
+        // false until the user proves they can produce a valid code via /mfa/enable.
+        var secret = _totp.GenerateSecretBase32();
+        user.TotpSecretEnc = _mfaProtector.Protect(secret);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            secret,
+            otpauthUri = _totp.BuildOtpauthUri(user.Email, secret),
+        });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/enable")]
+    public async Task<IActionResult> MfaEnable([FromBody] MfaEnableRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return NotFound();
+        if (user.MfaEnabled)
+            return Conflict(new { error = "Two-factor authentication is already enabled." });
+        if (user.TotpSecretEnc is null)
+            return BadRequest(new { error = "Start setup first." });
+
+        var secret = _mfaProtector.Unprotect(user.TotpSecretEnc);
+        if (!_totp.VerifyCode(secret, request.Code ?? string.Empty))
+            return BadRequest(new { error = "That code is incorrect. Check your authenticator and try again." });
+
+        user.MfaEnabled = true;
+        user.MfaEnrolledAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        var codes = await RegenerateBackupCodesAsync(user);
+
+        await _db.SaveChangesAsync();
+        return Ok(new { status = "two-factor enabled", backupCodes = codes });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/disable")]
+    public async Task<IActionResult> MfaDisable([FromBody] MfaDisableRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return NotFound();
+        if (!user.MfaEnabled)
+            return Ok(new { status = "two-factor already disabled" });
+        if (!VerifyPassword(user, request.Password))
+            return Unauthorized(new { error = "Incorrect password." });
+
+        user.MfaEnabled = false;
+        user.TotpSecretEnc = null;
+        user.MfaEnrolledAt = null;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await ClearBackupCodesAsync(user.Id);
+        await RevokeTrustedDevicesAsync(user.Id);
+
+        await _db.SaveChangesAsync();
+        return Ok(new { status = "two-factor disabled" });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/backup-codes")]
+    public async Task<IActionResult> MfaRegenerateBackupCodes([FromBody] MfaBackupCodesRequest request)
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return NotFound();
+        if (!user.MfaEnabled)
+            return BadRequest(new { error = "Enable two-factor authentication first." });
+        if (!VerifyPassword(user, request.Password))
+            return Unauthorized(new { error = "Incorrect password." });
+
+        var codes = await RegenerateBackupCodesAsync(user);
+        await _db.SaveChangesAsync();
+        return Ok(new { backupCodes = codes });
     }
 
     // OAuth endpoints — when implementing Google/Microsoft callbacks:
@@ -332,7 +482,146 @@ public class AuthController : ControllerBase
         user.PoliticalLeaning,
         Plan = user.Plan.ToString(),
         user.EmailVerified,
+        user.MfaEnabled,
     };
+
+    // ---- MFA helpers -------------------------------------------------------
+
+    private const int BackupCodeCount = 10;
+    private const int MaxMfaAttempts = 5;
+    private static readonly TimeSpan MfaAttemptWindow = TimeSpan.FromMinutes(15);
+
+    private async Task<User?> CurrentUserAsync()
+    {
+        var sub = User.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var id) ? await _db.Users.FindAsync(id) : null;
+    }
+
+    private bool VerifyPassword(User user, string? password)
+    {
+        if (user.PasswordHash is null || string.IsNullOrEmpty(password)) return false;
+        return _hasher.VerifyHashedPassword(user, user.PasswordHash, password)
+               != PasswordVerificationResult.Failed;
+    }
+
+    /// <summary>Issue access + refresh tokens; optionally mint a 90-day trusted-device
+    /// token so this client can skip the second factor next time.</summary>
+    private async Task<IActionResult> IssueSessionAsync(User user, bool rememberDevice)
+    {
+        var accessToken = _jwt.GenerateAccessToken(user);
+        var refreshToken = await _jwt.GenerateRefreshTokenAsync(user);
+
+        string? trustedDeviceToken = null;
+        if (rememberDevice)
+            trustedDeviceToken = await CreateTrustedDeviceAsync(user.Id);
+
+        return Ok(new
+        {
+            accessToken,
+            refreshToken,
+            trustedDeviceToken,
+            user = ProjectUser(user),
+        });
+    }
+
+    /// <summary>Verify a second factor: a current TOTP code, or a single-use backup code.</summary>
+    private async Task<bool> VerifySecondFactorAsync(User user, string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return false;
+
+        var secret = _mfaProtector.Unprotect(user.TotpSecretEnc!);
+        if (_totp.VerifyCode(secret, code))
+            return true;
+
+        // Fall back to backup codes (normalized: strip dashes/space, upper-case).
+        var normalized = new string(code.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        if (normalized.Length == 0) return false;
+
+        var hash = TokenHasher.Hash(normalized);
+        var match = await _db.MfaBackupCodes
+            .FirstOrDefaultAsync(c => c.UserId == user.Id && c.CodeHash == hash && c.UsedAt == null);
+        if (match is null) return false;
+
+        match.UsedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>Replace the user's backup codes with a fresh set, returning the plaintext
+    /// (shown once). Only the hashes are persisted. Does not call SaveChanges.</summary>
+    private async Task<List<string>> RegenerateBackupCodesAsync(User user)
+    {
+        await ClearBackupCodesAsync(user.Id);
+
+        var display = new List<string>(BackupCodeCount);
+        for (var i = 0; i < BackupCodeCount; i++)
+        {
+            // 10 hex chars, shown grouped as XXXXX-XXXXX for readability.
+            var raw = TokenHasher.NewToken(5).ToUpperInvariant();
+            display.Add($"{raw[..5]}-{raw[5..]}");
+            _db.MfaBackupCodes.Add(new MfaBackupCode
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                CodeHash = TokenHasher.Hash(raw),
+            });
+        }
+        return display;
+    }
+
+    private async Task ClearBackupCodesAsync(Guid userId)
+    {
+        var existing = await _db.MfaBackupCodes.Where(c => c.UserId == userId).ToListAsync();
+        _db.MfaBackupCodes.RemoveRange(existing);
+    }
+
+    private async Task<string> CreateTrustedDeviceAsync(Guid userId)
+    {
+        var token = TokenHasher.NewToken();
+        var days = _config.GetValue("Mfa:TrustedDeviceDays", 90);
+        var ua = Request.Headers.UserAgent.ToString();
+        _db.TrustedDevices.Add(new TrustedDevice
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = TokenHasher.Hash(token),
+            Label = string.IsNullOrWhiteSpace(ua) ? null : ua[..Math.Min(ua.Length, 256)],
+            ExpiresAt = DateTime.UtcNow.AddDays(days),
+        });
+        await _db.SaveChangesAsync();
+        return token;
+    }
+
+    private async Task<bool> IsTrustedDeviceValidAsync(Guid userId, string token)
+    {
+        var hash = TokenHasher.Hash(token);
+        var device = await _db.TrustedDevices
+            .FirstOrDefaultAsync(d => d.UserId == userId && d.TokenHash == hash && d.RevokedAt == null);
+        return device is not null && device.ExpiresAt > DateTime.UtcNow;
+    }
+
+    private async Task RevokeTrustedDevicesAsync(Guid userId)
+    {
+        var devices = await _db.TrustedDevices
+            .Where(d => d.UserId == userId && d.RevokedAt == null)
+            .ToListAsync();
+        foreach (var d in devices) d.RevokedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>In-memory sliding cap on MFA challenge attempts per user, to slow code
+    /// guessing. Returns false once the cap in the window is exceeded.</summary>
+    private bool RegisterMfaAttempt(Guid userId)
+    {
+        var key = $"mfa:attempts:{userId}";
+        var count = _cache.GetOrCreate(key, e =>
+        {
+            e.AbsoluteExpirationRelativeToNow = MfaAttemptWindow;
+            return 0;
+        });
+        if (count >= MaxMfaAttempts) return false;
+        _cache.Set(key, count + 1, MfaAttemptWindow);
+        return true;
+    }
 }
 
 public record RefreshRequest(string RefreshToken);
