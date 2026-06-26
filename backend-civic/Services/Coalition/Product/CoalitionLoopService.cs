@@ -364,7 +364,9 @@ public class CoalitionLoopService
         var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provision.Id).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         if (subQs.Count > 0)
         {
-            await CreateBirthVersionsAsync(provision, subQs, briefing, dto.CoreProposals, ct);
+            // No system-seeded versions: every version on the table comes from a real
+            // participant. The provision's NeutralText stands as the bill's neutral
+            // starting point until someone in the cohort presents the first version.
 
             // One agent counterpart (opposite end) so a human has someone to bridge with.
             var rightRegion = subQs.Where(s => s.PositionOptions.Length > 0)
@@ -399,80 +401,6 @@ public class CoalitionLoopService
         };
     }
 
-    /// <summary>
-    /// Seed a birthed provision with a few DISTINCT core proposals — not one synthetic
-    /// "key = value" stub. Version 1 is the proposal as the article frames it (neutralText);
-    /// the others are concrete alternatives grounded in the briefing's strongest cases for and
-    /// against, each landing on a different sub-question position vector so players have real
-    /// bridging choices.
-    /// </summary>
-    private async Task CreateBirthVersionsAsync(
-        Provision provision, List<SubQuestion> subQs, Briefing briefing,
-        List<GeneratedCoreProposalDto>? proposals, CancellationToken ct)
-    {
-        var seen = new HashSet<string>();
-        async Task<bool> AddAsync(Dictionary<string, string> positions, string? label, string text)
-        {
-            if (positions.Count == 0 || !seen.Add(Canonical(positions))) return false; // skip empty/duplicate vectors
-            await FindOrCreateVersionAsync(provision.Id, positions, label, null, ct, freeformText: text);
-            return true;
-        }
-
-        // Preferred path: the model authored 2-3 distinct concrete proposals. Validate each
-        // proposal's positions against the persisted sub-questions before trusting them.
-        var optionsByKey = subQs.ToDictionary(s => s.Key, s => s.PositionOptions, StringComparer.OrdinalIgnoreCase);
-        var made = 0;
-        foreach (var p in proposals ?? new())
-        {
-            if (string.IsNullOrWhiteSpace(p.Text)) continue;
-            var pos = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in p.Positions ?? new())
-            {
-                if (!optionsByKey.TryGetValue(kv.Key, out var opts)) continue; // unknown sub-question
-                var val = opts.FirstOrDefault(o => string.Equals(o, kv.Value, StringComparison.OrdinalIgnoreCase))
-                          ?? kv.Value?.Trim();
-                if (!string.IsNullOrWhiteSpace(val)) pos[kv.Key] = val!;
-            }
-            var label = string.IsNullOrWhiteSpace(p.Label) ? null : p.Label.Trim();
-            if (await AddAsync(pos, label, p.Text.Trim())) made++;
-        }
-        if (made > 0) return;
-
-        // Heuristic fallback (no usable LLM proposals): derive a few from the briefing fields.
-        var first = subQs.ToDictionary(s => s.Key, s => s.PositionOptions.FirstOrDefault() ?? "default", StringComparer.OrdinalIgnoreCase);
-        var last = subQs.ToDictionary(s => s.Key, s => s.PositionOptions.LastOrDefault() ?? s.PositionOptions.FirstOrDefault() ?? "default", StringComparer.OrdinalIgnoreCase);
-
-        // 1. The proposal as the article frames it — the clear, neutral core proposal.
-        await AddAsync(new(first), "As proposed", provision.NeutralText);
-
-        // 2. A more expansive take, grounded in the strongest case FOR.
-        await AddAsync(new(last), "Go further",
-            ComposeProposal("A stronger version that goes further", briefing.StrongestArgumentFor, provision.NeutralText));
-
-        // 3. A middle-ground take (flip only the first crux), grounded in the strongest case AGAINST.
-        if (subQs.Count >= 2)
-        {
-            var mix = new Dictionary<string, string>(first, StringComparer.OrdinalIgnoreCase) { [subQs[0].Key] = last[subQs[0].Key] };
-            await AddAsync(mix, "Middle ground",
-                ComposeProposal("A middle-ground version", briefing.StrongestArgumentAgainst, provision.NeutralText));
-        }
-    }
-
-    private static string ComposeProposal(string lead, string? source, string fallback)
-    {
-        var body = FirstSentence(source);
-        if (body.Length == 0) body = FirstSentence(fallback);
-        return body.Length == 0 ? lead + "." : $"{lead}: {body}";
-    }
-
-    private static string FirstSentence(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return "";
-        s = s.Trim();
-        var idx = s.IndexOf(". ", StringComparison.Ordinal);
-        var sentence = idx > 0 ? s[..(idx + 1)] : s;
-        return sentence.Length > 220 ? sentence[..220].TrimEnd() + "…" : sentence;
-    }
 
     // ---------------------------------------------------------------- writes (agent ballast)
 
