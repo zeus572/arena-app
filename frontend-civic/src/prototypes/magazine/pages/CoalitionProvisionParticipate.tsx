@@ -156,6 +156,9 @@ export default function CoalitionProvisionParticipate() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [freeOpen, setFreeOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
+  // True right after a successful present, so we can confirm it landed. Cleared the
+  // moment the player edits an answer (they're now drafting a different version).
+  const [justPresented, setJustPresented] = useState(false);
 
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
@@ -191,13 +194,18 @@ export default function CoalitionProvisionParticipate() {
     vs.map((v) => ({ v, ...closeness(answers, v) })).sort((a, b) => b.score - a.score || b.v.accepts - a.v.accepts);
   const rankedPresented = rankBy(presented);
   const rankedDrafts = rankBy(drafts);
+  // Only crown a "Closest to you" when the leading presented position actually shares
+  // at least one of your answers. Guarding on `considered > 0` alone (you answered
+  // something) let the accepts tiebreak pin the badge on a 0-match version when your
+  // answers matched none of them — labelling the literally farthest position closest.
   const closestId =
-    answeredKeys.length > 0 && rankedPresented[0]?.considered > 0 ? rankedPresented[0]?.v.id : null;
+    answeredKeys.length > 0 && (rankedPresented[0]?.matches ?? 0) > 0 ? rankedPresented[0]!.v.id : null;
 
   const progressPct = d.subQuestions.length ? (answeredKeys.length / d.subQuestions.length) * 100 : 0;
   const onAccept = (versionId: string, accept: boolean) => run(() => castAcceptance(id, versionId, accept));
 
   function pick(key: string, option: string) {
+    setJustPresented(false);
     setAnswers((prev) => ({ ...prev, [key]: prev[key] === option ? "" : option }));
   }
 
@@ -211,7 +219,12 @@ export default function CoalitionProvisionParticipate() {
       if (!d!.youJoined && compass.hasData) await joinProvision(id, compass.bucket);
       return proposeAmendment(id, positions, label);
     });
-    setAnswers({});
+    // Keep the answers in place rather than blanking them: the version we just added
+    // is built from these answers, so it now ranks top as a 4/4 "Closest to you" and
+    // stays on screen as the confirmation. (Clearing them collapsed the whole compare
+    // panel back to the "pick an answer" placeholder, so the submit looked like a
+    // silent no-op.) The success banner makes the outcome explicit.
+    setJustPresented(true);
   }
 
   return (
@@ -420,6 +433,23 @@ export default function CoalitionProvisionParticipate() {
                   <p className="text-sm text-[var(--muted)]">No versions yet — yours will be the first.</p>
                 )}
               </div>
+
+              {/* Confirmation that a just-presented version actually landed */}
+              {justPresented && (
+                <div
+                  className="mt-5 flex items-start gap-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 p-4"
+                  data-testid="present-success"
+                >
+                  <Check size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">Your position is on the table.</p>
+                    <p className="mt-0.5 text-xs text-emerald-700">
+                      It's listed under “Positions on the table” above and marked closest to you — the cohort can
+                      co-sign it now. Change an answer to put up a different version.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Primary CTA — put your own version on the table */}
               <div className="mt-5 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-5" data-testid="present-cta">
