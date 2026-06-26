@@ -47,6 +47,76 @@ public class JwtTokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    private const string MfaAudience = "arena-mfa";
+
+    /// <summary>
+    /// Short-lived token issued after a correct password when the user has MFA enabled,
+    /// but before the second factor is presented. It is deliberately scoped to a
+    /// distinct audience (<c>arena-mfa</c>) and carries <c>scope=mfa_pending</c>, so the
+    /// API's Bearer middleware (which expects the <c>arena-app</c> audience) will NOT
+    /// accept it as an access token — it is only valid at the MFA challenge endpoint.
+    /// </summary>
+    public string GenerateMfaPendingToken(User user)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new("scope", "mfa_pending"),
+        };
+
+        var minutes = _config.GetValue("Mfa:PendingTokenMinutes", 5);
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: MfaAudience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(minutes),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
+    /// Validate an MFA-pending token (signature, issuer, the <c>arena-mfa</c> audience,
+    /// lifetime, and the <c>mfa_pending</c> scope) and return the user id it was issued
+    /// for. Returns null on any failure.
+    /// </summary>
+    public Guid? ValidateMfaPendingToken(string token)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+        var parameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _config["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = MfaAudience,
+            ValidateLifetime = true,
+            IssuerSigningKey = key,
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        try
+        {
+            // Disable inbound claim mapping so "sub" stays "sub" (matching how the app's
+            // Bearer middleware is configured) instead of being remapped to the long
+            // ClaimTypes.NameIdentifier URI — otherwise FindFirst("sub") would be null.
+            var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+            var principal = handler.ValidateToken(token, parameters, out _);
+            if (principal.FindFirst("scope")?.Value != "mfa_pending")
+                return null;
+            var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            return Guid.TryParse(sub, out var id) ? id : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<string> GenerateRefreshTokenAsync(User user)
     {
         var token = TokenHasher.NewToken();

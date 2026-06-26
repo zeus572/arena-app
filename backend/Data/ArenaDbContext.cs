@@ -29,6 +29,8 @@ public class ArenaDbContext : DbContext
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
     public DbSet<EmailSuppression> EmailSuppressions => Set<EmailSuppression>();
     public DbSet<EmailSendLog> EmailSendLogs => Set<EmailSendLog>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -159,6 +161,26 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<EmailSendLog>(e =>
         {
             e.HasIndex(l => new { l.Email, l.SentAt });
+        });
+
+        modelBuilder.Entity<MfaBackupCode>(e =>
+        {
+            e.HasIndex(c => c.CodeHash);
+            e.HasIndex(c => c.UserId);
+            e.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TrustedDevice>(e =>
+        {
+            e.HasIndex(d => d.TokenHash);
+            e.HasIndex(d => d.UserId);
+            e.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
