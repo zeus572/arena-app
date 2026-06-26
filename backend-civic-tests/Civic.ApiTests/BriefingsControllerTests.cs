@@ -1,7 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using Civic.API.Data;
+using Civic.API.Models;
 using Civic.API.Models.DTOs;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Civic.ApiTests;
@@ -68,5 +72,43 @@ public class BriefingsControllerTests
     {
         var resp = await _client.GetAsync("/api/briefings/does-not-exist");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetBySlug_SurfacesCoalitionCallout_WhenProvisionBornFromBriefing()
+    {
+        const string slug = "congress-student-data-privacy-bill";
+        var provisionId = Guid.NewGuid();
+
+        using (var scope = _fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+            var briefing = await db.Briefings.FirstAsync(b => b.Slug == slug);
+            db.Provisions.Add(new Provision
+            {
+                Id = provisionId,
+                Slug = "callout-test-provision",
+                Title = "Callout test provision",
+                NeutralText = "neutral",
+                SourceBriefingId = briefing.Id,
+                State = ProvisionState.Open,
+                Locality = briefing.Locality,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            var dto = await _client.GetFromJsonAsync<BriefingDto>($"/api/briefings/{slug}");
+            dto.Should().NotBeNull();
+            dto!.CoalitionProvisionId.Should().Be(provisionId, "the article links the coalition born from it");
+            dto.CoalitionProvisionState.Should().Be("Open");
+        }
+        finally
+        {
+            using var scope = _fixture.Factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+            await db.Provisions.Where(p => p.Id == provisionId).ExecuteDeleteAsync();
+        }
     }
 }

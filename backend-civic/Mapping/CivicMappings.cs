@@ -25,9 +25,10 @@ public static class CivicMappings
     /// <summary>
     /// Maps a briefing to its detail DTO. Pass the originating <paramref name="source"/> NewsItem
     /// (resolved from <see cref="Briefing.SourceNewsItemId"/>) to surface original-article
-    /// attribution; omit it for hand-seeded briefings that have no upstream source.
+    /// attribution; omit it for hand-seeded briefings that have no upstream source. Pass the
+    /// <paramref name="coalition"/> born from this briefing to surface a participate call-out.
     /// </summary>
-    public static BriefingDto ToDto(this Briefing b, NewsItem? source = null) => new()
+    public static BriefingDto ToDto(this Briefing b, NewsItem? source = null, Provision? coalition = null) => new()
     {
         Id = b.Id,
         Slug = b.Slug,
@@ -59,6 +60,8 @@ public static class CivicMappings
         SourcePublisher = source?.Source,
         SourcePublishedAt = source is null ? null : DateTime.SpecifyKind(source.PublishedAt, DateTimeKind.Utc),
         Locality = b.Locality,
+        CoalitionProvisionId = coalition?.Id,
+        CoalitionProvisionState = coalition?.State.ToString(),
     };
 
     public static ConceptDto ToDto(this Concept c) => new()

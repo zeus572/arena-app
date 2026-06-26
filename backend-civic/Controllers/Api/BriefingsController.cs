@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Civic.API.Data;
 using Civic.API.Mapping;
+using Civic.API.Models;
 using Civic.API.Models.DTOs;
 using Civic.API.Services;
 
@@ -81,7 +82,15 @@ public class BriefingsController : ControllerBase
         var source = b.SourceNewsItemId is Guid newsId
             ? await _db.NewsItems.FirstOrDefaultAsync(n => n.Id == newsId)
             : null;
-        return Ok(b.ToDto(source));
+
+        // Resolve the coalition born from this briefing (most recent, excluding dead ones)
+        // so the article can call out a live bill for readers to join.
+        var coalition = await _db.Provisions
+            .Where(p => p.SourceBriefingId == b.Id && p.State != ProvisionState.Died)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return Ok(b.ToDto(source, coalition));
     }
 
     // GET /api/briefings/{slug}/candidate-reactions — Virtual Candidate posts

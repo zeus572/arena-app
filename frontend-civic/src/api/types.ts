@@ -47,6 +47,10 @@ export type CivicBriefing = CivicBriefingSummary & {
   sourceUrl: string | null;
   sourcePublisher: string | null;
   sourcePublishedAt: string | null;
+  // Coalition bill born from this briefing, if any (null until one is birthed). Lets the
+  // article call out a live coalition for readers to join.
+  coalitionProvisionId: string | null;
+  coalitionProvisionState: string | null;
 };
 
 export type Concept = {

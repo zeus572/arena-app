@@ -159,6 +159,42 @@ export default function MagazineBriefingDetail() {
           </div>
         </section>
 
+        {briefing.coalitionProvisionId &&
+          (() => {
+            const resolved = ["Passed", "Forked"].includes(
+              briefing.coalitionProvisionState ?? "",
+            );
+            return (
+              <section
+                className="mt-12 grid gap-3 border border-[var(--accent)] bg-[var(--accent)]/5 p-6 md:grid-cols-[1fr_auto] md:items-center"
+                data-testid="coalition-callout"
+              >
+                <div>
+                  <p className="display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                    From the news to the floor
+                  </p>
+                  <p className="display mt-2 text-xl">
+                    {resolved
+                      ? "This story's coalition bill has been settled."
+                      : "This story became a coalition bill."}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--fg-soft)]">
+                    {resolved
+                      ? "See where your cohort landed and how the wording came together."
+                      : "Readers are negotiating where the line should fall. Take a position and co-sign the version closest to you."}
+                  </p>
+                </div>
+                <Link
+                  to={`/coalition/${briefing.coalitionProvisionId}`}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  data-testid="coalition-callout-link"
+                >
+                  {resolved ? "See the outcome →" : "Join the coalition →"}
+                </Link>
+              </section>
+            );
+          })()}
+
         {isPremium && (
           <section
             className="mt-12 grid gap-3 border border-[var(--accent)] bg-[var(--bg-elev)] p-6 md:grid-cols-[1fr_auto] md:items-center"

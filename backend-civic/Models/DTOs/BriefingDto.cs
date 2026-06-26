@@ -54,4 +54,10 @@ public class BriefingDto : BriefingSummaryDto
     public string? SourceUrl { get; set; }
     public string? SourcePublisher { get; set; }
     public DateTime? SourcePublishedAt { get; set; }
+
+    // Coalition that was born from this briefing, if any (the most recent non-dead one).
+    // Lets the article surface a call-out linking readers to participate. Null when no
+    // provision has been birthed from this briefing yet.
+    public Guid? CoalitionProvisionId { get; set; }
+    public string? CoalitionProvisionState { get; set; }
 }
