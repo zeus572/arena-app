@@ -29,10 +29,18 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Services\Email\disposable-domains.txt" />
+    <EmbeddedResource Include="Social\Rendering\Templates\feature.html" LogicalName="cards.feature.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\debate.html" LogicalName="cards.debate.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\coalition.html" LogicalName="cards.coalition.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\briefing.html" LogicalName="cards.briefing.html" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\shared\Arena.Shared\Arena.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Arena.UnitTests" />
   </ItemGroup>
 
 </Project>
