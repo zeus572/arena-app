@@ -85,6 +85,20 @@ public class BotHeartbeatService : BackgroundService
                 {
                     _logger.LogError(ex, "BotHeartbeat tick failed");
                 }
+
+                // SocialPublisher rides the heartbeat at a downsampled cadence. The hook swallows-and-logs
+                // any escaped publisher error (§4.4) so the social subsystem can never abort or delay a
+                // core tick. Wrapped again here as belt-and-braces isolation.
+                try
+                {
+                    using var socialScope = _scopeFactory.CreateScope();
+                    var hook = socialScope.ServiceProvider.GetRequiredService<Arena.API.Social.SocialHeartbeatHook>();
+                    await hook.OnHeartbeatTickAsync(stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "SocialPublisher hook escaped (swallowed; core platform unaffected)");
+                }
             }
             else
             {
