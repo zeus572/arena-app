@@ -23,6 +23,13 @@ public class BriefingSummaryDto
 
     /// <summary>Local-news region (state code) for this briefing, or null for national.</summary>
     public string? Locality { get; set; }
+
+    /// <summary>
+    /// Publisher of the upstream article this briefing was synthesized from (e.g. "NPR",
+    /// "BBC", "Washington State Standard"), or null for hand-seeded briefings. Lets the
+    /// feed show a small per-source moniker.
+    /// </summary>
+    public string? SourcePublisher { get; set; }
 }
 
 /// <summary>A single page of briefing summaries plus the total count for paging UI.</summary>
@@ -50,9 +57,9 @@ public class BriefingDto : BriefingSummaryDto
     public string[] WhereToGoNext { get; set; } = Array.Empty<string>();
 
     // Original-source attribution, resolved from the NewsItem this briefing was synthesized from.
-    // Null for hand-seeded briefings (no upstream article).
+    // Null for hand-seeded briefings (no upstream article). SourcePublisher lives on the base
+    // BriefingSummaryDto so the feed list can show it too.
     public string? SourceUrl { get; set; }
-    public string? SourcePublisher { get; set; }
     public DateTime? SourcePublishedAt { get; set; }
 
     // Coalition that was born from this briefing, if any (the most recent non-dead one).

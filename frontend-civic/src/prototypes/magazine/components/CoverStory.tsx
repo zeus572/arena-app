@@ -22,6 +22,14 @@ export function CoverStory({ briefing }: { briefing: CivicBriefingSummary }) {
         <div className="min-w-0 max-w-3xl">
           <p className="display text-xs font-semibold uppercase tracking-[0.3em]">
             {briefing.institution} · {briefing.status}
+            {briefing.sourcePublisher && (
+              <span
+                className="ml-2 font-normal text-white/75"
+                data-testid={`cover-source-${briefing.sourcePublisher}`}
+              >
+                · {briefing.sourcePublisher}
+              </span>
+            )}
           </p>
           <h2 className="display mt-3 text-3xl [overflow-wrap:anywhere] hyphens-auto md:text-6xl">
             {briefing.headline}
