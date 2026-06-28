@@ -14,6 +14,7 @@ import { FeatureRotator } from "../components/FeatureRotator";
 import { CampaignFeedQuoteCard } from "../components/CampaignFeedQuoteCard";
 import { CoalitionQuestionCard } from "../components/CoalitionQuestionCard";
 import { BudgetFactCard } from "../components/BudgetFactCard";
+import { SourceBadge } from "../components/SourceBadge";
 
 // Two-column grid → 10 rows max per page. The cover takes one slot on page 1,
 // so page 1 shows the cover + (PAGE_SIZE - 1) explainers; later pages show a
@@ -165,8 +166,14 @@ export default function MagazineHome() {
                 <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   Key concept · {b.keyConcept}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-wider text-[var(--muted)]/70">
-                  {formatStoryDate(b.createdAt)}
+                <p className="mt-1 flex items-center gap-2 text-xs uppercase tracking-wider text-[var(--muted)]/70">
+                  <span>{formatStoryDate(b.createdAt)}</span>
+                  {b.sourcePublisher && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <SourceBadge source={b.sourcePublisher} />
+                    </>
+                  )}
                 </p>
               </Link>
             </li>

@@ -86,11 +86,7 @@ public class CivicContentGenerationService : BackgroundService
         }
 
         var take = Math.Min(opts.BatchSize, dailyRoom);
-        var batch = await db.NewsItems
-            .Where(n => n.Status == NewsItemStatus.Ingested)
-            .OrderBy(n => n.IngestedAt)
-            .Take(take)
-            .ToListAsync(ct);
+        var batch = await SelectBalancedBatchAsync(db, opts, take, ct);
 
         if (batch.Count == 0) return 0;
 
@@ -159,6 +155,82 @@ public class CivicContentGenerationService : BackgroundService
 
         _log.LogInformation("CivicContentGenerationService: processed {Done}/{Total} items", generated, batch.Count);
         return generated;
+    }
+
+    /// <summary>
+    /// Picks the next items to generate, balanced so neither the highest-volume source
+    /// (e.g. BBC, whose feed churns far faster than NPR's) nor national content can
+    /// monopolise the daily budget — which is exactly what plain FIFO-by-IngestedAt did,
+    /// starving local stories and the smaller national source out of the feed entirely:
+    ///   #1 local content is guaranteed a turn,
+    ///   #2 sources are balanced (within national, BBC and NPR alternate),
+    ///   #3 freshness wins — items are taken newest-first by PublishedAt, and anything
+    ///      older than <see cref="NewsOptions.MaxStoryAgeDays"/> is ignored so a stale
+    ///      backlog can't keep crowding out fresh + local stories.
+    /// Achieved by bucketing pending items by (locality, source) and round-robining one
+    /// freshest item from each bucket; per-bucket over/under-representation evens out
+    /// across the day's batches as buckets deplete.
+    /// </summary>
+    private static async Task<List<NewsItem>> SelectBalancedBatchAsync(
+        CivicDbContext db, NewsOptions opts, int take, CancellationToken ct)
+    {
+        if (take <= 0) return new List<NewsItem>();
+
+        var cutoff = DateTime.UtcNow - TimeSpan.FromDays(Math.Max(1, opts.MaxStoryAgeDays));
+
+        // Distinct (locality, source) buckets among fresh, still-pending items.
+        var buckets = await db.NewsItems
+            .Where(n => n.Status == NewsItemStatus.Ingested && n.PublishedAt >= cutoff)
+            .Select(n => new { n.Locality, n.Source })
+            .Distinct()
+            .ToListAsync(ct);
+        if (buckets.Count == 0) return new List<NewsItem>();
+
+        // Freshest `take` items per bucket — enough to fill the whole batch from a single
+        // bucket if the others are empty, without dragging in the entire backlog.
+        var perBucket = new List<List<NewsItem>>(buckets.Count);
+        foreach (var b in buckets)
+        {
+            var items = await db.NewsItems
+                .Where(n => n.Status == NewsItemStatus.Ingested
+                            && n.PublishedAt >= cutoff
+                            && n.Locality == b.Locality
+                            && n.Source == b.Source)
+                .OrderByDescending(n => n.PublishedAt)
+                .Take(take)
+                .ToListAsync(ct);
+            if (items.Count > 0) perBucket.Add(items);
+        }
+
+        // National sources first (so the bulk of readers, who are national-only, keep
+        // a steady feed) then each locality — but every bucket still gets a turn via
+        // the round-robin below.
+        var ordered = perBucket
+            .OrderBy(g => g[0].Locality != null)
+            .ThenBy(g => g[0].Locality)
+            .ThenBy(g => g[0].Source, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return RoundRobin(ordered, take);
+    }
+
+    /// <summary>Take one item from each bucket in turn (buckets already freshest-first) until full.</summary>
+    private static List<NewsItem> RoundRobin(IReadOnlyList<List<NewsItem>> buckets, int take)
+    {
+        var result = new List<NewsItem>(take);
+        for (var depth = 0; result.Count < take; depth++)
+        {
+            var progressed = false;
+            foreach (var bucket in buckets)
+            {
+                if (depth >= bucket.Count) continue;
+                result.Add(bucket[depth]);
+                progressed = true;
+                if (result.Count >= take) break;
+            }
+            if (!progressed) break; // every bucket exhausted
+        }
+        return result;
     }
 
     /// <summary>

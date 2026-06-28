@@ -21,6 +21,8 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
 {
     private readonly DatabaseFixture _fx;
     private readonly Guid _newsItemId = Guid.NewGuid();
+    // Extra items seeded by the balanced-selection test, cleaned up alongside _newsItemId.
+    private readonly List<Guid> _extraIds = new();
 
     public CivicContentGenerationServiceTests(DatabaseFixture fx) => _fx = fx;
 
@@ -43,7 +45,7 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
         db.ThinkDeepers.RemoveRange(await db.ThinkDeepers.Where(t => t.SourceNewsItemId == _newsItemId).ToListAsync());
         db.Concepts.RemoveRange(await db.Concepts.Where(c => c.SourceNewsItemId == _newsItemId).ToListAsync());
         db.QuizQuestions.RemoveRange(await db.QuizQuestions.Where(q => q.SourceNewsItemId == _newsItemId).ToListAsync());
-        db.NewsItems.RemoveRange(await db.NewsItems.Where(n => n.Id == _newsItemId).ToListAsync());
+        db.NewsItems.RemoveRange(await db.NewsItems.Where(n => n.Id == _newsItemId || _extraIds.Contains(n.Id)).ToListAsync());
         await db.SaveChangesAsync();
     }
 
@@ -199,6 +201,73 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
 
         var done = await svc.GenerateBatchAsync();
         done.Should().Be(0);
+    }
+
+    private async Task<Guid> SeedItemAsync(string source, string? locality, DateTime publishedAt)
+    {
+        var id = Guid.NewGuid();
+        _extraIds.Add(id);
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        db.NewsItems.Add(new NewsItem
+        {
+            Id = id,
+            ExternalId = $"ext-{id:N}",
+            Headline = $"Story {id:N}",
+            Source = source,
+            Url = $"https://example.com/{id:N}",
+            Summary = "Summary.",
+            PublishedAt = publishedAt,
+            IngestedAt = DateTime.UtcNow,
+            Status = NewsItemStatus.Ingested,
+            Locality = locality,
+        });
+        await db.SaveChangesAsync();
+        return id;
+    }
+
+    [Fact]
+    public async Task GenerateBatch_BalancesSourcesAndLocality_AndSkipsStale()
+    {
+        var now = DateTime.UtcNow;
+        // High-volume national source (BBC ×6) + the smaller national source (NPR ×1)
+        // + one local (WA) + one stale national item that the age window must exclude.
+        var bbcFresh = new List<Guid>();
+        for (var i = 0; i < 6; i++) bbcFresh.Add(await SeedItemAsync("BBC", null, now.AddHours(-i - 1)));
+        var npr = await SeedItemAsync("NPR", null, now.AddHours(-1));
+        var wa = await SeedItemAsync("Washington State Standard", "WA", now.AddHours(-1));
+        var stale = await SeedItemAsync("BBC", null, now.AddDays(-40));
+
+        // Relevance gate rejects everything → selected items become Skipped (no briefing
+        // slug collisions), so we can assert purely on WHICH items selection picked.
+        var llm = new StubLlmClient()
+            .WithJson("RelevanceJudgeDto", "{\"isCivic\":false,\"reason\":\"test\"}");
+        var scopes = _fx.Factory.Services.GetRequiredService<IServiceScopeFactory>();
+        var svc = new CivicContentGenerationService(
+            scopes, llm,
+            new TestOptionsMonitor<NewsOptions>(new NewsOptions
+            {
+                BatchSize = 3, MaxItemsPerDay = 100, MaxStoryAgeDays = 14,
+            }),
+            NullLogger<CivicContentGenerationService>.Instance);
+
+        await svc.GenerateBatchAsync();
+
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        async Task<NewsItemStatus> StatusOf(Guid id) =>
+            (await db.NewsItems.SingleAsync(n => n.Id == id)).Status;
+
+        // #1 local content gets a slot; #2 the smaller source is balanced in despite 6:1 volume.
+        (await StatusOf(wa)).Should().Be(NewsItemStatus.Skipped, "local content must get a turn");
+        (await StatusOf(npr)).Should().Be(NewsItemStatus.Skipped, "the smaller national source must be balanced in");
+        // Round-robin takes only the single freshest BBC into a batch of 3 (BBC+NPR+WA), not 3 BBC.
+        var bbcPicked = 0;
+        foreach (var id in bbcFresh)
+            if (await StatusOf(id) == NewsItemStatus.Skipped) bbcPicked++;
+        bbcPicked.Should().Be(1, "round-robin takes one BBC per pass, not the whole batch");
+        // #3 anything older than MaxStoryAgeDays is never selected.
+        (await StatusOf(stale)).Should().Be(NewsItemStatus.Ingested, "stale stories are excluded by the age window");
     }
 
     private static string BriefingJson() => """

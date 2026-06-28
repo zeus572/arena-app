@@ -27,6 +27,8 @@ export type CivicBriefingSummary = {
   thinkDeeperQuestion: string;
   /** Local-news region (state code) for this briefing, or null for national. */
   locality: string | null;
+  /** Upstream publisher (e.g. "NPR", "BBC"), or null for hand-seeded briefings. */
+  sourcePublisher: string | null;
 };
 
 export type CivicBriefing = CivicBriefingSummary & {
@@ -44,8 +46,8 @@ export type CivicBriefing = CivicBriefingSummary & {
   relatedConcepts: string[];
   whereToGoNext: string[];
   // Original-source attribution (null for hand-seeded briefings with no upstream article).
+  // sourcePublisher is inherited from CivicBriefingSummary.
   sourceUrl: string | null;
-  sourcePublisher: string | null;
   sourcePublishedAt: string | null;
   // Coalition bill born from this briefing, if any (null until one is birthed). Lets the
   // article call out a live coalition for readers to join.
