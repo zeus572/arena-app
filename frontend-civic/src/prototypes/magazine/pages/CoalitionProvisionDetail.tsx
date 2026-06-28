@@ -200,7 +200,7 @@ export default function CoalitionProvisionDetail() {
     // on desktop we want the full width for the two-column grid.
     <section data-testid="coalition-detail">
       <Link to="/coalition" className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--fg)]">
-        <ArrowLeft size={14} /> All provisions
+        <ArrowLeft size={14} /> All bills
       </Link>
 
       {/* ── Two-column grid on md+; single column on mobile ── */}
@@ -240,7 +240,7 @@ export default function CoalitionProvisionDetail() {
 
           {/* Bridge the divide — culture bills only. Sorting the culture-war framing
               toward a carve-out both sides can sign records a CultureGovernanceSort act,
-              which earns reasoning XP and completes the "Bridge a culture-war provision"
+              which earns reasoning XP and completes the "Bridge a culture-war bill"
               daily quest (see PlayerHome / GetQuestsAsync). */}
           {!resolved && !d.governance && (
             <div className="mt-4 rounded-2xl border border-[var(--accent)]/40 p-4" data-testid="bridge-divide">

@@ -10,7 +10,7 @@ const STEPS = [
   {
     icon: Handshake,
     title: "Build coalitions around real events",
-    body: "Each week's headlines become concrete provisions. Instead of arguing for a side, you take a position, propose a carve-out, and co-sign the wording that pulls the widest coalition together before the deadline. The game rewards bridging — not volume, not dunking.",
+    body: "Each week's headlines become concrete bills. Instead of arguing for a side, you take a position, propose a carve-out, and co-sign the wording that pulls the widest coalition together before the deadline. The game rewards bridging — not volume, not dunking.",
   },
   {
     icon: Megaphone,

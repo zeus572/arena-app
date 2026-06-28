@@ -42,6 +42,9 @@ public sealed record ProvisionSummaryDto(
     Guid Id,
     string Slug,
     string Title,
+    // Neutral-surface proposition text, so the list can show what the bill is
+    // actually about — the title alone isn't self-explanatory.
+    string NeutralText,
     string State,
     double Distance,
     int CoveredBuckets,
