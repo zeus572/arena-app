@@ -29,6 +29,11 @@ builder.Services.AddScoped<TaggingService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<FormatSampleSeederService>();
 
+// TOTP two-factor authentication. TotpService wraps Otp.NET; MfaSecretProtector
+// encrypts the secret at rest with a config-derived AES-GCM key.
+builder.Services.AddSingleton<Arena.API.Services.Mfa.TotpService>();
+builder.Services.AddSingleton<Arena.API.Services.Mfa.MfaSecretProtector>();
+
 // Account email: verification + password reset. IEmailSender is the swap point —
 // ACS in prod, a logging no-op everywhere else. The dispatch/policy/token services
 // layer suppression, rate limiting, safety checks and one-time tokens on top.
@@ -138,6 +143,41 @@ builder.Services.AddHostedService<BotHeartbeatService>();
 // Ranking services
 builder.Services.AddSingleton<RankingService>();
 builder.Services.AddHostedService<RankingRollupService>();
+
+// ---- SocialPublisher (SocialPublisher_Spec) ----
+// Options: bound from "SocialPublisher" section; exposed as a singleton instance (no magic numbers).
+var socialOptions = builder.Configuration.GetSection(Arena.API.Social.SocialPublisherOptions.SectionName)
+    .Get<Arena.API.Social.SocialPublisherOptions>() ?? new Arena.API.Social.SocialPublisherOptions();
+builder.Services.AddSingleton(socialOptions);
+builder.Services.Configure<Arena.API.Social.Platforms.BlueskyOptions>(
+    builder.Configuration.GetSection(Arena.API.Social.Platforms.BlueskyOptions.SectionName));
+
+// Cross-tick state lives in singletons (breaker state, platform session/rate-limit, clock).
+builder.Services.AddSingleton<Arena.API.Social.IClock, Arena.API.Social.SystemClock>();
+builder.Services.AddSingleton<Arena.API.Social.Resilience.CircuitBreakerRegistry>();
+builder.Services.AddSingleton<Arena.API.Social.Rendering.IHtmlRasterizer, Arena.API.Social.Rendering.SolidColorPngRasterizer>();
+builder.Services.AddSingleton<Arena.API.Social.ICardRenderer, Arena.API.Social.Rendering.HtmlCardRenderer>();
+
+// Platform adapters: ONLY Bluesky at launch.
+// Deferred: XClient — see §4.2 (no stub class, no config, no credentials this build).
+builder.Services.AddHttpClient<Arena.API.Social.Platforms.BlueskyClient>();
+builder.Services.AddSingleton<Arena.API.Social.IPlatformClient>(sp =>
+    sp.GetRequiredService<Arena.API.Social.Platforms.BlueskyClient>());
+builder.Services.AddSingleton<Arena.API.Social.IPlatformClientRegistry, Arena.API.Social.Platforms.PlatformClientRegistry>();
+
+// Selection/scoring path (scoped — touch the DbContext; LLM-free).
+builder.Services.AddScoped<Arena.API.Social.IRankingScoreProvider, Arena.API.Social.Selection.RankingScoreProvider>();
+builder.Services.AddScoped<Arena.API.Social.ICoalitionSignalProvider, Arena.API.Social.Selection.CoalitionSignalProvider>();
+builder.Services.AddSingleton<Arena.API.Social.IFeaturePostProvider, Arena.API.Social.Selection.EmptyFeaturePostProvider>();
+builder.Services.AddScoped<Arena.API.Social.IHighlightSelector, Arena.API.Social.Selection.HighlightSelector>();
+
+// Job + review/health services.
+builder.Services.AddScoped<Arena.API.Social.ISocialPublisher, Arena.API.Social.SocialPublisher>();
+builder.Services.AddScoped<Arena.API.Social.SocialReviewService>();
+builder.Services.AddScoped<Arena.API.Social.SocialHealthService>();
+
+// Heartbeat integration point (downsampled; swallow-and-log — §4.4). Singleton: holds the tick counter.
+builder.Services.AddSingleton<Arena.API.Social.SocialHeartbeatHook>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

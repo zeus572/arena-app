@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, X, Compass, ScrollText, Sparkles, PenLine } from "lucide-react";
+import { ArrowLeft, Check, X, Compass, ScrollText, Sparkles, PenLine, Star, Flag } from "lucide-react";
 import {
   proposeAmendment,
   proposeFreeformAmendment,
@@ -26,16 +26,139 @@ function closeness(answers: Record<string, string>, v: CoalitionVersion) {
   return { matches, considered: keys.length, score: keys.length ? matches / keys.length : 0 };
 }
 
+type RankedVersion = { v: CoalitionVersion; matches: number; considered: number; score: number };
+
+/** Numbered step label so the page reads as a clear answer → compare → propose funnel. */
+function StepHeader({ n, title, aside }: { n: number; title: string; aside?: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
+        {n}
+      </span>
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--fg)]">{title}</h2>
+      {aside && <span className="ml-auto text-xs font-semibold text-[var(--accent)]">{aside}</span>}
+    </div>
+  );
+}
+
+function MatchBar({ score }: { score: number }) {
+  return (
+    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
+      <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${Math.round(score * 100)}%` }} />
+    </div>
+  );
+}
+
+/**
+ * A single version "on the table" — a cohort-presented position or a neutral
+ * starting draft. Drafts get a dashed, de-emphasized frame but live in the same
+ * ranked list as real positions, so the player can always see how many wordings
+ * are in play (the old design buried drafts in a chevron). Each answer the player
+ * has picked is checked against the version's positions inline, so "3/4 match"
+ * is shown, not just asserted.
+ */
+function VersionRow({
+  entry,
+  isDraft,
+  highlight,
+  answers,
+  promptByKey,
+  resolved,
+  isAuthenticated,
+  busy,
+  onAccept,
+}: {
+  entry: RankedVersion;
+  isDraft: boolean;
+  highlight: boolean;
+  answers: Record<string, string>;
+  promptByKey: Map<string, string>;
+  resolved: boolean;
+  isAuthenticated: boolean;
+  busy: boolean;
+  onAccept: (versionId: string, accept: boolean) => void;
+}) {
+  const { v, matches, considered } = entry;
+  const positions = Object.entries(v.positions);
+  return (
+    <li
+      data-testid={isDraft ? "draft-row" : "presented-row"}
+      className={`rounded-xl border p-3.5 transition ${
+        highlight
+          ? "border-[var(--accent)] bg-[var(--accent)]/5 shadow-sm"
+          : isDraft
+            ? "border-dashed border-[var(--line)]"
+            : "border-[var(--line)]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {highlight && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <Star size={10} /> Closest to you
+            </span>
+          )}
+          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+            {isDraft ? `neutral draft${v.label ? ` · ${v.label}` : ""}` : v.label ?? "version"}
+          </span>
+          {considered > 0 && (
+            <span className="text-xs font-semibold text-[var(--accent)]" data-testid={`match-${v.id}`}>
+              {matches}/{considered} match
+            </span>
+          )}
+        </div>
+        <span className="shrink-0 text-xs text-[var(--muted)]" title="co-signs · declines">
+          ✓ {v.accepts} · ✕ {v.declines}
+        </span>
+      </div>
+
+      {considered > 0 && <MatchBar score={considered ? matches / considered : 0} />}
+
+      {positions.length > 0 && (
+        <div className="mt-2.5 grid gap-1">
+          {positions.map(([k, val]) => {
+            const mine = answers[k];
+            const match = !!mine && mine.toLowerCase() === val.toLowerCase();
+            const conflict = !!mine && !match;
+            return (
+              <p key={k} className="flex items-center gap-1.5 text-xs leading-snug">
+                <span className="text-[var(--muted)]">{promptByKey.get(k) ?? k}:</span>
+                <span className={match ? "font-semibold text-emerald-700" : conflict ? "text-rose-700" : "text-[var(--fg-soft)]"}>
+                  {val}
+                </span>
+                {match && <Check size={12} className="shrink-0 text-emerald-600" />}
+              </p>
+            );
+          })}
+        </div>
+      )}
+
+      {!resolved && isAuthenticated && (
+        <div className="mt-3 flex gap-2">
+          <Button variant="positive" size="sm" onClick={() => onAccept(v.id, true)} disabled={busy}>
+            <Check size={12} /> Co-sign
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => onAccept(v.id, false)} disabled={busy}>
+            <X size={12} /> Decline
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
 export default function CoalitionProvisionParticipate() {
   const { id = "" } = useParams();
   const { isAuthenticated } = useAuth();
   const { d, run, busy } = useProvision(id);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [freeOpen, setFreeOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
+  // True right after a successful present, so we can confirm it landed. Cleared the
+  // moment the player edits an answer (they're now drafting a different version).
+  const [justPresented, setJustPresented] = useState(false);
 
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
@@ -52,14 +175,38 @@ export default function CoalitionProvisionParticipate() {
   const drafts = d.versions.filter((v) => !v.authorUserId);
   const noOneHasPresented = presented.length === 0;
 
-  // Rank existing versions by how close they are to the user's chosen answers.
-  const ranked = [...d.versions]
-    .map((v) => ({ v, ...closeness(answers, v) }))
-    .sort((a, b) => b.score - a.score || b.v.accepts - a.v.accepts);
+  // The prevailing wording: the leading version (server-chosen, else best net co-signs),
+  // falling back to the neutral text when nobody has agreed wording yet. Mirrors the
+  // overview page so the same "current answer" reads identically across both routes.
+  const leadingVersion =
+    d.versions.find((v) => v.id === d.spectrumBar.leadingVersionId) ??
+    [...d.versions].sort((a, b) => b.accepts - b.declines - (a.accepts - a.declines))[0] ??
+    null;
+  // A prevailing position only exists once someone in the cohort has actually
+  // presented one — until then a seeded draft's wording must not masquerade as it.
+  const hasAgreedWording =
+    !noOneHasPresented && !!leadingVersion && !!leadingVersion.text && !leadingVersion.text.trimStart().startsWith("Version —");
+  const prevailingText = hasAgreedWording ? leadingVersion!.text.trim() : d.neutralText;
+
+  // Rank presented positions and neutral drafts separately by closeness to the
+  // user's current answers; the closest presented position is highlighted.
+  const rankBy = (vs: CoalitionVersion[]): RankedVersion[] =>
+    vs.map((v) => ({ v, ...closeness(answers, v) })).sort((a, b) => b.score - a.score || b.v.accepts - a.v.accepts);
+  const rankedPresented = rankBy(presented);
+  const rankedDrafts = rankBy(drafts);
+  // Only crown a "Closest to you" when the leading presented position actually shares
+  // at least one of your answers. Guarding on `considered > 0` alone (you answered
+  // something) let the accepts tiebreak pin the badge on a 0-match version when your
+  // answers matched none of them — labelling the literally farthest position closest.
+  const closestId =
+    answeredKeys.length > 0 && (rankedPresented[0]?.matches ?? 0) > 0 ? rankedPresented[0]!.v.id : null;
+
+  const progressPct = d.subQuestions.length ? (answeredKeys.length / d.subQuestions.length) * 100 : 0;
+  const onAccept = (versionId: string, accept: boolean) => run(() => castAcceptance(id, versionId, accept));
 
   function pick(key: string, option: string) {
+    setJustPresented(false);
     setAnswers((prev) => ({ ...prev, [key]: prev[key] === option ? "" : option }));
-    setSaved(false);
   }
 
   async function present() {
@@ -72,8 +219,12 @@ export default function CoalitionProvisionParticipate() {
       if (!d!.youJoined && compass.hasData) await joinProvision(id, compass.bucket);
       return proposeAmendment(id, positions, label);
     });
-    setAnswers({});
-    setSaved(false);
+    // Keep the answers in place rather than blanking them: the version we just added
+    // is built from these answers, so it now ranks top as a 4/4 "Closest to you" and
+    // stays on screen as the confirmation. (Clearing them collapsed the whole compare
+    // panel back to the "pick an answer" placeholder, so the submit looked like a
+    // silent no-op.) The success banner makes the outcome explicit.
+    setJustPresented(true);
   }
 
   return (
@@ -87,235 +238,284 @@ export default function CoalitionProvisionParticipate() {
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">{d.state}</span>
       </header>
       <p className="mt-2 text-base text-[var(--fg-soft)]">
-        Answer each question below to say where you stand. When you save, we'll show you which existing
-        versions are closest — and let you put your own on the table.
+        Answer the questions to say where you stand — then co-sign the version closest to you, or put your
+        own on the table for the cohort to rally behind.
       </p>
 
+      {/* ── Lay of the land: the bill's neutral starting text, or — once someone has
+          presented — the prevailing position and how many wordings are in play ── */}
+      <div
+        className="mt-5 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4"
+        data-testid="prevailing-position"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+            <ScrollText size={14} /> {noOneHasPresented ? "Starting point" : "Prevailing coalition position"}
+          </p>
+          {!noOneHasPresented && (
+            <span
+              className="rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+              data-testid="on-the-table-count"
+            >
+              {presented.length} on the table
+            </span>
+          )}
+        </div>
+        <p className="mt-1.5 text-[15px] font-medium leading-snug text-[var(--fg)]">{prevailingText}</p>
+        {noOneHasPresented ? (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            The bill's neutral starting text — no one has taken a position yet.
+          </p>
+        ) : hasAgreedWording ? (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            Leading wording · {leadingVersion!.accepts} co-sign{leadingVersion!.accepts === 1 ? "" : "s"}
+            {leadingVersion!.declines > 0 && ` · ${leadingVersion!.declines} decline${leadingVersion!.declines === 1 ? "" : "s"}`}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            No agreed wording yet — take a position below to move it.
+          </p>
+        )}
+      </div>
+
       {noOneHasPresented && !resolved && (
-        <div className="mt-4 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-4" data-testid="be-first-banner">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-            <Sparkles size={16} /> No one in your cohort has presented this bill yet.
-          </p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            Set your answers below and be the first to put a version on the table for everyone to react to.
-          </p>
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-[var(--accent)]/40 bg-[var(--bg-elev)] p-4" data-testid="be-first-banner">
+          <Sparkles size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+          <div>
+            <p className="text-sm font-semibold text-[var(--accent)]">You can set the agenda.</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              No one in your cohort has presented this bill yet. Answer below and be the first version everyone reacts to.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Sub-questions — answer inline */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Your answers</h2>
-      <ul className="mt-2 grid gap-3" data-testid="subquestion-cards">
-        {d.subQuestions.map((sq) => (
-          <li key={sq.key} className="rounded-2xl border border-[var(--line)] p-4">
-            <p className="text-lg font-semibold">{sq.prompt}</p>
-            {sq.tradeoff && <p className="mt-1 text-sm text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
-            {sq.options.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {sq.options.map((o) => {
-                  const selected = answers[sq.key] === o;
-                  return (
-                    <button
-                      key={o}
-                      type="button"
-                      disabled={resolved}
-                      onClick={() => pick(sq.key, o)}
-                      data-testid={`opt-${sq.key}-${o}`}
-                      aria-pressed={selected}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                        selected
-                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                          : "border-[var(--line)] bg-[var(--bg-elev)] text-[var(--fg)] hover:border-[var(--accent)]"
-                      }`}
-                    >
-                      {o}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--muted)]">Open question — describe your take in your own words below.</p>
-            )}
-          </li>
-        ))}
-      </ul>
+      {/* ═══ Step 1 — answer the sub-questions ═══ */}
+      <div className="mt-8">
+        <StepHeader n={1} title="Your answers" aside={`${answeredKeys.length}/${d.subQuestions.length} answered`} />
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--line)]">
+          <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${progressPct}%` }} />
+        </div>
 
-      {/* Sign-in gate: anyone can pick answers, but saving/co-signing needs an account. */}
+        <ul className="mt-4 grid gap-3" data-testid="subquestion-cards">
+          {d.subQuestions.map((sq) => {
+            const answered = !!answers[sq.key];
+            return (
+              <li
+                key={sq.key}
+                className={`rounded-2xl border p-4 transition ${
+                  answered ? "border-[var(--accent)]/50 bg-[var(--accent)]/[0.03]" : "border-[var(--line)]"
+                }`}
+              >
+                <p className="flex items-start gap-2 text-lg font-semibold">
+                  <span className="flex-1">{sq.prompt}</span>
+                  {answered && <Check size={18} className="mt-1 shrink-0 text-emerald-600" />}
+                </p>
+                {sq.tradeoff && <p className="mt-1 text-sm text-[var(--fg-soft)]">Tradeoff: {sq.tradeoff}</p>}
+                {sq.options.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {sq.options.map((o) => {
+                      const selected = answers[sq.key] === o;
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          disabled={resolved}
+                          onClick={() => pick(sq.key, o)}
+                          data-testid={`opt-${sq.key}-${o}`}
+                          aria-pressed={selected}
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
+                            selected
+                              ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                              : "border-[var(--line)] bg-[var(--bg-elev)] text-[var(--fg)] hover:border-[var(--accent)]"
+                          }`}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-[var(--muted)]">Open question — describe your take in your own words in Step 2.</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* Sign-in gate: anyone can pick answers, but co-signing / presenting needs an account. */}
       {!resolved && !isAuthenticated && (
-        <div className="mt-5" data-testid="participate-signin">
+        <div className="mt-6" data-testid="participate-signin">
           <SignInPrompt
             compact
             title="Sign in to save your position"
-            message="Pick your answers above — then sign in to save a version and co-sign bills."
+            message="Pick your answers above — then sign in to co-sign a version or put your own on the table."
           />
         </div>
       )}
 
-      {/* Save → compare + present */}
+      {/* ═══ Step 2 — where you land + act ═══ */}
       {!resolved && isAuthenticated && (
-        <div className="mt-5">
-          {!saved ? (
-            <Button
-              fullWidth
-              onClick={() => setSaved(true)}
-              disabled={answeredKeys.length === 0}
-              data-testid="save-answers"
+        <div className="mt-8">
+          <StepHeader n={2} title="Where you land" />
+
+          {answeredKeys.length === 0 ? (
+            <p
+              className="mt-3 rounded-2xl border border-dashed border-[var(--line)] p-5 text-center text-sm text-[var(--muted)]"
+              data-testid="compare-empty"
             >
-              Save my answers & see where I land
-            </Button>
+              Pick at least one answer above to see which of the{" "}
+              <span className="font-semibold text-[var(--fg)]">{d.versions.length}</span> wordings on the table line up with you.
+            </p>
           ) : (
-            <div className="rounded-2xl border border-[var(--line)] p-4" data-testid="compare-panel">
-              <div className="flex items-center gap-2">
-                <ScrollText size={16} className="text-[var(--accent)]" />
-                <h3 className="text-sm font-semibold">How your answers compare</h3>
-              </div>
-              {compass.hasData && (
-                <p className="mt-1 flex items-center gap-1 text-[11px] text-[var(--muted)]">
-                  <Compass size={12} className="text-[var(--accent)]" /> Presenting as {compass.label}
-                </p>
-              )}
+            <>
+              {/* Compare — presented positions, then neutral drafts, ranked by match */}
+              <div className="mt-3" data-testid="compare-panel">
+                {compass.hasData && (
+                  <p className="mb-2 flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                    <Compass size={12} className="text-[var(--accent)]" /> You'll act as {compass.label}
+                  </p>
+                )}
 
-              {d.versions.length === 0 ? (
-                <p className="mt-3 text-xs text-[var(--muted)]">No versions yet — yours will be the first.</p>
-              ) : (
-                <ul className="mt-3 grid gap-2" data-testid="closeness-list">
-                  {ranked.map(({ v, matches, considered }) => (
-                    <li key={v.id} className="rounded-xl border border-[var(--line)] p-3 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="flex items-center gap-2">
-                          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-                            {v.authorUserId ? v.label ?? "version" : `draft · ${v.label ?? "starting point"}`}
-                          </span>
-                          <span className="text-xs font-semibold text-[var(--accent)]" data-testid={`match-${v.id}`}>
-                            {considered > 0 ? `${matches}/${considered} of your answers match` : "—"}
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-xs text-[var(--muted)]">✓ {v.accepts} · ✕ {v.declines}</span>
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <Button
-                          variant="positive"
-                          size="sm"
-                          onClick={() => run(() => castAcceptance(id, v.id, true))}
-                          disabled={busy}
-                        >
-                          <Check size={12} /> Co-sign
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => run(() => castAcceptance(id, v.id, false))}
-                          disabled={busy}
-                        >
-                          <X size={12} /> Decline
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                {presented.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Positions on the table ({presented.length})
+                    </p>
+                    <ul className="mt-2 grid gap-2" data-testid="closeness-list">
+                      {rankedPresented.map((e) => (
+                        <VersionRow
+                          key={e.v.id}
+                          entry={e}
+                          isDraft={false}
+                          highlight={e.v.id === closestId}
+                          answers={answers}
+                          promptByKey={promptByKey}
+                          resolved={resolved}
+                          isAuthenticated={isAuthenticated}
+                          busy={busy}
+                          onAccept={onAccept}
+                        />
+                      ))}
+                    </ul>
+                  </>
+                )}
 
-              <Button
-                fullWidth
-                onClick={present}
-                disabled={busy || answeredKeys.length === 0}
-                data-testid="present-version"
-                className="mt-4"
-              >
-                {noOneHasPresented ? "Present this as the bill" : "Propose this as a carve-out"}
-              </Button>
-              <p className="mt-1.5 text-center text-[11px] text-[var(--muted)]">
-                Puts your answers on the table as a version others can co-sign.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Secondary: describe in your own words (free-form) — also account-gated. */}
-      {!resolved && isAuthenticated && (
-        <div className="mt-4">
-          {!freeOpen ? (
-            <button
-              type="button"
-              onClick={() => setFreeOpen(true)}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)]"
-            >
-              <PenLine size={13} /> Or describe your position in your own words
-            </button>
-          ) : (
-            <div className="rounded-2xl border border-[var(--line)] p-4">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">In your own words</label>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">We'll extract it into structured answers automatically.</p>
-              <textarea
-                value={freeText}
-                onChange={(e) => setFreeText(e.target.value)}
-                rows={3}
-                placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
-                className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-              />
-              <div className="mt-2 flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    if (!freeText.trim()) return;
-                    await run(() => proposeFreeformAmendment(id, freeText));
-                    setFreeText("");
-                    setFreeOpen(false);
-                  }}
-                  disabled={busy || !freeText.trim()}
-                >
-                  Present in my words
-                </Button>
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => { setFreeOpen(false); setFreeText(""); }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Starting drafts — collapsed context, de-emphasized */}
-      {drafts.length > 0 && (
-        <details className="mt-8" data-testid="starting-drafts">
-          <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Starting drafts ({drafts.length})
-          </summary>
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            Neutral reference wordings to react to — not anyone's position. Your cohort's presented versions lead the bill.
-          </p>
-          <ul className="mt-2 grid gap-2">
-            {drafts.map((v) => (
-              <li key={v.id} className="rounded-xl border border-dashed border-[var(--line)] p-3 text-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{v.label ?? "draft"}</p>
-                {Object.entries(v.positions).length > 0 && (
-                  <div className="mt-1.5 grid gap-1">
-                    {Object.entries(v.positions).map(([k, val]) => (
-                      <p key={k} className="text-xs text-[var(--fg-soft)]">
-                        <span className="text-[var(--muted)]">{promptByKey.get(k) ?? k}:</span> {val}
-                      </p>
-                    ))}
+                {rankedDrafts.length > 0 && (
+                  <div className="mt-4" data-testid="starting-drafts">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      Neutral starting drafts ({rankedDrafts.length})
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Reference wordings to react to — not anyone's position. Co-signing one nudges it toward becoming the bill.
+                    </p>
+                    <ul className="mt-2 grid gap-2">
+                      {rankedDrafts.map((e) => (
+                        <VersionRow
+                          key={e.v.id}
+                          entry={e}
+                          isDraft
+                          highlight={false}
+                          answers={answers}
+                          promptByKey={promptByKey}
+                          resolved={resolved}
+                          isAuthenticated={isAuthenticated}
+                          busy={busy}
+                          onAccept={onAccept}
+                        />
+                      ))}
+                    </ul>
                   </div>
                 )}
-                {!resolved && isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => run(() => castAcceptance(id, v.id, true))}
-                    disabled={busy}
-                    className="mt-2"
-                  >
-                    <Check size={12} /> Co-sign this draft
-                  </Button>
+
+                {d.versions.length === 0 && (
+                  <p className="text-sm text-[var(--muted)]">No versions yet — yours will be the first.</p>
                 )}
-              </li>
-            ))}
-          </ul>
-        </details>
+              </div>
+
+              {/* Confirmation that a just-presented version actually landed */}
+              {justPresented && (
+                <div
+                  className="mt-5 flex items-start gap-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 p-4"
+                  data-testid="present-success"
+                >
+                  <Check size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">Your position is on the table.</p>
+                    <p className="mt-0.5 text-xs text-emerald-700">
+                      It's listed under “Positions on the table” above and marked closest to you — the cohort can
+                      co-sign it now. Change an answer to put up a different version.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Primary CTA — put your own version on the table */}
+              <div className="mt-5 rounded-2xl border border-[var(--accent)] bg-[var(--accent)]/5 p-5" data-testid="present-cta">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--fg)]">
+                  <Flag size={16} className="text-[var(--accent)]" />
+                  {noOneHasPresented ? "Be the first to put a version on the table" : "None of these fit? Put yours on the table"}
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Your {answeredKeys.length} answer{answeredKeys.length === 1 ? "" : "s"} become a version the whole cohort can
+                  co-sign — {noOneHasPresented ? "and the one everyone reacts to." : "a carve-out that can overtake the lead."}
+                </p>
+                <Button
+                  fullWidth
+                  onClick={present}
+                  disabled={busy || answeredKeys.length === 0}
+                  data-testid="present-version"
+                  className="mt-3"
+                >
+                  <Flag size={14} /> {noOneHasPresented ? "Present this as the bill" : "Put my version on the table"}
+                </Button>
+              </div>
+
+              {/* Secondary: describe in your own words (free-form) */}
+              <div className="mt-3">
+                {!freeOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setFreeOpen(true)}
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)]"
+                  >
+                    <PenLine size={13} /> Or describe your position in your own words
+                  </button>
+                ) : (
+                  <div className="rounded-2xl border border-[var(--line)] p-4">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">In your own words</label>
+                    <p className="mt-0.5 text-xs text-[var(--muted)]">We'll extract it into structured answers automatically.</p>
+                    <textarea
+                      value={freeText}
+                      onChange={(e) => setFreeText(e.target.value)}
+                      rows={3}
+                      placeholder="I'd sign it if existing facilities are exempt and it stays large-only."
+                      className="mt-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!freeText.trim()) return;
+                          await run(() => proposeFreeformAmendment(id, freeText));
+                          setFreeText("");
+                          setFreeOpen(false);
+                        }}
+                        disabled={busy || !freeText.trim()}
+                      >
+                        Present in my words
+                      </Button>
+                      <Button variant="link" size="sm" onClick={() => { setFreeOpen(false); setFreeText(""); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </section>
   );

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Civic.API.Data;
 using Civic.API.Mapping;
+using Civic.API.Models;
 using Civic.API.Models.DTOs;
 using Civic.API.Services;
 
@@ -56,9 +57,30 @@ public class BriefingsController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
+        // Resolve the upstream publisher for this page's news-sourced briefings in one
+        // query so each feed card can show a small per-source moniker (NPR / BBC / local).
+        var sourceIds = items
+            .Where(b => b.SourceNewsItemId is not null)
+            .Select(b => b.SourceNewsItemId!.Value)
+            .Distinct()
+            .ToList();
+        var publishers = sourceIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _db.NewsItems
+                .Where(n => sourceIds.Contains(n.Id))
+                .ToDictionaryAsync(n => n.Id, n => n.Source);
+
+        var dtos = items.Select(b =>
+        {
+            var dto = b.ToSummaryDto();
+            if (b.SourceNewsItemId is Guid id && publishers.TryGetValue(id, out var publisher))
+                dto.SourcePublisher = publisher;
+            return dto;
+        }).ToList();
+
         return Ok(new BriefingPageDto
         {
-            Items = items.Select(b => b.ToSummaryDto()).ToList(),
+            Items = dtos,
             Total = total,
             Page = page,
             PageSize = pageSize,
@@ -81,7 +103,15 @@ public class BriefingsController : ControllerBase
         var source = b.SourceNewsItemId is Guid newsId
             ? await _db.NewsItems.FirstOrDefaultAsync(n => n.Id == newsId)
             : null;
-        return Ok(b.ToDto(source));
+
+        // Resolve the coalition born from this briefing (most recent, excluding dead ones)
+        // so the article can call out a live bill for readers to join.
+        var coalition = await _db.Provisions
+            .Where(p => p.SourceBriefingId == b.Id && p.State != ProvisionState.Died)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return Ok(b.ToDto(source, coalition));
     }
 
     // GET /api/briefings/{slug}/candidate-reactions — Virtual Candidate posts

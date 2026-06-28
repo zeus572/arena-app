@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Models;
+using Arena.API.Models.Social;
 
 namespace Arena.API.Data;
 
@@ -29,6 +30,9 @@ public class ArenaDbContext : DbContext
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
     public DbSet<EmailSuppression> EmailSuppressions => Set<EmailSuppression>();
     public DbSet<EmailSendLog> EmailSendLogs => Set<EmailSendLog>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
+    public DbSet<SocialPost> SocialPosts => Set<SocialPost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -159,6 +163,46 @@ public class ArenaDbContext : DbContext
         modelBuilder.Entity<EmailSendLog>(e =>
         {
             e.HasIndex(l => new { l.Email, l.SentAt });
+        });
+
+        modelBuilder.Entity<MfaBackupCode>(e =>
+        {
+            e.HasIndex(c => c.CodeHash);
+            e.HasIndex(c => c.UserId);
+            e.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TrustedDevice>(e =>
+        {
+            e.HasIndex(d => d.TokenHash);
+            e.HasIndex(d => d.UserId);
+            e.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SocialPost>(e =>
+        {
+            e.Property(p => p.Platform).HasMaxLength(64);
+            e.Property(p => p.Status).HasConversion<int>();
+            e.Property(p => p.ContentType).HasConversion<int>();
+
+            // Dedup (§5): a piece of content may be posted to a platform at most once.
+            // Filtered so that FeaturePost seeds (ContentId IS NULL) are exempt and can coexist.
+            // The filter predicate quotes the column with " which is valid on both PostgreSQL
+            // (the prod provider) and SQLite (the Gate 1 test provider), so the partial index
+            // is enforced in both.
+            e.HasIndex(p => new { p.ContentType, p.ContentId, p.Platform })
+                .IsUnique()
+                .HasFilter("\"ContentId\" IS NOT NULL")
+                .HasDatabaseName("IX_SocialPosts_Dedup");
+
+            // Selector hot path: filter by status + retry gate.
+            e.HasIndex(p => new { p.Status, p.NextRetryAt });
         });
     }
 }

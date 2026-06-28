@@ -571,6 +571,34 @@ namespace Arena.API.Migrations
                     b.ToTable("Interventions");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.MfaBackupCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("MfaBackupCodes");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Prediction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -664,6 +692,75 @@ namespace Arena.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.Social.SocialPost", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ContentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ContentType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasImage")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlatformPostId")
+                        .HasColumnType("text");
+
+                    b.Property<double>("PostScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextRetryAt");
+
+                    b.HasIndex("ContentType", "ContentId", "Platform")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SocialPosts_Dedup")
+                        .HasFilter("\"ContentId\" IS NOT NULL");
+
+                    b.ToTable("SocialPosts");
                 });
 
             modelBuilder.Entity("Arena.API.Models.Tag", b =>
@@ -762,6 +859,40 @@ namespace Arena.API.Migrations
                     b.ToTable("TopicVotes");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.TrustedDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TrustedDevices");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Turn", b =>
                 {
                     b.Property<Guid>("Id")
@@ -834,6 +965,12 @@ namespace Arena.API.Migrations
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("MfaEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("MfaEnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
@@ -841,6 +978,9 @@ namespace Arena.API.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("PoliticalLeaning")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TotpSecretEnc")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1032,6 +1172,17 @@ namespace Arena.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Arena.API.Models.MfaBackupCode", b =>
+                {
+                    b.HasOne("Arena.API.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Arena.API.Models.Prediction", b =>
                 {
                     b.HasOne("Arena.API.Models.Debate", "Debate")
@@ -1119,6 +1270,17 @@ namespace Arena.API.Migrations
                         .IsRequired();
 
                     b.Navigation("TopicProposal");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Arena.API.Models.TrustedDevice", b =>
+                {
+                    b.HasOne("Arena.API.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
-import type { CivicBriefingSummary, Concept } from "@/api/types";
+import type { CivicBriefingSummary } from "@/api/types";
 import { getBriefings } from "@/api/briefings";
 import { localityLabel } from "@/api/profile";
-import { getConcepts } from "@/api/concepts";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { ButtonLink } from "../components/Button";
 import { CoverStory } from "../components/CoverStory";
-import { CountdownTimer } from "../components/CountdownTimer";
-import { PullQuote } from "../components/PullQuote";
+import { FeatureRotator } from "../components/FeatureRotator";
+import { CampaignFeedQuoteCard } from "../components/CampaignFeedQuoteCard";
+import { CoalitionQuestionCard } from "../components/CoalitionQuestionCard";
 import { BudgetFactCard } from "../components/BudgetFactCard";
+import { SourceBadge } from "../components/SourceBadge";
 
 // Two-column grid → 10 rows max per page. The cover takes one slot on page 1,
 // so page 1 shows the cover + (PAGE_SIZE - 1) explainers; later pages show a
@@ -36,7 +37,6 @@ export default function MagazineHome() {
   const [explainers, setExplainers] = useState<CivicBriefingSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [concept, setConcept] = useState<Concept | null>(null);
   const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
   const [campaigns, setCampaigns] = useState<CivicCampaignSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -65,10 +65,6 @@ export default function MagazineHome() {
     }
     explainersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [page]);
-
-  useEffect(() => {
-    void getConcepts().then((cs) => setConcept(cs[0] ?? null));
-  }, []);
 
   useEffect(() => {
     void fetchBudgetFacts()
@@ -103,61 +99,7 @@ export default function MagazineHome() {
           This issue is still being assembled. Check back soon.
         </p>
       )}
-      <div className="my-10 grid items-stretch gap-4 md:grid-cols-2">
-        <CountdownTimer scope="National" testId="countdown-national" className="h-full" />
-        {featuredCampaign ? (
-          <Link
-            to={`/campaigns/${featuredCampaign.id}`}
-            data-testid="campaign-cta"
-            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-          >
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-                <Megaphone className="h-4 w-4" /> Campaign Manager
-                <span className="text-[var(--muted)]">· {featuredCampaign.status === "Active" ? "in progress" : "finished"}</span>
-              </p>
-              <h2 className="display mt-2 text-3xl">{featuredCampaign.candidateName}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-                {featuredCampaign.raceLabel} · {featuredCampaign.party}
-              </p>
-              {featuredCampaign.status === "Active" ? (
-                <p className="mt-3 text-sm text-[var(--fg)]">
-                  <span className="font-semibold">{featuredCampaign.playerSupport.toFixed(0)}% support</span>
-                  {" — "}{featuredCampaign.isLeading ? "leading the race" : "trailing"} · day {featuredCampaign.currentDay} of {featuredCampaign.totalDays} ({featuredCampaign.daysRemaining}d left)
-                </p>
-              ) : (
-                <p className="mt-3 text-sm text-[var(--fg)]">
-                  <span className="font-semibold">{featuredCampaign.won ? "Won the race" : "Lost the race"}</span>
-                  {" — "}finished at {featuredCampaign.playerSupport.toFixed(0)}% support
-                </p>
-              )}
-            </div>
-            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-              {featuredCampaign.status === "Active" ? "Resume campaign →" : "View result →"}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            to="/campaigns"
-            data-testid="campaign-cta"
-            className="flex h-full flex-col justify-between border border-[var(--accent)] bg-[var(--accent)]/5 p-6 transition hover:bg-[var(--accent)]/10"
-          >
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-                <Megaphone className="h-4 w-4" /> Campaign Manager
-              </p>
-              <h2 className="display mt-2 text-3xl">Run a campaign to election day.</h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--fg-soft)]">
-                Take the reins for a candidate, respond to the real headlines, and try to win the race
-                before the clock runs out.
-              </p>
-            </div>
-            <span className="mt-5 inline-block w-fit rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
-              Manage a campaign →
-            </span>
-          </Link>
-        )}
-      </div>
+      <FeatureRotator budgetFacts={budgetFacts} featuredCampaign={featuredCampaign} />
 
       {cover && <CoverStory briefing={cover} />}
 
@@ -224,8 +166,14 @@ export default function MagazineHome() {
                 <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   Key concept · {b.keyConcept}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-wider text-[var(--muted)]/70">
-                  {formatStoryDate(b.createdAt)}
+                <p className="mt-1 flex items-center gap-2 text-xs uppercase tracking-wider text-[var(--muted)]/70">
+                  <span>{formatStoryDate(b.createdAt)}</span>
+                  {b.sourcePublisher && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <SourceBadge source={b.sourcePublisher} />
+                    </>
+                  )}
                 </p>
               </Link>
             </li>
@@ -297,15 +245,7 @@ export default function MagazineHome() {
         </div>
       </section>
 
-      <section className="mt-20 border-y border-[var(--border)] py-10">
-        <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
-          Words you need to know
-        </p>
-        <PullQuote
-          text="Most bills do not become law just because someone introduces them. They move through committees, where most quietly die."
-          source="From: Congress advances a student data privacy bill"
-        />
-      </section>
+      <CampaignFeedQuoteCard />
 
       {budgetFacts.length > 0 && (
         <section className="mt-16" data-testid="budget-facts">
@@ -325,29 +265,7 @@ export default function MagazineHome() {
         </section>
       )}
 
-      {concept && (
-        <section
-          className="mt-16 border border-[var(--border)] bg-[var(--bg-elev)] p-8"
-          data-testid="concept-of-the-day"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
-            Concept of the day
-          </p>
-          <Link
-            to={`/concepts/${concept.slug}`}
-            className="display mt-2 block text-3xl hover:text-[var(--accent)]"
-            data-testid="concept-of-the-day-link"
-          >
-            {concept.title}
-          </Link>
-          <p className="mt-3 text-base leading-relaxed text-[var(--fg-soft)]">
-            {concept.plainDefinition}
-          </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Read the full concept →
-          </p>
-        </section>
-      )}
+      <CoalitionQuestionCard />
 
       <section className="mt-16" data-testid="learn-more-grid">
         <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">

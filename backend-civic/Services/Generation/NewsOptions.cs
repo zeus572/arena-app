@@ -8,6 +8,14 @@ public class NewsOptions
     public int MaxItemsPerDay { get; set; } = 10;
 
     /// <summary>
+    /// Stories whose <c>PublishedAt</c> is older than this are never turned into
+    /// briefings. Caps how stale the feed can get and stops a perpetually-growing
+    /// backlog of old, high-volume national items from crowding out fresh and local
+    /// stories during selection. See <c>CivicContentGenerationService</c>.
+    /// </summary>
+    public int MaxStoryAgeDays { get; set; } = 14;
+
+    /// <summary>
     /// RSS feed URLs to ingest, keyed by source name. If empty, the ingestion
     /// service is registered but does nothing (handy in tests).
     /// </summary>

@@ -68,16 +68,23 @@ public class CoalitionLoopService
         // to readers in the matching state. Resolve the caller's locality once.
         var userLocality = await ResolveUserLocalityAsync(currentUserId, ct);
 
-        var provisions = await _db.Provisions
+        var provisions = await _db.Provisions.AsNoTracking()
             .Where(p => p.Locality == null || p.Locality == userLocality)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
         var result = new List<ProvisionSummaryDto>();
         foreach (var p in provisions)
         {
-            var state = await LoadStateAsync(p.Id, ct);
+            // Load each provision's heavy data once (split + no-tracking) and reuse it
+            // for both state and meta, rather than loading it twice per row.
+            var full = await LoadProvisionForReadAsync(p.Id, ct);
+            var participants = full is null
+                ? (IReadOnlyList<CoalitionParticipant>)Array.Empty<CoalitionParticipant>()
+                : await _db.CoalitionParticipants.AsNoTracking()
+                    .Where(c => c.ProvisionId == p.Id).OrderBy(c => c.CreatedAt).ToListAsync(ct);
+            var state = full is null ? null : BuildState(full, participants);
             var bar = state is null ? null : SpectrumBarBuilder.Build(state);
-            var (gap, gov) = await ProvisionMetaAsync(p, ct);
+            var (gap, gov) = full is null ? (0.0, false) : ProvisionMeta(full, participants);
             result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(),
                 bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
                 gap, DifficultyLabel(gap), gov, p.Locality));
@@ -87,15 +94,22 @@ public class CoalitionLoopService
 
     public async Task<ProvisionDetailDto?> GetDetailAsync(Guid provisionId, string? currentUserId, CancellationToken ct = default)
     {
-        var p = await LoadProvisionAsync(provisionId, ct);
+        // One read-only, split load of the provision + participants, reused for the
+        // state, spectrum bar, agents, and meta below — instead of re-loading the
+        // provision (was 3×) and participants (was 3×) within a single request.
+        var p = await LoadProvisionForReadAsync(provisionId, ct);
         if (p is null) return null;
         // Hard wall: out-of-locality readers can't see a local provision's detail.
         if (!await CanAccessProvisionAsync(p.Locality, currentUserId, ct)) return null;
-        var state = await LoadStateAsync(provisionId, ct);
-        var bar = SpectrumBarBuilder.Build(state!);
 
-        var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provisionId).OrderBy(s => s.OrderIndex).ToListAsync(ct);
-        var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
+        var participants = await _db.CoalitionParticipants.AsNoTracking()
+            .Where(c => c.ProvisionId == provisionId).OrderBy(c => c.CreatedAt).ToListAsync(ct);
+
+        var state = BuildState(p, participants);
+        var bar = SpectrumBarBuilder.Build(state);
+
+        var subQs = await _db.SubQuestions.AsNoTracking()
+            .Where(s => s.ProvisionId == provisionId).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         var positionedUsers = p.Positions.Select(x => x.UserId).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var acceptsByVersion = p.AcceptanceRecords.GroupBy(a => a.VersionId)
@@ -110,7 +124,7 @@ public class CoalitionLoopService
 
         // Outcome isn't persisted; re-derive it from data for resolved provisions.
         OutcomeDto? outcome = null;
-        if (p.State == ProvisionState.Passed && _sm.ResolvePassOutcome(state!) is { } o)
+        if (p.State == ProvisionState.Passed && _sm.ResolvePassOutcome(state) is { } o)
         {
             Guid? plankId = o.Plank is not null && Guid.TryParse(o.Plank.Id, out var g) ? g : null;
             outcome = new OutcomeDto(o.FinalState.ToString(), plankId, o.Signers?.ToArray(),
@@ -118,7 +132,7 @@ public class CoalitionLoopService
         }
         else if (p.State == ProvisionState.Forked)
         {
-            var fork = _sm.DetectFork(state!);
+            var fork = _sm.DetectFork(state);
             outcome = new OutcomeDto("Forked", null, null,
                 fork.Basins.Count, 0, 0, $"forked into {fork.Basins.Count} basins");
         }
@@ -130,8 +144,8 @@ public class CoalitionLoopService
         }
 
         var barDto = ToBarDto(bar);
-        var (gap, gov) = await ProvisionMetaAsync(p, ct);
-        var probes = BuildProbes(state!, currentUserId);
+        var (gap, gov) = ProvisionMeta(p, participants);
+        var probes = BuildProbes(state, currentUserId);
 
         return new ProvisionDetailDto(
             p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(), p.RelevantAxes, p.Deadline,
@@ -174,9 +188,9 @@ public class CoalitionLoopService
             .ToList();
     }
 
-    private async Task<(double gap, bool governance)> ProvisionMetaAsync(Provision p, CancellationToken ct)
+    private (double gap, bool governance) ProvisionMeta(Provision p, IReadOnlyList<CoalitionParticipant> participants)
     {
-        var (agents, baseV) = await BuildAllAgentsAsync(p.Id, ct);
+        var (agents, baseV) = BuildAllAgents(p, participants);
         var gap = (baseV is not null && agents.Count > 0)
             ? GapWidthEstimator.NormalizedGap(agents, baseV)
             : 0.0;
@@ -350,7 +364,9 @@ public class CoalitionLoopService
         var subQs = await _db.SubQuestions.Where(s => s.ProvisionId == provision.Id).OrderBy(s => s.OrderIndex).ToListAsync(ct);
         if (subQs.Count > 0)
         {
-            await CreateBirthVersionsAsync(provision, subQs, briefing, dto.CoreProposals, ct);
+            // No system-seeded versions: every version on the table comes from a real
+            // participant. The provision's NeutralText stands as the bill's neutral
+            // starting point until someone in the cohort presents the first version.
 
             // One agent counterpart (opposite end) so a human has someone to bridge with.
             var rightRegion = subQs.Where(s => s.PositionOptions.Length > 0)
@@ -385,80 +401,6 @@ public class CoalitionLoopService
         };
     }
 
-    /// <summary>
-    /// Seed a birthed provision with a few DISTINCT core proposals — not one synthetic
-    /// "key = value" stub. Version 1 is the proposal as the article frames it (neutralText);
-    /// the others are concrete alternatives grounded in the briefing's strongest cases for and
-    /// against, each landing on a different sub-question position vector so players have real
-    /// bridging choices.
-    /// </summary>
-    private async Task CreateBirthVersionsAsync(
-        Provision provision, List<SubQuestion> subQs, Briefing briefing,
-        List<GeneratedCoreProposalDto>? proposals, CancellationToken ct)
-    {
-        var seen = new HashSet<string>();
-        async Task<bool> AddAsync(Dictionary<string, string> positions, string? label, string text)
-        {
-            if (positions.Count == 0 || !seen.Add(Canonical(positions))) return false; // skip empty/duplicate vectors
-            await FindOrCreateVersionAsync(provision.Id, positions, label, null, ct, freeformText: text);
-            return true;
-        }
-
-        // Preferred path: the model authored 2-3 distinct concrete proposals. Validate each
-        // proposal's positions against the persisted sub-questions before trusting them.
-        var optionsByKey = subQs.ToDictionary(s => s.Key, s => s.PositionOptions, StringComparer.OrdinalIgnoreCase);
-        var made = 0;
-        foreach (var p in proposals ?? new())
-        {
-            if (string.IsNullOrWhiteSpace(p.Text)) continue;
-            var pos = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in p.Positions ?? new())
-            {
-                if (!optionsByKey.TryGetValue(kv.Key, out var opts)) continue; // unknown sub-question
-                var val = opts.FirstOrDefault(o => string.Equals(o, kv.Value, StringComparison.OrdinalIgnoreCase))
-                          ?? kv.Value?.Trim();
-                if (!string.IsNullOrWhiteSpace(val)) pos[kv.Key] = val!;
-            }
-            var label = string.IsNullOrWhiteSpace(p.Label) ? null : p.Label.Trim();
-            if (await AddAsync(pos, label, p.Text.Trim())) made++;
-        }
-        if (made > 0) return;
-
-        // Heuristic fallback (no usable LLM proposals): derive a few from the briefing fields.
-        var first = subQs.ToDictionary(s => s.Key, s => s.PositionOptions.FirstOrDefault() ?? "default", StringComparer.OrdinalIgnoreCase);
-        var last = subQs.ToDictionary(s => s.Key, s => s.PositionOptions.LastOrDefault() ?? s.PositionOptions.FirstOrDefault() ?? "default", StringComparer.OrdinalIgnoreCase);
-
-        // 1. The proposal as the article frames it — the clear, neutral core proposal.
-        await AddAsync(new(first), "As proposed", provision.NeutralText);
-
-        // 2. A more expansive take, grounded in the strongest case FOR.
-        await AddAsync(new(last), "Go further",
-            ComposeProposal("A stronger version that goes further", briefing.StrongestArgumentFor, provision.NeutralText));
-
-        // 3. A middle-ground take (flip only the first crux), grounded in the strongest case AGAINST.
-        if (subQs.Count >= 2)
-        {
-            var mix = new Dictionary<string, string>(first, StringComparer.OrdinalIgnoreCase) { [subQs[0].Key] = last[subQs[0].Key] };
-            await AddAsync(mix, "Middle ground",
-                ComposeProposal("A middle-ground version", briefing.StrongestArgumentAgainst, provision.NeutralText));
-        }
-    }
-
-    private static string ComposeProposal(string lead, string? source, string fallback)
-    {
-        var body = FirstSentence(source);
-        if (body.Length == 0) body = FirstSentence(fallback);
-        return body.Length == 0 ? lead + "." : $"{lead}: {body}";
-    }
-
-    private static string FirstSentence(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return "";
-        s = s.Trim();
-        var idx = s.IndexOf(". ", StringComparison.Ordinal);
-        var sentence = idx > 0 ? s[..(idx + 1)] : s;
-        return sentence.Length > 220 ? sentence[..220].TrimEnd() + "…" : sentence;
-    }
 
     // ---------------------------------------------------------------- writes (agent ballast)
 
@@ -490,6 +432,20 @@ public class CoalitionLoopService
 
     private async Task<Provision?> LoadProvisionAsync(Guid provisionId, CancellationToken ct) =>
         await _db.Provisions
+            // Split query: three collection Includes off one root would otherwise run
+            // as a single Versions×Positions×AcceptanceRecords cartesian-product SELECT.
+            .AsSplitQuery()
+            .Include(p => p.Versions)
+            .Include(p => p.Positions)
+            .Include(p => p.AcceptanceRecords)
+            .FirstOrDefaultAsync(p => p.Id == provisionId, ct);
+
+    /// <summary>Read-only variant for query endpoints: same split-query load, but
+    /// no-tracking to skip change-tracker overhead on a pure read.</summary>
+    private async Task<Provision?> LoadProvisionForReadAsync(Guid provisionId, CancellationToken ct) =>
+        await _db.Provisions
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(p => p.Versions)
             .Include(p => p.Positions)
             .Include(p => p.AcceptanceRecords)
@@ -522,7 +478,13 @@ public class CoalitionLoopService
         if (p is null) return null;
         var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId)
             .OrderBy(c => c.CreatedAt).ToListAsync(ct);
+        return BuildState(p, participants);
+    }
 
+    /// <summary>Build the loop state from already-loaded data (no DB access) so one
+    /// read of the provision + participants can feed state, agents, and meta.</summary>
+    private ProvisionLoopState BuildState(Provision p, IReadOnlyList<CoalitionParticipant> participants)
+    {
         // version points keyed by DB id string
         var versions = p.Versions.OrderBy(v => v.CreatedAt)
             .Select(v => new VersionPoint(v.Id.ToString(), v.ExtractedPositions)).ToList();
@@ -551,7 +513,7 @@ public class CoalitionLoopService
 
         var spectrum = new ComposedSpectrum(participants.Select(c => c.SpectrumBucket));
 
-        var state = new ProvisionLoopState(provisionId.ToString(), players, spectrum,
+        var state = new ProvisionLoopState(p.Id.ToString(), players, spectrum,
             start: DateTime.UtcNow, lifetime: null)
         {
             State = p.State,
@@ -712,7 +674,12 @@ public class CoalitionLoopService
         var p = await LoadProvisionAsync(provisionId, ct);
         if (p is null) return (new(), null);
         var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
+        return BuildAllAgents(p, participants);
+    }
 
+    /// <summary>Build CoalitionAgents from already-loaded data (no DB access).</summary>
+    private (List<CoalitionAgent> Agents, VersionPoint? BaseVersion) BuildAllAgents(Provision p, IReadOnlyList<CoalitionParticipant> participants)
+    {
         var versions = p.Versions.OrderBy(v => v.CreatedAt)
             .Select(v => new VersionPoint(v.Id.ToString(), v.ExtractedPositions)).ToList();
         var versionById = versions.ToDictionary(v => v.Id, StringComparer.OrdinalIgnoreCase);

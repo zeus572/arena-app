@@ -1,14 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { seedAnonymousUser } from "./helpers";
+import { API_BASE, seedAnonymousUser } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await seedAnonymousUser(page);
 });
 
-test("home surfaces the four learn-more entry points", async ({ page }) => {
+test("home surfaces the learn-more entry points", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByTestId("concept-of-the-day")).toBeVisible();
   await expect(page.getByTestId("cta-quiz")).toBeVisible();
   await expect(page.getByTestId("cta-timeline")).toBeVisible();
   await expect(page.getByTestId("cta-teachers")).toBeVisible();
@@ -49,13 +48,17 @@ test("quiz: a wrong answer surfaces the explanation", async ({ page }) => {
   );
 });
 
-test("concept of the day routes to the concept detail page", async ({
+test("concept detail page renders for a known concept", async ({
   page,
+  request,
 }) => {
-  await page.goto("/");
-  await page.getByTestId("concept-of-the-day-link").click();
+  const resp = await request.get(`${API_BASE}/concepts`);
+  expect(resp.ok()).toBeTruthy();
+  const concepts = await resp.json();
+  expect(concepts.length).toBeGreaterThan(0);
 
-  await expect(page).toHaveURL(/\/concepts\//);
+  await page.goto(`/concepts/${concepts[0].slug}`);
+
   await expect(page.getByTestId("magazine-concept")).toBeVisible();
   await expect(page.getByTestId("concept-title")).toBeVisible();
   await expect(page.getByTestId("concept-try-it")).toBeVisible();

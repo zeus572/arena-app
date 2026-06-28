@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import api, { fetchUserStats, type UserStats } from "@/api/client";
+import TwoFactorSettings from "@/components/TwoFactorSettings";
 import { User, Shield, Crown, Mail, CheckCircle, AlertCircle, Star, Award, Zap, Target, MessageCircleQuestion, ThumbsUp, Sparkles } from "lucide-react";
 
 const INTEREST_OPTIONS = [
@@ -206,6 +207,9 @@ export default function Profile() {
           </Button>
         </form>
       </div>
+
+      {/* Account security */}
+      <TwoFactorSettings />
 
       {/* XP & Gamification */}
       {stats && (

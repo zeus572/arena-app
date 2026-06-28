@@ -113,7 +113,8 @@ public class CoalitionApiTests : IAsyncLifetime
         var detail = await PostAsync("/api/coalition/birth", new { briefingId });
 
         detail.SubQuestions.Should().NotBeEmpty("a born provision has sub-questions to position on");
-        detail.Versions.Should().Contain(v => v.Label == "As proposed", "birth seeds a base 'As proposed' version");
+        detail.Versions.Should().NotContain(v => v.AuthorUserId == null,
+            "birth no longer seeds system 'neutral draft' versions — every version on the table comes from a participant");
         detail.Participants.Should().Contain(p => p.IsAgent, "an agent counterpart is seeded so it's engageable");
         detail.Difficulty.Should().NotBeNullOrEmpty();
         new[] { "Open", "Contested" }.Should().Contain(detail.State);
