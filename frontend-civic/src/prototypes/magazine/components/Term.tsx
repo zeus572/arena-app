@@ -11,11 +11,11 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 const GLOSSARY: Record<string, { title: string; body: string }> = {
   plank: {
     title: "Plank",
-    body: "One concrete policy provision in a platform — the single proposal a coalition forms around.",
+    body: "One concrete policy bill in a platform — the single proposal a coalition forms around.",
   },
   teeth: {
     title: "Teeth",
-    body: "How enforceable a provision is — real, binding specifics rather than vague or symbolic language.",
+    body: "How enforceable a bill is — real, binding specifics rather than vague or symbolic language.",
   },
   relegate: {
     title: "Relegate",

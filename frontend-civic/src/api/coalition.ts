@@ -63,6 +63,8 @@ export interface ProvisionSummary {
   id: string;
   slug: string;
   title: string;
+  /** Neutral-surface proposition text — what the bill is actually about. */
+  neutralText: string;
   state: string;
   distance: number;
   coveredBuckets: number;

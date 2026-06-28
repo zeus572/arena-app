@@ -78,7 +78,7 @@ public class CoalitionLoopService
             var state = await LoadStateAsync(p.Id, ct);
             var bar = state is null ? null : SpectrumBarBuilder.Build(state);
             var (gap, gov) = await ProvisionMetaAsync(p, ct);
-            result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.State.ToString(),
+            result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(),
                 bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
                 gap, DifficultyLabel(gap), gov, p.Locality));
         }
@@ -827,7 +827,7 @@ public class CoalitionLoopService
         ("briefing-read",     "Read today's briefing",              10),
         ("co-sign",           "Co-sign one coalition position",     20),
         ("campaign-headline", "Respond to a headline in your campaign", 30),
-        ("bridge-culture",    "Bridge a culture-war provision",     30),
+        ("bridge-culture",    "Bridge a culture-war bill",          30),
     };
 
     /// <summary>

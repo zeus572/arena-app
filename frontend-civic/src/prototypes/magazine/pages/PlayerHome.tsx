@@ -749,7 +749,7 @@ function DifficultyChip({ difficulty }: { difficulty: string }) {
 }
 
 // Governance vs culture tag — same axis CoalitionProvisions shows. Culture bills
-// are the ones the "Bridge a culture-war provision" quest targets, so we surface
+// are the ones the "Bridge a culture-war bill" quest targets, so we surface
 // the tag here to make that connection legible at a glance.
 function GovChip({ governance }: { governance: boolean }) {
   return governance ? (

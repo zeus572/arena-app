@@ -234,6 +234,11 @@ function OpenProvisionRow({ p }: { p: ProvisionSummary }) {
           </h4>
           <span className={`text-xs font-semibold uppercase tracking-wider ${stateColor(p.state)}`}>{p.state}</span>
         </div>
+        {/* The title is often too terse to convey the actual issue; surface the
+            neutral proposition text so the core question reads at a glance. */}
+        {p.neutralText && (
+          <p className="mt-1.5 line-clamp-2 text-sm text-[var(--fg-soft)]">{p.neutralText}</p>
+        )}
         <ProvisionMeta p={p} />
       </Link>
     </li>
@@ -379,7 +384,7 @@ export default function CoalitionProvisions() {
           {me && <RecordCard me={me} />}
 
           {items.length === 0 ? (
-            <p className="py-8 text-sm text-[var(--muted)]">No provisions right now. Check back soon.</p>
+            <p className="py-8 text-sm text-[var(--muted)]">No bills right now. Check back soon.</p>
           ) : (
             <>
               <div>
