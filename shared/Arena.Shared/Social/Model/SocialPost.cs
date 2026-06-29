@@ -10,6 +10,13 @@ public enum SocialContentType
     CoalitionHighlight = 1,
     DebateHighlight = 2,
     FeaturePost = 3,
+
+    // Civic Arena sources (real coalition bills + zeitgeist), distinct from the debate-app
+    // CoalitionHighlight (which is a common_ground debate). Separate values so dedup and
+    // analytics can tell civic posts apart.
+    CivicBillOutcome = 10,
+    CivicZeitgeist = 11,
+    CivicOpenBill = 12,
 }
 
 /// <summary>
