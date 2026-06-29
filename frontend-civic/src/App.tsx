@@ -42,6 +42,7 @@ import MagazineLeagueRound from "@/prototypes/magazine/pages/LeagueRound";
 import MagazineAbout from "@/prototypes/magazine/pages/About";
 import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
 import MagazineCohort from "@/prototypes/magazine/pages/Cohort";
+import MagazineShortsFeed from "@/prototypes/magazine/pages/ShortsFeed";
 
 function App() {
   return (
@@ -49,6 +50,9 @@ function App() {
       <AuthProvider>
         <EmailVerificationGateModal />
         <Routes>
+          {/* Immersive full-screen feed — intentionally OUTSIDE MagazineLayout so it
+              gets the full viewport with no sticky header / bottom tabs. */}
+          <Route path="/shorts" element={<MagazineShortsFeed />} />
           <Route path="/" element={<MagazineLayout />}>
             <Route index element={<MagazineHomeIndex />} />
             <Route path="magazine" element={<MagazineReadView />} />

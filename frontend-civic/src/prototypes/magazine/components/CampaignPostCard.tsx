@@ -7,6 +7,7 @@ import {
   toneColor,
   intensityBorderWidth,
   netSentimentColor,
+  timeAgo,
 } from "@/lib/campaignVisuals";
 import {
   type CampaignPost,
@@ -18,16 +19,6 @@ import {
 } from "@/api/campaign";
 import { CandidateAvatar } from "./CandidateAvatar";
 import { DisclaimerBadge } from "./DisclaimerBadge";
-
-function timeAgo(iso: string): string {
-  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (secs < 60) return "now";
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
 
 type FragState = Record<string, { up: number; down: number; net: number }>;
 

@@ -31,6 +31,17 @@ export function intensityBorderWidth(intensity: number): number {
   return Math.min(5, Math.max(1, intensity));
 }
 
+/** Compact relative timestamp ("now", "5m ago", "3h ago", "2d ago") from an ISO string. */
+export function timeAgo(iso: string): string {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return "now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 /** Background tint for a fragment in the heat map, keyed by net sentiment [-1,1]. */
 export function netSentimentColor(net: number): string {
   if (net > 0.15) {
