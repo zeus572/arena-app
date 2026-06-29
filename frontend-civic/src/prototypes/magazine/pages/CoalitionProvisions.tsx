@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { Link } from "react-router-dom";
 import {
-  Handshake, RefreshCw, Trophy, Flame, Scale, Award, TrendingUp, Clock,
+  Handshake, RefreshCw, Award, Clock,
   ChevronDown, GitFork, CheckCircle2, Skull, Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
@@ -15,7 +15,6 @@ import {
 } from "@/api/coalition";
 import { localityLabel } from "@/api/profile";
 import { Button } from "../components/Button";
-import { Term } from "../components/Term";
 
 function stateColor(state: string): string {
   switch (state) {
@@ -126,41 +125,18 @@ function Deadline({ deadline }: { deadline: string | null }) {
   );
 }
 
-function Meter({ label, value, max, suffix }: { label: ReactNode; value: number; max: number; suffix?: string }) {
-  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-[var(--muted)]">{label}</span>
-        <span className="font-semibold">{value}{suffix}</span>
-      </div>
-      <div className="mt-1 h-1.5 rounded bg-[var(--line)]">
-        <div className="h-1.5 rounded bg-[var(--accent)]" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
+// A slim standing snapshot: lead with the Circle (the user's cohort ladder rung —
+// the one consistent identity label), then the two live currencies. Circle
+// *standings* (gap, promote/relegate) and the fuller skill breakdown live on the
+// Cohort page, so we deliberately don't duplicate them here.
 function RecordCard({ me }: { me: Me }) {
-  const moveColor = me.movement === "Promote" ? "text-emerald-600" : me.movement === "Relegate" ? "text-rose-600" : "text-[var(--muted)]";
   return (
     <div className="rounded-2xl border border-[var(--line)] p-5">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Award size={18} className="text-[var(--accent)]" /> Your record</h2>
-        <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white">{me.skillLabel}</span>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Meter label="Skill" value={Math.round(me.skill * 100)} max={100} suffix="%" />
-        <Meter label="Coalition breadth (meter)" value={me.record.totalBreadth} max={Math.max(12, me.record.totalBreadth)} />
-        <Meter label="Governance vs culture" value={Math.round(me.record.governanceRatio * 100)} max={100} suffix="%" />
-        <Meter label={<><Term term="plank">Planks</Term> passed</>} value={me.record.planksPassed} max={Math.max(5, me.record.planksPassed)} />
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[var(--muted)]">
-        <span className="flex items-center gap-1"><Trophy size={13} /> score {me.record.weightedScore.toFixed(1)}</span>
-        <span className="flex items-center gap-1"><Scale size={13} /> {me.circleName ?? "Unassigned"} (gap {(me.circleGapTier * 100).toFixed(0)}%)</span>
-        <span className={`flex items-center gap-1 font-semibold ${moveColor}`}><TrendingUp size={13} /> <Term term={me.movement}>{me.movement}</Term></span>
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Award size={18} className="text-[var(--accent)]" /> Your standing</h2>
+        <span className="inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--accent)]">
+          {me.circleName ? `${me.circleName} Circle` : "Unassigned"}
+        </span>
       </div>
 
       {/* Two clocks: daily reasoning XP vs scarce coalition currency */}
@@ -176,19 +152,6 @@ function RecordCard({ me }: { me: Me }) {
           <p className="text-[10px] uppercase tracking-wider text-[var(--muted)]">Coalition (scarce)</p>
           <p className="text-2xl font-bold text-[var(--accent)]">{me.scarcePoints}</p>
           <p className="text-[10px] text-[var(--muted)]">uncapped · breadth premium</p>
-        </div>
-      </div>
-
-      {/* Cadence */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs text-[var(--muted)]">
-          <span className="flex items-center gap-1"><Flame size={13} /> Participation cadence</span>
-          <span>{Math.round(me.cadence.score * 100)}%</span>
-        </div>
-        <div className="mt-1 flex gap-1">
-          {me.cadence.last7Days.map((active, i) => (
-            <div key={i} className="h-4 flex-1 rounded" style={{ background: active ? "var(--accent)" : "var(--line)" }} title={active ? "active" : "missed"} />
-          ))}
         </div>
       </div>
     </div>
