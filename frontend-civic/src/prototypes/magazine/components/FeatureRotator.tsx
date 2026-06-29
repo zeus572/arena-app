@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { BudgetFact } from "@/api/budgetFacts";
 import type { CivicCampaignSummary } from "@/api/campaignManager";
@@ -23,14 +23,24 @@ type FeatureCard = {
 
 type Props = {
   budgetFacts: BudgetFact[];
+  /** True once the budget-facts fetch has settled (success or empty), so the
+   *  random start can wait for the full card pool before picking. */
+  budgetFactsLoaded: boolean;
   featuredCampaign: CivicCampaignSummary | null;
 };
 
 /**
  * The feature tile at the top of the magazine home, a rotating conveyor. The pool
- * always leads with the election countdown (so the e2e countdown checks still pass
- * on first paint), then Campaign Manager, then folds in "Did you know?" budget
- * facts, an in-box civics quiz, and a random-state tax fact as their data loads.
+ * leads with the election countdown, then Campaign Manager, then folds in "Did you
+ * know?" budget facts, an in-box civics quiz, and a random-state tax fact as their
+ * data loads.
+ *
+ * Once every source has settled, the tile picks a RANDOM card to open on (rather
+ * than always the countdown) so the home feels fresh on each visit; it then
+ * auto-advances from there. The random pick is deferred until the pool is complete
+ * so a card inserting mid-load can't shift the chosen slot, and it's skipped once
+ * the user has driven the rotator manually. (The countdown e2e checks select the
+ * countdown card explicitly rather than relying on it being first paint.)
  *
  * A single full-width card is shown at a time — wide enough that content-heavy
  * cards (budget facts, the quiz) get room to breathe instead of being squeezed
@@ -38,7 +48,7 @@ type Props = {
  * pauses while the user hovers/focuses the region or has an interactive card (the
  * quiz) mid-answer. Arrows and dots drive it manually.
  */
-export function FeatureRotator({ budgetFacts, featuredCampaign }: Props) {
+export function FeatureRotator({ budgetFacts, budgetFactsLoaded, featuredCampaign }: Props) {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [taxStates, setTaxStates] = useState<StateProfile[]>([]);
   const [offset, setOffset] = useState(0);
@@ -47,15 +57,24 @@ export function FeatureRotator({ budgetFacts, featuredCampaign }: Props) {
   // User-driven pause via the play/pause toggle, distinct from the transient
   // hover/quiz-answer pauses so it persists until the user resumes.
   const [paused, setPaused] = useState(false);
+  // The two fetches this component owns; flipped once each settles (incl. on
+  // error) so the random-start seed knows the pool is complete.
+  const [quizLoaded, setQuizLoaded] = useState(false);
+  const [taxLoaded, setTaxLoaded] = useState(false);
+  // Random start: seeded once, and only before the user takes over.
+  const seededRef = useRef(false);
+  const touchedRef = useRef(false);
 
   useEffect(() => {
     void getQuizQuestions(8)
       .then(setQuizQuestions)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setQuizLoaded(true));
     // Fall back to the bundled state set so the tax fact still works offline.
     void getTaxStates()
       .then((s) => setTaxStates(s.length > 0 ? s : STATE_PROFILES))
-      .catch(() => setTaxStates(STATE_PROFILES));
+      .catch(() => setTaxStates(STATE_PROFILES))
+      .finally(() => setTaxLoaded(true));
   }, []);
 
   const cards = useMemo<FeatureCard[]>(() => {
@@ -97,6 +116,18 @@ export function FeatureRotator({ budgetFacts, featuredCampaign }: Props) {
   // A single tile rotates as soon as there's more than one card to cycle through.
   const canRotate = n > 1;
 
+  // Open on a random card once the whole pool has loaded — so the home doesn't
+  // always greet you with the countdown. Deferred until every source settles so a
+  // late-inserting card can't shift the chosen slot, fired once, and skipped if
+  // the user has already steered the rotator.
+  useEffect(() => {
+    if (seededRef.current || touchedRef.current) return;
+    if (!quizLoaded || !taxLoaded || !budgetFactsLoaded) return;
+    if (n <= 1) return;
+    seededRef.current = true;
+    setOffset(Math.floor(Math.random() * n));
+  }, [quizLoaded, taxLoaded, budgetFactsLoaded, n]);
+
   useEffect(() => {
     if (!canRotate) return;
     const id = window.setInterval(() => {
@@ -110,10 +141,12 @@ export function FeatureRotator({ budgetFacts, featuredCampaign }: Props) {
   const current = cards[currentIdx];
 
   const jumpTo = (i: number) => {
+    touchedRef.current = true;
     setLocked(false);
     setOffset(i);
   };
   const step = (delta: number) => {
+    touchedRef.current = true;
     setLocked(false);
     setOffset((o) => o + delta);
   };

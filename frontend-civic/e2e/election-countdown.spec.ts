@@ -16,6 +16,10 @@ test("magazine home shows the next national election countdown", async ({
 
   await page.goto("/");
 
+  // The feature rotator now opens on a random card, so select the countdown
+  // explicitly before asserting its contents.
+  await page.getByRole("button", { name: "Show countdown feature" }).click();
+
   const card = page.getByTestId("countdown-national");
   await expect(card).toBeVisible();
 
@@ -34,6 +38,9 @@ test("magazine home shows the next national election countdown", async ({
 
 test("countdown seconds tick down once per second", async ({ page }) => {
   await page.goto("/");
+
+  // The rotator opens on a random card; select the countdown to read its clock.
+  await page.getByRole("button", { name: "Show countdown feature" }).click();
 
   const seconds = page.getByTestId("cd-seconds");
   await expect(seconds).toBeVisible();
