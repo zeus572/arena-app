@@ -92,7 +92,7 @@ public class BotHeartbeatService : BackgroundService
                 try
                 {
                     using var socialScope = _scopeFactory.CreateScope();
-                    var hook = socialScope.ServiceProvider.GetRequiredService<Arena.API.Social.SocialHeartbeatHook>();
+                    var hook = socialScope.ServiceProvider.GetRequiredService<Arena.Shared.Social.SocialHeartbeatHook>();
                     await hook.OnHeartbeatTickAsync(stoppingToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Civic.API.Models;
+using Arena.Shared.Social;
 
 namespace Civic.API.Data;
 
@@ -62,6 +63,9 @@ public class CivicDbContext : DbContext
     public DbSet<AcceptanceRecord> AcceptanceRecords => Set<AcceptanceRecord>();
     public DbSet<ExtractionCacheEntry> ExtractionCacheEntries => Set<ExtractionCacheEntry>();
     public DbSet<CoalitionParticipant> CoalitionParticipants => Set<CoalitionParticipant>();
+
+    // SocialPublisher (shared engine) — the only table the civic publisher writes.
+    public DbSet<SocialPost> SocialPosts => Set<SocialPost>();
     public DbSet<CoalitionCircle> CoalitionCircles => Set<CoalitionCircle>();
     public DbSet<CoalitionCircleMember> CoalitionCircleMembers => Set<CoalitionCircleMember>();
     public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
@@ -528,6 +532,27 @@ public class CivicDbContext : DbContext
         });
 
         ConfigureCoalition(modelBuilder);
+        ConfigureSocial(modelBuilder);
+    }
+
+    /// <summary>SocialPublisher's single writable table (shared engine). Mirrors the debate app's
+    /// mapping: dedup index (content posted to a platform at most once; FeaturePost seeds exempt)
+    /// + selector hot-path index.</summary>
+    private static void ConfigureSocial(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SocialPost>(e =>
+        {
+            e.Property(p => p.Platform).HasMaxLength(64);
+            e.Property(p => p.Status).HasConversion<int>();
+            e.Property(p => p.ContentType).HasConversion<int>();
+
+            e.HasIndex(p => new { p.ContentType, p.ContentId, p.Platform })
+                .IsUnique()
+                .HasFilter("\"ContentId\" IS NOT NULL")
+                .HasDatabaseName("IX_SocialPosts_Dedup");
+
+            e.HasIndex(p => new { p.Status, p.NextRetryAt });
+        });
     }
 
     /// <summary>

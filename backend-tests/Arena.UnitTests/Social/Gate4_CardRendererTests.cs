@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
-using Arena.API.Social;
-using Arena.API.Social.Rendering;
+using Arena.Shared.Social;
+using Arena.Shared.Social.Rendering;
 using FluentAssertions;
 using Xunit;
 

@@ -1,11 +1,9 @@
 using System.Diagnostics;
-using Arena.API.Data;
-using Arena.API.Models.Social;
-using Arena.API.Social.Platforms;
-using Arena.API.Social.Resilience;
-using Microsoft.EntityFrameworkCore;
+using Arena.Shared.Social.Platforms;
+using Arena.Shared.Social.Resilience;
+using Microsoft.Extensions.Logging;
 
-namespace Arena.API.Social;
+namespace Arena.Shared.Social;
 
 /// <summary>
 /// The publish job (SocialPublisher_Spec §2.2, §4.4, §5, §6). Rides the heartbeat — owns no timer.
@@ -19,7 +17,7 @@ namespace Arena.API.Social;
 /// </summary>
 public sealed class SocialPublisher : ISocialPublisher
 {
-    private readonly ArenaDbContext _db;
+    private readonly ISocialPostStore _store;
     private readonly IHighlightSelector _selector;
     private readonly IPlatformClientRegistry _platforms;
     private readonly CircuitBreakerRegistry _breakers;
@@ -29,7 +27,7 @@ public sealed class SocialPublisher : ISocialPublisher
     private readonly ILogger<SocialPublisher> _logger;
 
     public SocialPublisher(
-        ArenaDbContext db,
+        ISocialPostStore store,
         IHighlightSelector selector,
         IPlatformClientRegistry platforms,
         CircuitBreakerRegistry breakers,
@@ -38,7 +36,7 @@ public sealed class SocialPublisher : ISocialPublisher
         IClock clock,
         ILogger<SocialPublisher> logger)
     {
-        _db = db;
+        _store = store;
         _selector = selector;
         _platforms = platforms;
         _breakers = breakers;
@@ -69,7 +67,7 @@ public sealed class SocialPublisher : ISocialPublisher
         var count = 0;
         foreach (var c in candidates)
         {
-            _db.SocialPosts.Add(new SocialPost
+            _store.Add(new SocialPost
             {
                 ContentType = c.ContentType,
                 ContentId = c.ContentId,
@@ -82,7 +80,7 @@ public sealed class SocialPublisher : ISocialPublisher
             });
             count++;
         }
-        if (count > 0) _db.SaveChanges();
+        if (count > 0) _store.Save();
         return count;
     }
 
@@ -95,10 +93,7 @@ public sealed class SocialPublisher : ISocialPublisher
         // predicates translate to SQL on every provider; the retry-gate and ordering use
         // DateTimeOffset, which we evaluate in memory so the query is provider-agnostic
         // (Npgsql translates it; SQLite — the test provider — does not).
-        var due = _db.SocialPosts
-            .Where(p => (p.Status == SocialPostStatus.Pending || p.Status == SocialPostStatus.Approved)
-                        && p.PlatformPostId == null)
-            .AsEnumerable()
+        var due = _store.GetPublishable()
             .Where(p => p.NextRetryAt == null || p.NextRetryAt <= now)
             .OrderByDescending(p => p.PostScore)
             .ThenBy(p => p.CreatedAt)
@@ -175,7 +170,7 @@ public sealed class SocialPublisher : ISocialPublisher
                 else deferred++;
             }
 
-            _db.SaveChanges();
+            _store.Save();
         }
 
         return (published, deferred, failed);
@@ -224,14 +219,8 @@ public sealed class SocialPublisher : ISocialPublisher
         return TimeSpan.FromSeconds(Math.Min(capSeconds, baseSeconds) + jitter);
     }
 
-    private int CountPublishedToday(string platform, DateTimeOffset now)
-    {
-        var dayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        return _db.SocialPosts
-            .Where(p => p.Platform == platform && p.Status == SocialPostStatus.Published)
-            .AsEnumerable()
-            .Count(p => p.PublishedAt != null && p.PublishedAt >= dayStart);
-    }
+    private int CountPublishedToday(string platform, DateTimeOffset now) =>
+        _store.CountPublishedToday(platform, now);
 
     private async Task<SocialPostPayload> BuildPayloadAsync(SocialPost post, CancellationToken ct)
     {

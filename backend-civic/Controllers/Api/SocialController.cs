@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Arena.Shared.Social;
 
-namespace Arena.API.Controllers.Api;
+namespace Civic.API.Controllers.Api;
 
 /// <summary>
-/// Minimal social review + health API (SocialPublisher_Spec §6, §4.4). No full review UI this build.
+/// Minimal social review + health API (SocialPublisher_Spec §6, §4.4) for the civic publisher.
+/// Mirrors the debate app's endpoints; no full review UI this build.
 /// </summary>
 [ApiController]
 public class SocialController : ControllerBase

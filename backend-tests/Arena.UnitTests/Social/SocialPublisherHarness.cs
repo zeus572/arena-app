@@ -1,9 +1,8 @@
 using Arena.API.Data;
-using Arena.API.Models.Social;
-using Arena.API.Social;
-using Arena.API.Social.Platforms;
-using Arena.API.Social.Rendering;
-using Arena.API.Social.Resilience;
+using Arena.Shared.Social;
+using Arena.Shared.Social.Platforms;
+using Arena.Shared.Social.Rendering;
+using Arena.Shared.Social.Resilience;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arena.UnitTests.Social;
@@ -19,7 +18,7 @@ internal static class SocialPublisherHarness
         var registry = new PlatformClientRegistry(clients);
         var clock = new TestClock();
         var renderer = new HtmlCardRenderer(new SolidColorPngRasterizer());
-        var pub = new SocialPublisher(db, selector, registry, breakers, renderer, options, clock,
+        var pub = new SocialPublisher(new EfSocialPostStore(db), selector, registry, breakers, renderer, options, clock,
             NullLogger<SocialPublisher>.Instance);
         return (pub, breakers, clock, registry);
     }

@@ -1,7 +1,7 @@
-using Arena.API.Models.Social;
-using Arena.API.Social;
-using Arena.API.Social.Platforms;
-using Arena.API.Social.Resilience;
+using Arena.Shared.Social;
+using Arena.Shared.Social;
+using Arena.Shared.Social.Platforms;
+using Arena.Shared.Social.Resilience;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -276,7 +276,7 @@ public class Gate6_ResilienceTests
         var (pub, breakers, clock, registry) = Build(db, selector, options, bluesky, fake2);
         await pub.RunOnceAsync(clock.Now, default);
 
-        var health = new SocialHealthService(db, breakers, registry, clock);
+        var health = new SocialHealthService(new EfSocialPostStore(db), breakers, registry, clock);
         var report = await health.GetAsync(default);
 
         var fake2Health = report.Platforms.Single(p => p.Platform == "fake-2");

@@ -1,5 +1,5 @@
-using Arena.API.Social;
-using Arena.API.Models.Social;
+using Arena.Shared.Social;
+using Arena.Shared.Social;
 
 namespace Arena.UnitTests.Social;
 

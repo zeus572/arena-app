@@ -2,9 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Arena.API.Social.Platforms;
+namespace Arena.Shared.Social.Platforms;
 
 /// <summary>Bluesky credentials/config (§7 secrets). Never hardcoded, never logged.</summary>
 public sealed class BlueskyOptions

@@ -98,6 +98,34 @@ builder.Services.AddScoped<Civic.API.Services.Coalition.Agents.IAgentProfileMapp
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLifecycleService>();
 builder.Services.AddHostedService<Civic.API.Services.Coalition.Product.CoalitionLifecycleHostedService>();
 
+// ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
+// Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".
+var civicSocialOptions = builder.Configuration.GetSection(Arena.Shared.Social.SocialPublisherOptions.SectionName)
+    .Get<Arena.Shared.Social.SocialPublisherOptions>() ?? new Arena.Shared.Social.SocialPublisherOptions();
+builder.Services.AddSingleton(civicSocialOptions);
+builder.Services.AddSingleton(builder.Configuration.GetSection(Civic.API.Services.Social.CivicSocialOptions.SectionName)
+    .Get<Civic.API.Services.Social.CivicSocialOptions>() ?? new Civic.API.Services.Social.CivicSocialOptions());
+builder.Services.Configure<Arena.Shared.Social.Platforms.BlueskyOptions>(
+    builder.Configuration.GetSection(Arena.Shared.Social.Platforms.BlueskyOptions.SectionName));
+
+builder.Services.AddSingleton<Arena.Shared.Social.IClock, Arena.Shared.Social.SystemClock>();
+builder.Services.AddSingleton<Arena.Shared.Social.Resilience.CircuitBreakerRegistry>();
+builder.Services.AddSingleton<Arena.Shared.Social.Rendering.IHtmlRasterizer, Arena.Shared.Social.Rendering.SolidColorPngRasterizer>();
+builder.Services.AddSingleton<Arena.Shared.Social.ICardRenderer, Arena.Shared.Social.Rendering.HtmlCardRenderer>();
+
+builder.Services.AddHttpClient<Arena.Shared.Social.Platforms.BlueskyClient>();
+builder.Services.AddSingleton<Arena.Shared.Social.IPlatformClient>(sp =>
+    sp.GetRequiredService<Arena.Shared.Social.Platforms.BlueskyClient>());
+builder.Services.AddSingleton<Arena.Shared.Social.IPlatformClientRegistry, Arena.Shared.Social.Platforms.PlatformClientRegistry>();
+
+builder.Services.AddScoped<Arena.Shared.Social.ISocialPostStore>(sp =>
+    new Arena.Shared.Social.EfSocialPostStore(sp.GetRequiredService<Civic.API.Data.CivicDbContext>()));
+builder.Services.AddScoped<Arena.Shared.Social.IHighlightSelector, Civic.API.Services.Social.CivicHighlightSelector>();
+builder.Services.AddScoped<Arena.Shared.Social.ISocialPublisher, Arena.Shared.Social.SocialPublisher>();
+builder.Services.AddScoped<Arena.Shared.Social.SocialReviewService>();
+builder.Services.AddScoped<Arena.Shared.Social.SocialHealthService>();
+builder.Services.AddSingleton<Arena.Shared.Social.SocialHeartbeatHook>();
+
 // Leagues: social competition groups (invites, membership, shared rounds, standings).
 builder.Services.AddScoped<LeagueScoringService>();
 builder.Services.AddScoped<LeagueService>();

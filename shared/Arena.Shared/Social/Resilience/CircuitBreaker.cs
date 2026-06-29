@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Arena.API.Social.Resilience;
+namespace Arena.Shared.Social.Resilience;
 
 public enum CircuitState { Closed, Open, HalfOpen }
 

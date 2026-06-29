@@ -694,7 +694,7 @@ namespace Arena.API.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("Arena.API.Models.Social.SocialPost", b =>
+            modelBuilder.Entity("Arena.Shared.Social.SocialPost", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
 
-namespace Arena.API.Social.Rendering;
+namespace Arena.Shared.Social.Rendering;
 
 /// <summary>
 /// Deterministic, dependency-free PNG backend. Emits a valid solid-colour PNG of exactly the

@@ -1,6 +1,6 @@
-using Arena.API.Models.Social;
-using Arena.API.Social;
-using Arena.API.Social.Platforms;
+using Arena.Shared.Social;
+using Arena.Shared.Social;
+using Arena.Shared.Social.Platforms;
 using FluentAssertions;
 using Xunit;
 using static Arena.UnitTests.Social.SocialPublisherHarness;
@@ -115,7 +115,7 @@ public class Gate5_JobIntegrationTests
         client.CallCount.Should().Be(0);
 
         // Approve via the review service (backs the POST /approve endpoint).
-        var review = new SocialReviewService(db, clock);
+        var review = new SocialReviewService(new EfSocialPostStore(db), clock);
         (await review.ApproveAsync(post.Id, "sam", default)).Should().BeTrue();
         ByContent(db, A)!.Status.Should().Be(SocialPostStatus.Approved);
 
