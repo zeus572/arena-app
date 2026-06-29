@@ -1,5 +1,6 @@
 using Arena.API.Data;
 using Arena.API.Models;
+using Arena.Shared.Social;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arena.API.Social.Selection;

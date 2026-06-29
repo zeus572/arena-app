@@ -1,6 +1,6 @@
 using System.Net;
-using Arena.API.Social;
-using Arena.API.Social.Platforms;
+using Arena.Shared.Social;
+using Arena.Shared.Social.Platforms;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

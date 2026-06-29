@@ -2,7 +2,7 @@ using System.Net;
 using System.Reflection;
 using System.Collections.Concurrent;
 
-namespace Arena.API.Social.Rendering;
+namespace Arena.Shared.Social.Rendering;
 
 /// <summary>
 /// Server-side card renderer (SocialPublisher_Spec §8). Fills a per-ContentType HTML template with

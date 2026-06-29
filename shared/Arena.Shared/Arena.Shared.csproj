@@ -9,10 +9,26 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Arena.UnitTests" />
+    <InternalsVisibleTo Include="Civic.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.*" />
     <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.*" />
+  </ItemGroup>
+
+  <!-- Social card templates: embedded by LogicalName so HtmlCardRenderer resolves them from the
+       executing (Arena.Shared) assembly regardless of which app hosts the publisher. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Social\Rendering\Templates\feature.html" LogicalName="cards.feature.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\debate.html" LogicalName="cards.debate.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\coalition.html" LogicalName="cards.coalition.html" />
+    <EmbeddedResource Include="Social\Rendering\Templates\briefing.html" LogicalName="cards.briefing.html" />
   </ItemGroup>
 
 </Project>

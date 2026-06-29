@@ -1,4 +1,4 @@
-namespace Arena.API.Social.Platforms;
+namespace Arena.Shared.Social.Platforms;
 
 /// <summary>
 /// Resolves <see cref="IPlatformClient"/> instances by key. At launch only "bluesky" is registered;

@@ -1,4 +1,4 @@
-namespace Arena.API.Models.Social;
+namespace Arena.Shared.Social;
 
 /// <summary>
 /// The four content sources the publisher draws from (SocialPublisher_Spec §2).

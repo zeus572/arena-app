@@ -1,7 +1,7 @@
 using Arena.API.Data;
 using Arena.API.Models;
-using Arena.API.Models.Social;
-using Arena.API.Social;
+using Arena.Shared.Social;
+using Arena.Shared.Social;
 using Arena.API.Social.Selection;
 using FluentAssertions;
 using Xunit;

@@ -1,4 +1,4 @@
-namespace Arena.API.Social.Rendering;
+namespace Arena.Shared.Social.Rendering;
 
 /// <summary>
 /// Rasterizes a fully-substituted HTML card to a PNG of the given dimensions.

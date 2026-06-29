@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Arena.API.Social.Platforms;
+namespace Arena.Shared.Social.Platforms;
 
 /// <summary>A Bluesky richtext facet: a UTF-8 byte range annotated as a link.</summary>
 public sealed record BlueskyFacet(int ByteStart, int ByteEnd, string Uri);

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Arena.API.Social;
+namespace Arena.Shared.Social;
 
 /// <summary>Deterministic http/https URL extraction from post text (for Bluesky facets). No LLM.</summary>
 public static partial class LinkExtractor

@@ -1,4 +1,4 @@
-namespace Arena.API.Social;
+namespace Arena.Shared.Social;
 
 /// <summary>
 /// All tunable knobs for the SocialPublisher (SocialPublisher_Spec §7).

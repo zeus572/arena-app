@@ -1,4 +1,4 @@
-namespace Arena.API.Social.Platforms;
+namespace Arena.Shared.Social.Platforms;
 
 /// <summary>
 /// Canonical error codes returned in <see cref="PublishResult.ErrorCode"/>. The publisher's

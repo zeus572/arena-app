@@ -1,6 +1,6 @@
-using Arena.API.Models.Social;
+using Arena.Shared.Social;
 
-namespace Arena.API.Social;
+namespace Arena.Shared.Social;
 
 // ===========================================================================
 // Dependency contracts (SocialPublisher_Spec §3) plus the small supporting

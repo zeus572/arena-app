@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Arena.API.Social;
+using Arena.Shared.Social;
 
 namespace Arena.API.Controllers.Api;
 

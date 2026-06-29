@@ -1,4 +1,7 @@
-namespace Arena.API.Social;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Arena.Shared.Social;
 
 /// <summary>
 /// The single integration point between the Bot Heartbeat and the SocialPublisher

@@ -1,4 +1,4 @@
-using Arena.API.Models.Social;
+using Arena.Shared.Social;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Arena.API.Models;
-using Arena.API.Models.Social;
+using Arena.Shared.Social;
 
 namespace Arena.API.Data;
 
