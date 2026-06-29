@@ -20,6 +20,11 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.*" />
     <PackageReference Include="System.ServiceModel.Syndication" Version="8.0.*" />
+    <!-- Social card text rendering (browser-free; see SkiaCardRenderer). MIT-licensed.
+         The Linux native asset has no fontconfig/freetype dependency — safe for minimal
+         App Service Linux images; the card font is embedded, not loaded from the host. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.*" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.*" />
   </ItemGroup>
 
   <!-- Social card templates: embedded by LogicalName so HtmlCardRenderer resolves them from the
@@ -29,6 +34,19 @@
     <EmbeddedResource Include="Social\Rendering\Templates\debate.html" LogicalName="cards.debate.html" />
     <EmbeddedResource Include="Social\Rendering\Templates\coalition.html" LogicalName="cards.coalition.html" />
     <EmbeddedResource Include="Social\Rendering\Templates\briefing.html" LogicalName="cards.briefing.html" />
+  </ItemGroup>
+
+  <!-- Embedded card font (DejaVu Sans, free/redistributable — see Fonts/LICENSE.txt). Loaded by
+       SkiaCardRenderer so card rendering never depends on host-installed fonts. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Social\Rendering\Fonts\DejaVuSans.ttf" LogicalName="cards.font.regular" />
+  </ItemGroup>
+
+  <!-- Embedded brand mark: the stylized Civersify "C" (copied from frontend-civic/public/brand-mark.png,
+       the same mark used in the site header). Composited small in the card footer by SkiaCardRenderer —
+       embedded so it needs no host asset. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Social\Rendering\Logo\civersify-c.png" LogicalName="cards.logo" />
   </ItemGroup>
 
 </Project>

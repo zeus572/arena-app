@@ -158,7 +158,9 @@ builder.Services.Configure<Arena.Shared.Social.Platforms.BlueskyOptions>(
 builder.Services.AddSingleton<Arena.Shared.Social.IClock, Arena.Shared.Social.SystemClock>();
 builder.Services.AddSingleton<Arena.Shared.Social.Resilience.CircuitBreakerRegistry>();
 builder.Services.AddSingleton<Arena.Shared.Social.Rendering.IHtmlRasterizer, Arena.Shared.Social.Rendering.SolidColorPngRasterizer>();
-builder.Services.AddSingleton<Arena.Shared.Social.ICardRenderer, Arena.Shared.Social.Rendering.HtmlCardRenderer>();
+// Cards are drawn directly from the model (browser-free). HtmlCardRenderer + IHtmlRasterizer remain
+// registered for the future headless-Chrome path; SkiaCardRenderer is the active renderer.
+builder.Services.AddSingleton<Arena.Shared.Social.ICardRenderer, Arena.Shared.Social.Rendering.SkiaCardRenderer>();
 
 // Platform adapters: ONLY Bluesky at launch.
 // Deferred: XClient — see §4.2 (no stub class, no config, no credentials this build).

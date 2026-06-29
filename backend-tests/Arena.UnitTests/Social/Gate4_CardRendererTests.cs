@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using Arena.Shared.Social;
 using Arena.Shared.Social.Rendering;
 using FluentAssertions;
+using SkiaSharp;
 using Xunit;
 
 namespace Arena.UnitTests.Social;
@@ -58,5 +59,42 @@ public class Gate4_CardRendererTests
         // IHDR width/height live at byte offsets 16 and 20 (big-endian).
         BinaryPrimitives.ReadUInt32BigEndian(png.AsSpan(16, 4)).Should().Be((uint)width);
         BinaryPrimitives.ReadUInt32BigEndian(png.AsSpan(20, 4)).Should().Be((uint)height);
+    }
+
+    [Theory]
+    [InlineData(1200, 675)]
+    [InlineData(1080, 1080)]
+    public async Task SkiaRenderer_produces_png_of_expected_dimensions(int width, int height)
+    {
+        var png = await new SkiaCardRenderer().RenderAsync(
+            CardTemplate.CoalitionHighlight,
+            new CardModel("Common Ground", "Body copy", "Civersify", width, height), default);
+
+        png.Should().NotBeNullOrEmpty();
+        png.Take(8).Should().Equal(137, 80, 78, 71, 13, 10, 26, 10);
+        using var bmp = SKBitmap.Decode(png);
+        bmp.Width.Should().Be(width);
+        bmp.Height.Should().Be(height);
+    }
+
+    /// <summary>
+    /// Regression guard for the "blank card" bug: the old SolidColorPngRasterizer ignored the HTML and
+    /// emitted a single-colour fill. A real render must paint multiple distinct colours (text on the
+    /// brand background), so the pixel set is never a single value.
+    /// </summary>
+    [Fact]
+    public async Task SkiaRenderer_draws_content_not_a_solid_fill()
+    {
+        var png = await new SkiaCardRenderer().RenderAsync(
+            CardTemplate.DebateHighlight,
+            new CardModel("Debate Highlight", "Should cities cap rideshare vehicles?", "Civersify"), default);
+
+        using var bmp = SKBitmap.Decode(png);
+        var distinct = new HashSet<uint>();
+        for (var y = 0; y < bmp.Height; y += 4)
+            for (var x = 0; x < bmp.Width; x += 4)
+                distinct.Add((uint)bmp.GetPixel(x, y));
+
+        distinct.Count.Should().BeGreaterThan(1, "a rendered card must contain text, not a single flat colour");
     }
 }
