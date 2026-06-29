@@ -39,6 +39,7 @@ export default function ShortsFeed() {
     posts: [],
     coalition: [],
     thinkDeeper: [],
+    news: [],
     budget: [],
   });
   const cursorRef = useRef<string | null>(null);
@@ -59,10 +60,18 @@ export default function ShortsFeed() {
         fetchBudgetFacts().catch(() => [] as BudgetFact[]),
       ]);
       if (cancelled) return;
+      // News-sourced briefings (carry an upstream publisher) lead as fact cards; the
+      // remaining briefings with a think-deeper question fill in as reflective prompts.
+      // Partitioned so a briefing never shows twice.
+      const news = briefingPage.items.filter((b) => b.sourcePublisher?.trim());
+      const thinkDeeper = briefingPage.items.filter(
+        (b) => b.thinkDeeperQuestion?.trim() && !b.sourcePublisher?.trim(),
+      );
       const pools: ShortsPools = {
         posts: postFeed.items,
         coalition,
-        thinkDeeper: briefingPage.items.filter((b) => b.thinkDeeperQuestion?.trim()),
+        thinkDeeper,
+        news,
         budget,
       };
       poolsRef.current = pools;

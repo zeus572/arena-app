@@ -245,7 +245,7 @@ public sealed class SocialPublisher : ISocialPublisher
             SocialContentType.BriefingAnnounce => (CardTemplate.BriefingAnnounce, "Briefing"),
             _ => (CardTemplate.FeaturePost, "Civersify"),
         };
-        return (template, new CardModel(kicker, post.Text, "Civersify"));
+        return (template, new CardModel(kicker, post.Text, "civersify.com"));
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
