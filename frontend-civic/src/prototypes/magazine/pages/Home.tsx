@@ -38,6 +38,7 @@ export default function MagazineHome() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [budgetFacts, setBudgetFacts] = useState<BudgetFact[]>([]);
+  const [budgetFactsLoaded, setBudgetFactsLoaded] = useState(false);
   const [campaigns, setCampaigns] = useState<CivicCampaignSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const explainersRef = useRef<HTMLElement>(null);
@@ -69,7 +70,8 @@ export default function MagazineHome() {
   useEffect(() => {
     void fetchBudgetFacts()
       .then(setBudgetFacts)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setBudgetFactsLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -99,7 +101,11 @@ export default function MagazineHome() {
           This issue is still being assembled. Check back soon.
         </p>
       )}
-      <FeatureRotator budgetFacts={budgetFacts} featuredCampaign={featuredCampaign} />
+      <FeatureRotator
+        budgetFacts={budgetFacts}
+        budgetFactsLoaded={budgetFactsLoaded}
+        featuredCampaign={featuredCampaign}
+      />
 
       {cover && <CoverStory briefing={cover} />}
 
