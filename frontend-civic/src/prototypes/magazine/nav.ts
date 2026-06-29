@@ -16,6 +16,7 @@ export type NavGroup = { heading: string; links: NavLinkItem[] };
 
 export const NAV_PRIMARY: NavLinkItem[] = [
   { to: "/", label: "Home", end: true },
+  { to: "/shorts", label: "Shorts" },
   { to: "/candidates", label: "Feed" },
 ];
 
