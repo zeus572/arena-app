@@ -223,6 +223,17 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Run DB migration + seeding off the startup critical path (see
+// InitializeDatabaseAsync) so Kestrel starts listening immediately, and gate
+// request traffic on its completion via StartupReadiness.
+builder.Services.AddSingleton<StartupReadiness>();
+builder.Services.AddHostedService(sp => new DatabaseInitializerService(
+    sp,
+    sp.GetRequiredService<StartupReadiness>(),
+    sp.GetRequiredService<ILogger<DatabaseInitializerService>>(),
+    sp.GetRequiredService<IHostApplicationLifetime>(),
+    InitializeDatabaseAsync));
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -256,23 +267,67 @@ app.Use(async (context, next) =>
 });
 
 app.UseAuthorization();
+
+// Readiness gate: until migration + seeding finishes, hold API traffic with a
+// 503 + Retry-After so nothing is served against an un-migrated schema. /health
+// is exempt so the platform warmup + health probes still pass while we init.
+var startupReadiness = app.Services.GetRequiredService<StartupReadiness>();
+app.Use(async (ctx, next) =>
+{
+    if (startupReadiness.IsReady || ctx.Request.Path.StartsWithSegments("/health"))
+    {
+        await next();
+        return;
+    }
+
+    var failed = startupReadiness.Status == StartupStatus.Failed;
+    ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    ctx.Response.Headers.RetryAfter = failed ? "30" : "5";
+    await ctx.Response.WriteAsJsonAsync(new
+    {
+        status = failed ? "unavailable" : "initializing",
+        message = failed
+            ? "Database initialization failed; the service is restarting."
+            : "Service is starting up; please retry shortly.",
+    });
+});
+
 app.MapControllers();
 
-app.MapGet("/health", async (CivicDbContext db) =>
+app.MapGet("/health", async (CivicDbContext db, StartupReadiness readiness) =>
 {
+    // While migrations run, report 200 "starting" (no DB access) so the platform
+    // warmup probe passes and initialization gets a chance to finish. If init
+    // failed, report 503 so the health check recycles the instance for a retry.
+    if (readiness.Status == StartupStatus.Initializing)
+        return Results.Ok(new { status = "starting", ready = false });
+
+    if (readiness.Status == StartupStatus.Failed)
+        return Results.Json(
+            new { status = "unhealthy", ready = false, error = readiness.Error },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+
     var petitionCount = await db.Petitions.CountAsync();
     return Results.Ok(new
     {
         status = "healthy",
+        ready = true,
         timestamp = DateTime.UtcNow,
         petitionCount,
     });
 });
 
-using (var scope = app.Services.CreateScope())
+app.Run();
+
+// EF migrations + reference-data seeding. Invoked in the background by
+// DatabaseInitializerService AFTER Kestrel starts listening, so the slow
+// managed-identity → Postgres token handshake no longer blocks the container
+// warmup probe. The readiness gate holds API traffic until this completes.
+static async Task InitializeDatabaseAsync(IServiceProvider services, CancellationToken ct)
 {
+    using var scope = services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
-    await db.Database.MigrateAsync();
+    await db.Database.MigrateAsync(ct);
 
     var seeder = scope.ServiceProvider.GetRequiredService<ISeedService>();
     await seeder.SeedAsync();
@@ -281,8 +336,6 @@ using (var scope = app.Services.CreateScope())
     var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
     await coalitionSeeder.SeedAsync();
 }
-
-app.Run();
 
 // Exposed for WebApplicationFactory<Program> in Civic.ApiTests.
 public partial class Program { }

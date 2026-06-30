@@ -20,12 +20,10 @@ public class DatabaseFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // Force the host to build so Program.cs runs MigrateAsync + SeedAsync against civic_test.
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
-            await db.Database.MigrateAsync();
-        }
+        // Civic now migrates + seeds in the background via DatabaseInitializerService.
+        // Wait for the host to become Ready so civic_test is migrated + seeded (and the
+        // readiness gate is open) before any test runs.
+        await Factory.WaitUntilReadyAsync();
 
         await using var conn = new NpgsqlConnection(CivicApiFactory.TestConnectionString);
         await conn.OpenAsync();

@@ -34,7 +34,8 @@ public class NewsIngestionServiceTests
             new TestOptionsMonitor<NewsOptions>(opts.Value),
             httpFactory,
             loggerFactory,
-            NullLogger<NewsIngestionService>.Instance);
+            NullLogger<NewsIngestionService>.Instance,
+            _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
         return (svc, feed);
     }
 

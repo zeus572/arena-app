@@ -11,7 +11,70 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Pre-apply EF migrations to the prod DB BEFORE the code deploys, so the new
+  # instance boots against an already-migrated schema (the in-app background
+  # MigrateAsync then becomes a fast no-op). Gating the deploy on this means a
+  # failed migration blocks the deploy instead of shipping code against an
+  # un-migrated schema. Requires the one-time Azure setup in infra/README.md
+  # (CI service principal: firewall-rule rights on arena-pgserver + a Postgres
+  # Entra role with DDL on the arena DB). Migrations MUST be expand/contract so
+  # the old code tolerates the new schema during the brief overlap.
+  migrate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF tools (pinned to 8.x)
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Build migration bundle
+        working-directory: backend
+        # Development + a placeholder connection keeps EF's design-time host build off
+        # the Production managed-identity branch; migrate/seed are hosted services so
+        # they don't run while the bundle is built. The real connection is passed at apply time.
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: 'Host=localhost;Database=placeholder;Username=placeholder;Password=placeholder'
+        run: dotnet ef migrations bundle --configuration Release -r linux-x64 --self-contained -o ./efbundle --project Arena.API.csproj
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Open PG firewall for this runner
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          az postgres flexible-server firewall-rule create \
+            --resource-group rg-arena --name arena-pgserver \
+            --rule-name ci-migrate-arena-${{ github.run_id }} \
+            --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP"
+
+      - name: Apply migrations to the arena DB
+        working-directory: backend
+        run: |
+          TOKEN=$(az account get-access-token --resource https://ossrdbms-aad.database.windows.net --query accessToken -o tsv)
+          ./efbundle --connection "Host=arena-pgserver.postgres.database.azure.com;Port=5432;Database=arena;Username=${{ secrets.CI_PG_AAD_USER }};Password=$TOKEN;Ssl Mode=Require"
+
+      - name: Remove PG firewall rule
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group rg-arena --name arena-pgserver \
+            --rule-name ci-migrate-arena-${{ github.run_id }} --yes || true
+
   deploy-backend:
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +86,9 @@ jobs:
 
       - name: Restore & Publish
         working-directory: backend
-        run: dotnet publish -c Release -o ./publish
+        # RID-specific framework-dependent publish so PublishReadyToRun pre-JITs the
+        # assemblies (linux-x64 = the App Service runtime), cutting first-request warmup.
+        run: dotnet publish -c Release -r linux-x64 --self-contained false -o ./publish
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

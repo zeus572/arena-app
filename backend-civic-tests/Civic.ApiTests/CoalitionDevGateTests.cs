@@ -43,6 +43,7 @@ public class CoalitionDevGateTests
     public async Task DevOnlyEndpoints_Return404_OutsideDevelopment_ButGameplayStillWorks()
     {
         using var factory = new StagingCivicApiFactory();
+        await factory.WaitUntilReadyAsync();
         var client = factory.CreateClient();
         // A normal user act requires a verified, signed-in user; authenticate as one.
         // (The dev-only affordances below stay blocked regardless of auth.)

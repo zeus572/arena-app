@@ -5,6 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Pre-JIT the assemblies at publish time to cut first-request warmup after a
+         deploy/restart. Only takes effect when published with a linux-x64 RID
+         (see deploy.yml); a plain `dotnet build` ignores it. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <UserSecretsId>beeda685-1d1c-404c-bbc5-f6fe99608c72</UserSecretsId>
   </PropertyGroup>
 

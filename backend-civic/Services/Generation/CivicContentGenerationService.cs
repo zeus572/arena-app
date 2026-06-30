@@ -22,21 +22,28 @@ public class CivicContentGenerationService : BackgroundService
     private readonly ILlmClient _llm;
     private readonly IOptionsMonitor<NewsOptions> _opts;
     private readonly ILogger<CivicContentGenerationService> _log;
+    private readonly StartupReadiness _readiness;
 
     public CivicContentGenerationService(
         IServiceScopeFactory scopes,
         ILlmClient llm,
         IOptionsMonitor<NewsOptions> opts,
-        ILogger<CivicContentGenerationService> log)
+        ILogger<CivicContentGenerationService> log,
+        StartupReadiness readiness)
     {
         _scopes = scopes;
         _llm = llm;
         _opts = opts;
         _log = log;
+        _readiness = readiness;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Park until DB migrations + seeding finish so we never touch an un-migrated schema.
+        try { await _readiness.WaitUntilReadyAsync(stoppingToken); }
+        catch (OperationCanceledException) { return; }
+
         // Reset any items left in Generating from a previous crashed/restarted instance.
         // Swallow exceptions — a DB timeout here must not kill the host.
         try { await ResetStuckItemsAsync(stoppingToken); }

@@ -5,6 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Pre-JIT the assemblies at publish time to cut first-request warmup after a
+         deploy/restart. Only takes effect when published with a linux-x64 RID
+         (see deploy-civic.yml); a plain `dotnet build` ignores it. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <RootNamespace>Civic.API</RootNamespace>
     <AssemblyName>Civic.API</AssemblyName>
     <!-- Shares the debate-arena (Arena.API) user-secrets store so the local Anthropic:ApiKey

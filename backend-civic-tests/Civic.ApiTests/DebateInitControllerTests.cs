@@ -30,6 +30,9 @@ public class DebateInitControllerTests
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
             });
         });
+        // This is a fresh host (own StartupReadiness) — wait for its background
+        // migrate/seed before returning a client so we don't race the readiness gate.
+        factory.WaitUntilReadyAsync().GetAwaiter().GetResult();
         return (factory.CreateClient(), handler);
     }
 

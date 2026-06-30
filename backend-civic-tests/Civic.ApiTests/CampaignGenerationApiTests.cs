@@ -34,7 +34,8 @@ public class CampaignGenerationApiTests : IAsyncLifetime
                 MaxIntensity5PerDay = 10,
                 MaxCandidatesPerBriefing = 4,
             }),
-            NullLogger<CampaignPostGenerationService>.Instance);
+            NullLogger<CampaignPostGenerationService>.Instance,
+            _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
 
     private async Task<Guid> CandidateIdAsync(string slug)
     {
