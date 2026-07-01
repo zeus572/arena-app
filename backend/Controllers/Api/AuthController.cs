@@ -25,6 +25,7 @@ public class AuthController : ControllerBase
     private readonly TotpService _totp;
     private readonly MfaSecretProtector _mfaProtector;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<AuthController> _logger;
     private readonly PasswordHasher<User> _hasher = new();
 
     public AuthController(
@@ -36,7 +37,8 @@ public class AuthController : ControllerBase
         EmailDispatchService emailDispatch,
         TotpService totp,
         MfaSecretProtector mfaProtector,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        ILogger<AuthController> logger)
     {
         _db = db;
         _jwt = jwt;
@@ -47,6 +49,7 @@ public class AuthController : ControllerBase
         _totp = totp;
         _mfaProtector = mfaProtector;
         _cache = cache;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -223,12 +226,34 @@ public class AuthController : ControllerBase
     {
         var user = await _accountTokens.ConsumeAsync(token, AccountTokenPurpose.EmailVerify);
         if (user is null)
+        {
+            // Idempotency: the token is used or expired. If it belonged to a user who
+            // is already verified, a prior request (an email-scanner prefetch that runs
+            // JS, a double-click, or a browser refresh) already did the work — report
+            // success rather than a confusing "expired" error. This is exactly the case
+            // where the link "errored" but the profile shows Verified.
+            var owner = await _accountTokens.PeekUserAsync(token, AccountTokenPurpose.EmailVerify);
+            if (owner is { EmailVerified: true })
+            {
+                // Second hit on a link already consumed by an email-scanner prefetch,
+                // a double-click, or a refresh. The account is verified — report success.
+                _logger.LogInformation(
+                    "verify-email: idempotent re-hit for already-verified user {UserId}; UA={UserAgent}",
+                    owner.Id, Request.Headers.UserAgent.ToString());
+                return Ok(new { status = "email verified" });
+            }
+
+            _logger.LogInformation("verify-email: rejected unknown/used/expired token; UA={UserAgent}",
+                Request.Headers.UserAgent.ToString());
             return BadRequest(new { error = "This verification link is invalid or has expired." });
+        }
 
         user.EmailVerified = true;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
+        _logger.LogInformation("verify-email: verified user {UserId}; UA={UserAgent}",
+            user.Id, Request.Headers.UserAgent.ToString());
         return Ok(new { status = "email verified" });
     }
 
