@@ -4,6 +4,7 @@ import { Handshake, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/auth/AuthContext";
 import { type ProvisionSummary, recordAct } from "@/api/coalition";
+import { ShortCardShell } from "./ShortCardShell";
 
 // Compact subset of the stance labels used on the full provision detail page. The
 // payload string is free-form on the backend, so these read as the quick "reaction
@@ -55,7 +56,7 @@ export function CoalitionShortCard({ provision }: { provision: ProvisionSummary 
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-xl flex-col px-5 pb-8 pt-20">
+    <ShortCardShell>
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
         <Handshake className="h-4 w-4" /> Coalition
       </p>
@@ -143,6 +144,6 @@ export function CoalitionShortCard({ provision }: { provision: ProvisionSummary 
       >
         Open in Coalition →
       </Link>
-    </div>
+    </ShortCardShell>
   );
 }
