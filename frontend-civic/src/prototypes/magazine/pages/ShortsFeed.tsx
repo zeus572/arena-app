@@ -118,8 +118,13 @@ export default function ShortsFeed() {
 
   return (
     <div className="theme-magazine relative h-[100dvh] overflow-hidden bg-[var(--bg)] text-[var(--fg)]">
-      {/* Overlay chrome — stays put over the scrolling feed. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 bg-gradient-to-b from-[var(--bg)] to-transparent px-4 py-3">
+      {/* Overlay chrome — stays put over the scrolling feed. Pads in the top
+          safe-area inset so the close button + title clear the notch/status bar. */}
+      <div
+        data-testid="shorts-header"
+        className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 bg-gradient-to-b from-[var(--bg)] to-transparent px-4 pb-3"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
         <button
           type="button"
           onClick={() => navigate("/")}

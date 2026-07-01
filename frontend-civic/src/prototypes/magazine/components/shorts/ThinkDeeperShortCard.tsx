@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Lightbulb } from "lucide-react";
 import type { CivicBriefingSummary } from "@/api/types";
 import { EphemeralReaction } from "./EphemeralReaction";
+import { ShortCardShell } from "./ShortCardShell";
 
 /**
  * Full-viewport Shorts card built from a briefing's "think deeper" question — a
@@ -15,7 +16,7 @@ export function ThinkDeeperShortCard({
   briefing: CivicBriefingSummary;
 }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-xl flex-col px-5 pb-8 pt-20">
+    <ShortCardShell>
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
         <Lightbulb className="h-4 w-4" /> Think deeper
         {briefing.keyConcept ? ` · ${briefing.keyConcept}` : ""}
@@ -49,6 +50,6 @@ export function ThinkDeeperShortCard({
       >
         Read the briefing →
       </Link>
-    </div>
+    </ShortCardShell>
   );
 }
