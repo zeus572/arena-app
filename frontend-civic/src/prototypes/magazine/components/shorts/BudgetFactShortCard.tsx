@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { BudgetFact } from "@/api/budgetFacts";
 import { BudgetFactFeatureCard } from "../featureCards/BudgetFactFeatureCard";
 import { EphemeralReaction } from "./EphemeralReaction";
+import { ShortCardShell } from "./ShortCardShell";
 
 /**
  * Full-viewport Shorts card for a "did you know?" budget fact. Reuses the existing
@@ -11,7 +12,7 @@ import { EphemeralReaction } from "./EphemeralReaction";
  */
 export function BudgetFactShortCard({ fact }: { fact: BudgetFact }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-xl flex-col px-5 pb-8 pt-20">
+    <ShortCardShell>
       <div className="flex min-h-0 flex-1 items-center">
         <BudgetFactFeatureCard fact={fact} />
       </div>
@@ -33,6 +34,6 @@ export function BudgetFactShortCard({ fact }: { fact: BudgetFact }) {
           See where your taxes go →
         </Link>
       </div>
-    </div>
+    </ShortCardShell>
   );
 }

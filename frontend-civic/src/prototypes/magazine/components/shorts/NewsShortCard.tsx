@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Newspaper } from "lucide-react";
 import type { CivicBriefingSummary } from "@/api/types";
 import { EphemeralReaction } from "./EphemeralReaction";
+import { ShortCardShell } from "./ShortCardShell";
 
 /**
  * Full-viewport Shorts card for a news-sourced briefing — the "from the news" fact card.
@@ -10,7 +11,7 @@ import { EphemeralReaction } from "./EphemeralReaction";
  */
 export function NewsShortCard({ briefing }: { briefing: CivicBriefingSummary }) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-xl flex-col px-5 pb-8 pt-20">
+    <ShortCardShell>
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
         <Newspaper className="h-4 w-4" /> In the news
         {briefing.sourcePublisher ? ` · ${briefing.sourcePublisher}` : ""}
@@ -45,6 +46,6 @@ export function NewsShortCard({ briefing }: { briefing: CivicBriefingSummary }) 
       >
         Get the full briefing →
       </Link>
-    </div>
+    </ShortCardShell>
   );
 }

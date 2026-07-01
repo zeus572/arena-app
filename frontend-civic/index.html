@@ -5,7 +5,12 @@
     <link rel="icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
     <link rel="apple-touch-icon" href="/logo-192.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover populates env(safe-area-inset-*) so full-bleed views
+         (e.g. the Shorts feed) can pad around the notch + home indicator. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="description" content="Civersify — diverse conversations in civics." />
     <title>Civersify</title>
   </head>
