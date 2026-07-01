@@ -64,6 +64,14 @@ public class SocialPost
     public string Text { get; set; } = string.Empty;
     public bool HasImage { get; set; }
 
+    /// <summary>
+    /// Optional card-image body, distinct from <see cref="Text"/> (the post copy). When set, the
+    /// renderer draws this on the inline card instead of echoing the post text — e.g. the Civic
+    /// open-bill card leads with a "Would you rather?" choice while the post keeps its call-to-action
+    /// and link. Null (the default for every other source) = the card falls back to the post text.
+    /// </summary>
+    public string? CardBody { get; set; }
+
     /// <summary>Set on a successful publish; presence also guards idempotency (§4.4).</summary>
     public string? PlatformPostId { get; set; }
 
