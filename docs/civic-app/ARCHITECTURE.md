@@ -231,6 +231,16 @@ Azure, reusing the existing Political Arena resources so net-new cost is ~$0.
   `infra/deploy-civic.ps1`. `infra/README.md` is the runbook.
 - **CI/CD:** `.github/workflows/deploy-civic.yml` builds + deploys backend
   (App Service) and frontend (SWA) on pushes to the `release` branch.
+- **Migrations:** pre-applied by the workflow's `migrate-civic` job (EF bundle →
+  prod DB over a passwordless Entra token) *before* the backend deploy, which
+  `needs:` it — so the app boots against an already-migrated schema. In-app
+  `MigrateAsync` stays as a safety-net no-op. Migrations must be
+  expand/contract. See `infra/README.md`.
+- **Startup / warmup:** migrate + seed run **off the Kestrel critical path**
+  (`DatabaseInitializerService` + a `StartupReadiness` `503`-gate; `/health` is
+  init-aware, returning `200 {status:"starting"}` with no DB access until ready)
+  so the container passes its warmup probe immediately. Backend published with
+  ReadyToRun. See `infra/README.md` → "Deploy warmup & cold start".
 - **CORS:** owned **only** by the app's `UseCors()` middleware (reads
   `Cors:Origins`). Azure App Service *platform* CORS must stay off — running
   both makes the platform 400 the OPTIONS preflight. See `infra/README.md`.
