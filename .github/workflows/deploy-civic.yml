@@ -53,14 +53,16 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Open PG firewall for this runner
-        # The `az postgres flexible-server firewall-rule` server flag differs by az
-        # version (--server-name on the hosted runner, --name on others); --rule-name
-        # is common. Try one, fall back to the other.
+        # `az postgres flexible-server firewall-rule` uses DISJOINT flags by az version:
+        #   hosted runner: --server-name <server> --name <rule>
+        #   older/local:   --name <server> --rule-name <rule>
+        # Try the runner form, fall back to the other. The native command (unlike an ARM
+        # REST PUT, which is async) waits for the rule to actually become active.
         run: |
           RUNNER_IP=$(curl -s https://api.ipify.org)
           az postgres flexible-server firewall-rule create \
             --resource-group rg-arena --server-name arena-pgserver \
-            --rule-name ci-migrate-civic-${{ github.run_id }} \
+            --name ci-migrate-civic-${{ github.run_id }} \
             --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP" \
           || az postgres flexible-server firewall-rule create \
             --resource-group rg-arena --name arena-pgserver \
@@ -78,7 +80,7 @@ jobs:
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group rg-arena --server-name arena-pgserver \
-            --rule-name ci-migrate-civic-${{ github.run_id }} --yes \
+            --name ci-migrate-civic-${{ github.run_id }} --yes \
           || az postgres flexible-server firewall-rule delete \
             --resource-group rg-arena --name arena-pgserver \
             --rule-name ci-migrate-civic-${{ github.run_id }} --yes \
