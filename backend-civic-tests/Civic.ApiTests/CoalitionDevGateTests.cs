@@ -33,6 +33,7 @@ public class CoalitionDevGateTests
                 var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<CivicDbContext>));
                 if (descriptor is not null) services.Remove(descriptor);
                 services.AddDbContext<CivicDbContext>(o => o.UseNpgsql(CivicApiFactory.TestConnectionString));
+                TestHostConfig.DisableBackgroundGenerators(services);
             });
         }
     }
