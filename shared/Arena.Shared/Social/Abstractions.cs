@@ -52,6 +52,11 @@ public sealed record PostCandidate
     public IReadOnlyList<string> Links { get; init; } = Array.Empty<string>();
     public string? AltText { get; init; }
     public CardModel? Card { get; init; }
+
+    /// <summary>Optional distinct card-image body. When null the card falls back to <see cref="Text"/>;
+    /// a source sets it to make the image something other than a repeat of the post copy
+    /// (e.g. the Civic open-bill "Would you rather?" choice).</summary>
+    public string? CardBody { get; init; }
 }
 
 public interface IHighlightSelector

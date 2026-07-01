@@ -106,19 +106,48 @@ public sealed class CivicHighlightSelector : IHighlightSelector
         if (postedTodayCount >= _options.MaxOpenBillsPerDay) return;
 
         var soonest = _db.Provisions.AsNoTracking()
+            .Include(p => p.SubQuestions)
             .Where(p => OpenStates.Contains(p.State) && p.Deadline != null && p.Deadline > now.UtcDateTime)
             .OrderBy(p => p.Deadline)
             .FirstOrDefault();
         if (soonest is null) return;
 
+        // The post keeps its call-to-action + link; the card image leads with the coalition's own
+        // crux as a "Would you rather?" choice so it isn't a duplicate of the post text.
         var text = $"Help bridge this one before it closes: {soonest.Title}\n{Url(soonest.Id)}";
+        var (cardBody, altText) = BuildWouldYouRather(soonest);
         AddPerPlatform(sink, platforms, SocialContentType.CivicOpenBill, soonest.Id, text,
             score: 0.5,
-            card: new CardModel("Open Bill", soonest.Title, "Civersify"));
+            card: new CardModel("Open Bill", soonest.Title, "Civersify"),
+            cardBody: cardBody, altText: altText);
+    }
+
+    /// <summary>
+    /// Builds the open-bill card's "Would you rather?" body from the provision's sharpest crux: the
+    /// first birth sub-question carrying at least two discrete position options. Returns (null, null)
+    /// when no such crux exists, so the card falls back to the neutral open-bill copy.
+    /// </summary>
+    private static (string? cardBody, string? altText) BuildWouldYouRather(Provision p)
+    {
+        var crux = p.SubQuestions
+            .Where(q => q.PositionOptions.Length >= 2)
+            .OrderBy(q => q.Origin == SubQuestionOrigin.Birth ? 0 : 1)
+            .ThenBy(q => q.OrderIndex)
+            .FirstOrDefault();
+        if (crux is null) return (null, null);
+
+        var a = crux.PositionOptions[0].Trim();
+        var b = crux.PositionOptions[1].Trim();
+        var prompt = string.IsNullOrWhiteSpace(crux.Prompt) ? p.Title : crux.Prompt.Trim();
+
+        var cardBody = $"{prompt}\n\n{a}\n— or —\n{b}";
+        var altText = $"Would you rather: {a}, or {b}? ({prompt})";
+        return (cardBody, altText);
     }
 
     private void AddPerPlatform(List<PostCandidate> sink, string[] platforms, SocialContentType type,
-        Guid contentId, string text, double score, CardModel card)
+        Guid contentId, string text, double score, CardModel card,
+        string? cardBody = null, string? altText = null)
     {
         foreach (var platform in platforms)
         {
@@ -133,6 +162,8 @@ public sealed class CivicHighlightSelector : IHighlightSelector
                 // Civic content is system-generated and pre-neutralized; auto-publish above the floor.
                 RequiresReview = score < _options.AutoPublishMin,
                 Card = card,
+                CardBody = cardBody,
+                AltText = altText,
                 Links = new[] { Url(contentId) },
             });
         }

@@ -97,6 +97,44 @@ public class Gate5_JobIntegrationTests
     }
 
     [Fact]
+    public async Task Custom_card_body_drives_the_image_and_alt_text_not_the_post_copy()
+    {
+        using var sql = new SqliteTestDb();
+        using var db = sql.NewContext();
+        var selector = new FakeSelector
+        {
+            Candidates =
+            {
+                new PostCandidate
+                {
+                    ContentType = SocialContentType.CivicOpenBill,
+                    ContentId = A,
+                    Platform = "bluesky",
+                    Text = "Help bridge this one before it closes: Grid fee\nhttps://civersify.com/coalition/x",
+                    PostScore = 0.9,
+                    Priority = 3,
+                    RequiresReview = false,
+                    Card = new CardModel("Open Bill", "Grid fee", "Civersify"),
+                    CardBody = "Which facilities are covered?\n\nAll facilities\n— or —\nOnly large ones",
+                },
+            }
+        };
+        SocialPostPayload? captured = null;
+        var client = new FakePlatformClient { Responder = p => { captured = p; return PublishResult.Ok("at://ok"); } };
+        var (pub, _, clock, _) = Build(db, selector, new SocialPublisherOptions(), client);
+
+        await pub.RunOnceAsync(clock.Now, default);
+
+        captured.Should().NotBeNull();
+        captured!.Text.Should().StartWith("Help bridge", "the post copy is unchanged");
+        captured.ImagePng.Should().NotBeNullOrEmpty("the card image is still rendered");
+        captured.AltText.Should().Contain("Which facilities are covered",
+            "the alt text describes the card body, not the post copy");
+        captured.AltText.Should().NotContain("Help bridge");
+        db.SocialPosts.Single().CardBody.Should().Contain("Which facilities are covered");
+    }
+
+    [Fact]
     public async Task Approve_endpoint_transitions_and_next_tick_publishes()
     {
         using var sql = new SqliteTestDb();

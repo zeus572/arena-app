@@ -75,6 +75,7 @@ public sealed class SocialPublisher : ISocialPublisher
                 Status = c.RequiresReview ? SocialPostStatus.AwaitingReview : SocialPostStatus.Pending,
                 Text = c.Text,
                 HasImage = c.Card is not null,
+                CardBody = c.CardBody,
                 PostScore = c.PostScore,
                 CreatedAt = now,
             });
@@ -231,21 +232,29 @@ public sealed class SocialPublisher : ISocialPublisher
             png = await _cards.RenderAsync(template, model, ct);
         }
         var links = LinkExtractor.Extract(post.Text);
-        var altText = post.HasImage ? Truncate(post.Text, 280) : null;
+        // Alt text describes the *image*, so prefer the card body when it differs from the post copy.
+        var altText = post.HasImage ? Truncate(post.CardBody ?? post.Text, 280) : null;
         return new SocialPostPayload(post.Text, png, altText, links);
     }
 
     /// <summary>Deterministic card model derived from the persisted post (§8: card is decorative reinforcement).</summary>
     private static (CardTemplate, CardModel) CardFor(SocialPost post)
     {
+        var hasCustomBody = !string.IsNullOrWhiteSpace(post.CardBody);
         var (template, kicker) = post.ContentType switch
         {
             SocialContentType.CoalitionHighlight => (CardTemplate.CoalitionHighlight, "Common Ground"),
             SocialContentType.DebateHighlight => (CardTemplate.DebateHighlight, "Debate Highlight"),
             SocialContentType.BriefingAnnounce => (CardTemplate.BriefingAnnounce, "Briefing"),
+            // Open-bill cards lead with the coalition's own crux as a "Would you rather?" choice
+            // (carried in CardBody). Without one they fall back to the neutral house card.
+            SocialContentType.CivicOpenBill when hasCustomBody => (CardTemplate.CoalitionHighlight, "Would you rather?"),
             _ => (CardTemplate.FeaturePost, "Civersify"),
         };
-        return (template, new CardModel(kicker, post.Text, "civersify.com"));
+        // The card body defaults to the post copy; a source can override it (CardBody) so the image
+        // isn't a duplicate of the post text.
+        var body = hasCustomBody ? post.CardBody! : post.Text;
+        return (template, new CardModel(kicker, body, "civersify.com"));
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
