@@ -36,6 +36,9 @@ export default function TwoFactorSettings() {
   const [password, setPassword] = useState("");
   const [showDisable, setShowDisable] = useState(false);
 
+  // Transient "Copied" confirmation on the copy-all button.
+  const [copied, setCopied] = useState(false);
+
   const loadStatus = async () => {
     try {
       const s = await fetchMfaStatus();
@@ -117,8 +120,15 @@ export default function TwoFactorSettings() {
     }
   };
 
-  const copyCodes = () => {
-    if (backupCodes) navigator.clipboard.writeText(backupCodes.join("\n"));
+  const copyCodes = async () => {
+    if (!backupCodes) return;
+    try {
+      await navigator.clipboard.writeText(backupCodes.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard may be unavailable (e.g. insecure context); leave the codes on screen to copy manually.
+    }
   };
 
   return (
@@ -139,11 +149,12 @@ export default function TwoFactorSettings() {
       {backupCodes && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 mb-4">
           <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">
-            Save your backup codes
+            Save your backup codes now
           </p>
           <p className="text-[11px] text-muted-foreground mb-3">
-            Each code works once if you lose your authenticator. Store them somewhere safe —
-            they won't be shown again.
+            You'll see these codes only once — store them somewhere safe, because they won't be
+            shown again. Each code lets you sign in once if you lose your authenticator. To get a
+            new set later, you'll need to regenerate your backup codes below (which replaces these).
           </p>
           <div className="grid grid-cols-2 gap-1.5 font-mono text-xs text-foreground mb-3">
             {backupCodes.map((c) => (
@@ -151,7 +162,15 @@ export default function TwoFactorSettings() {
             ))}
           </div>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={copyCodes}>
-            <Copy size={12} /> Copy all
+            {copied ? (
+              <>
+                <CheckCircle size={12} /> Copied
+              </>
+            ) : (
+              <>
+                <Copy size={12} /> Copy all
+              </>
+            )}
           </Button>
         </div>
       )}

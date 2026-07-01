@@ -63,4 +63,22 @@ public class AccountTokenService
         await _db.SaveChangesAsync(ct);
         return token.User;
     }
+
+    /// <summary>Look up the owning user for a token by hash/purpose <b>without</b>
+    /// consuming it, even if it is already used or expired. Used to make email
+    /// verification idempotent: a second hit on a link a scanner/prefetch or a
+    /// double-click already consumed should still confirm the (now-verified) user
+    /// instead of showing a misleading "expired" error. Returns null if no such
+    /// token was ever issued.</summary>
+    public async Task<User?> PeekUserAsync(string rawToken, AccountTokenPurpose purpose, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(rawToken)) return null;
+        var hash = TokenHasher.Hash(rawToken.Trim());
+
+        var token = await _db.AccountTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.TokenHash == hash && t.Purpose == purpose, ct);
+
+        return token?.User;
+    }
 }

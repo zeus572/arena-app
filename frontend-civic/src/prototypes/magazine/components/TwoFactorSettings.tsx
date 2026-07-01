@@ -29,6 +29,7 @@ export default function TwoFactorSettings() {
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [password, setPassword] = useState("");
   const [showDisable, setShowDisable] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -111,8 +112,15 @@ export default function TwoFactorSettings() {
     }
   };
 
-  const copyCodes = () => {
-    if (backupCodes) void navigator.clipboard.writeText(backupCodes.join("\n"));
+  const copyCodes = async () => {
+    if (!backupCodes) return;
+    try {
+      await navigator.clipboard.writeText(backupCodes.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard may be unavailable (e.g. insecure context); leave the codes on screen to copy manually.
+    }
   };
 
   const inputClass =
@@ -139,9 +147,11 @@ export default function TwoFactorSettings() {
 
       {backupCodes && (
         <div className="mt-5 border border-[var(--border)] bg-[var(--bg)] p-5">
-          <p className="text-sm font-semibold text-[var(--fg)]">Save your backup codes</p>
+          <p className="text-sm font-semibold text-[var(--fg)]">Save your backup codes now</p>
           <p className="mt-1 text-xs text-[var(--fg-soft)]">
-            Each code works once if you lose your authenticator. They won't be shown again.
+            You'll see these codes only once — store them somewhere safe, because they won't be
+            shown again. Each code lets you sign in once if you lose your authenticator. To get a
+            new set later, you'll need to regenerate your backup codes below (which replaces these).
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm text-[var(--fg)]">
             {backupCodes.map((c) => (
@@ -149,7 +159,7 @@ export default function TwoFactorSettings() {
             ))}
           </div>
           <Button type="button" variant="ghost" onClick={copyCodes} className="mt-3">
-            Copy all
+            {copied ? "Copied" : "Copy all"}
           </Button>
         </div>
       )}
