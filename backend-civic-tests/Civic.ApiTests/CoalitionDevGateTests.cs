@@ -33,6 +33,7 @@ public class CoalitionDevGateTests
                 var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<CivicDbContext>));
                 if (descriptor is not null) services.Remove(descriptor);
                 services.AddDbContext<CivicDbContext>(o => o.UseNpgsql(CivicApiFactory.TestConnectionString));
+                TestHostConfig.DisableBackgroundGenerators(services);
             });
         }
     }
@@ -43,6 +44,7 @@ public class CoalitionDevGateTests
     public async Task DevOnlyEndpoints_Return404_OutsideDevelopment_ButGameplayStillWorks()
     {
         using var factory = new StagingCivicApiFactory();
+        await factory.WaitUntilReadyAsync();
         var client = factory.CreateClient();
         // A normal user act requires a verified, signed-in user; authenticate as one.
         // (The dev-only affordances below stay blocked regardless of auth.)

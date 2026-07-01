@@ -19,21 +19,28 @@ public class CampaignPostGenerationService : BackgroundService
     private readonly ILlmClient _llm;
     private readonly IOptionsMonitor<CampaignOptions> _opts;
     private readonly ILogger<CampaignPostGenerationService> _log;
+    private readonly StartupReadiness _readiness;
 
     public CampaignPostGenerationService(
         IServiceScopeFactory scopes,
         ILlmClient llm,
         IOptionsMonitor<CampaignOptions> opts,
-        ILogger<CampaignPostGenerationService> log)
+        ILogger<CampaignPostGenerationService> log,
+        StartupReadiness readiness)
     {
         _scopes = scopes;
         _llm = llm;
         _opts = opts;
         _log = log;
+        _readiness = readiness;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Park until DB migrations + seeding finish so we never touch an un-migrated schema.
+        try { await _readiness.WaitUntilReadyAsync(stoppingToken); }
+        catch (OperationCanceledException) { return; }
+
         await Task.Delay(TimeSpan.FromSeconds(35), stoppingToken).ContinueWith(_ => { }, TaskScheduler.Default);
 
         while (!stoppingToken.IsCancellationRequested)

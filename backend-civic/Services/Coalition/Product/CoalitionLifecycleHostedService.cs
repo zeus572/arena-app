@@ -12,19 +12,25 @@ public class CoalitionLifecycleHostedService : BackgroundService
     private readonly IConfiguration _config;
     private readonly ILogger<CoalitionLifecycleHostedService> _log;
     private readonly Arena.Shared.Social.SocialHeartbeatHook _social;
+    private readonly StartupReadiness _readiness;
 
     public CoalitionLifecycleHostedService(
         IServiceScopeFactory scopes, IConfiguration config, ILogger<CoalitionLifecycleHostedService> log,
-        Arena.Shared.Social.SocialHeartbeatHook social)
+        Arena.Shared.Social.SocialHeartbeatHook social, StartupReadiness readiness)
     {
         _scopes = scopes;
         _config = config;
         _log = log;
         _social = social;
+        _readiness = readiness;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Park until DB migrations + seeding finish so we never touch an un-migrated schema.
+        try { await _readiness.WaitUntilReadyAsync(stoppingToken); }
+        catch (OperationCanceledException) { return; }
+
         await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken).ContinueWith(_ => { }, TaskScheduler.Default);
 
         var minutes = Math.Max(1, _config.GetValue("CoalitionLifecycle:TickMinutes", 30));

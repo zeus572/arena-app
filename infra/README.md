@@ -62,6 +62,75 @@ az postgres flexible-server firewall-rule delete `
     --yes
 ```
 
+The above is the **manual / fallback** path. In CI, migrations are pre-applied
+automatically — see the next section.
+
+## CI database migrations (both apps) — one-time setup
+
+Both deploy workflows (`deploy.yml`, `deploy-civic.yml`) now have a **`migrate`
+job that runs before the backend deploy**: it builds an EF migration bundle
+(`dotnet ef migrations bundle`), opens a just-in-time firewall rule for the
+runner IP, applies the bundle against the prod DB over a passwordless Entra
+token, then removes the firewall rule. The deploy job `needs:` the migrate job,
+so a failed migration **blocks the deploy** rather than shipping code against an
+un-migrated schema. (The in-app background `MigrateAsync` remains as a safety
+net, so it's a fast no-op once CI has applied everything.)
+
+> **Migrations must be expand/contract (backward-compatible).** CI migrates the
+> DB moments before the new code loads, so the *old* code briefly runs against
+> the *new* schema. Expand (add columns/tables) in one release; contract (drop)
+> only in a later release once no running code needs the old shape.
+
+> **Status: provisioned 2026-06-30.** The grants below are already done against
+> the existing SP `github-actions-civic-restart`
+> (appId `039e8937-55fd-417c-8ba5-54c771351a79`, object id
+> `b615e9a1-c05d-4d6d-8629-57692774dd2f`): a least-privilege custom role
+> **"PG Firewall Rule Manager (CI)"** is assigned at the `arena-pgserver` scope,
+> the SP is a PG Entra admin named **`ci-migrations`**, and the repo secret
+> **`CI_PG_AAD_USER=ci-migrations`** is set. The steps are kept here for
+> reproducibility / disaster recovery. NOTE: the migrate auth could not be
+> end-to-end tested locally (the SP is OIDC-only — no secret to mint a token
+> with), so the **first `release` run is the real test**; if the username is
+> wrong, it's a one-line `gh secret set CI_PG_AAD_USER` fix.
+>
+> ⚠️ az-CLI gotcha hit during setup: `az role assignment create/list --scope <id>`
+> throws `MissingSubscription` even with the right default subscription. Work
+> around it by creating the assignment through ARM directly:
+> `az rest --method put --url "https://management.azure.com<scope>/providers/Microsoft.Authorization/roleAssignments/<new-guid>?api-version=2022-04-01" --body '{"properties":{"roleDefinitionId":"<roleDefId>","principalId":"<spObjectId>","principalType":"ServicePrincipal"}}'`.
+
+This needs a **one-time** Azure setup before the first `release` deploy that
+includes these workflow changes (until it's done, the migrate job — and thus the
+deploy — will fail):
+
+1. **Reuse the existing OIDC service principal** (the one civic's
+   `restart-backend-civic` job already uses: `AZURE_CLIENT_ID` / `AZURE_TENANT_ID`
+   / `AZURE_SUBSCRIPTION_ID`). Its federated credential must cover the `release`
+   branch (it already does for civic).
+
+2. **Grant that SP rights to manage firewall rules** on the PG flex server:
+   ```pwsh
+   $spId = az ad sp show --id $env:AZURE_CLIENT_ID --query id -o tsv
+   $pg   = az postgres flexible-server show -g rg-arena -n arena-pgserver --query id -o tsv
+   az role assignment create --assignee $spId --role "Contributor" --scope $pg
+   ```
+   (Or a narrower custom role limited to `.../firewallRules` write/delete.)
+
+3. **Make the SP a Postgres Entra role with DDL** on both databases. Add it as an
+   Entra admin (simplest) or create a mapped PG role and grant schema privileges
+   on `arena` and `civic`. Do **NOT** reuse a personal admin account (see
+   `docs/PENDING_prod_entra_admin_cleanup.md`).
+   ```pwsh
+   az postgres flexible-server ad-admin create `
+       -g rg-arena -s arena-pgserver `
+       --object-id $spId --display-name "ci-migrations" --type ServicePrincipal
+   ```
+
+4. **Add the `CI_PG_AAD_USER` repo secret** = the Postgres role name the SP
+   authenticates as (the Entra principal/display name registered above). The
+   workflows put this in the connection string's `Username`.
+
+Once these exist, every `release` deploy applies migrations first, then deploys.
+
 ## GitHub Actions
 
 The `.github/workflows/deploy-civic.yml` workflow expects these repo settings:
@@ -122,3 +191,40 @@ az webapp delete --resource-group rg-arena --name civic-api-<suffix>
 az staticwebapp delete --resource-group rg-arena --name civic-frontend-<suffix> --yes
 # Database is dropped manually if you want — leave it for safety.
 ```
+
+---
+
+# Arena (debate) backend — `arena-api-2af326`
+
+`arena.bicep` back-fills the Arena App Service into source control. The Arena app
+was created manually, so unlike civic its platform config (Always On,
+`healthCheckPath=/health`, run-from-package) only ever lived in the portal. The
+template captures it so the warmup-relevant settings are reproducible.
+
+> ⚠️ **Reconcile before applying.** ARM replaces the *entire* `appSettings`
+> collection on deploy — any live setting not listed in `arena.bicep` is **deleted**.
+> Arena's live settings were set by hand and are not fully reflected in this repo.
+> Dump and reconcile first:
+> ```pwsh
+> az webapp config appsettings list -g rg-arena -n arena-api-2af326 -o table
+> ```
+> The `appSettings` block in `arena.bicep` is a starting point, not ground truth —
+> secrets are `@secure()` params, and several known settings (`Auth__AdminEmails__*`,
+> `Email__*`, `Cors__Origins__*`, `BotHeartbeat__*`, `Ranking__*`, `News__*`,
+> `Llm__Provider`, `SocialPublisher__*`) are intentionally omitted rather than guessed.
+
+### Run-from-package + restart (open risk)
+
+Civic runs `WEBSITE_RUN_FROM_PACKAGE=1` and **restarts** after each deploy (the
+`restart-backend-civic` job) so the new package is actually loaded. **Arena's
+`deploy.yml` has no restart step.** If the live Arena app is also RFP=1, CI zip
+deploys may keep serving the *old* package until the worker restarts. Verify the
+live value:
+
+```pwsh
+az webapp config appsettings list -g rg-arena -n arena-api-2af326 `
+    --query "[?name=='WEBSITE_RUN_FROM_PACKAGE']" -o table
+```
+
+Then either keep `1` and add an `az webapp restart` step to `deploy.yml` (mirroring
+civic), or set `0` if the app is not run-from-package.

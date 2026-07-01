@@ -61,7 +61,8 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
                 MaxItemsPerDay = 100,
                 GenerationIntervalMinutes = 30,
             }),
-            NullLogger<CivicContentGenerationService>.Instance);
+            NullLogger<CivicContentGenerationService>.Instance,
+            _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
     }
 
     private async Task SeedIngestedAsync()
@@ -197,7 +198,8 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
             scopes,
             llm,
             new TestOptionsMonitor<NewsOptions>(new NewsOptions { BatchSize = 5, MaxItemsPerDay = 0 }),
-            NullLogger<CivicContentGenerationService>.Instance);
+            NullLogger<CivicContentGenerationService>.Instance,
+            _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
 
         var done = await svc.GenerateBatchAsync();
         done.Should().Be(0);
@@ -249,7 +251,8 @@ public class CivicContentGenerationServiceTests : IAsyncLifetime
             {
                 BatchSize = 3, MaxItemsPerDay = 100, MaxStoryAgeDays = 14,
             }),
-            NullLogger<CivicContentGenerationService>.Instance);
+            NullLogger<CivicContentGenerationService>.Instance,
+            _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
 
         await svc.GenerateBatchAsync();
 

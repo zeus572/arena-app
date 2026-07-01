@@ -25,6 +25,9 @@ public class CivicApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<CivicDbContext>(options =>
                 options.UseNpgsql(TestConnectionString));
+
+            // Keep the suite deterministic — no timer-driven content generators.
+            TestHostConfig.DisableBackgroundGenerators(services);
         });
     }
 }

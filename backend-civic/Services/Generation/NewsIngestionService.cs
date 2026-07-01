@@ -25,6 +25,7 @@ public class NewsIngestionService : BackgroundService
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<NewsIngestionService> _log;
+    private readonly StartupReadiness _readiness;
 
     public NewsIngestionService(
         IServiceScopeFactory scopes,
@@ -32,7 +33,8 @@ public class NewsIngestionService : BackgroundService
         IOptionsMonitor<NewsOptions> opts,
         IHttpClientFactory httpFactory,
         ILoggerFactory loggerFactory,
-        ILogger<NewsIngestionService> log)
+        ILogger<NewsIngestionService> log,
+        StartupReadiness readiness)
     {
         _scopes = scopes;
         _feed = feed;
@@ -40,10 +42,15 @@ public class NewsIngestionService : BackgroundService
         _httpFactory = httpFactory;
         _loggerFactory = loggerFactory;
         _log = log;
+        _readiness = readiness;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Park until DB migrations + seeding finish so we never touch an un-migrated schema.
+        try { await _readiness.WaitUntilReadyAsync(stoppingToken); }
+        catch (OperationCanceledException) { return; }
+
         // First tick after a short delay so app startup isn't blocked by RSS network.
         await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken).ContinueWith(_ => { }, TaskScheduler.Default);
 
