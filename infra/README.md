@@ -62,8 +62,10 @@ az postgres flexible-server firewall-rule delete `
     --yes
 ```
 
-The above is the **manual / fallback** path. In CI, migrations are pre-applied
-automatically — see the next section.
+The above is the **manual / fallback** path (the `firewall-rule` flags shown are
+the older-az form; newer az wants `--server-name`/`--name` — see the gotcha in
+the CI section). In CI, migrations are pre-applied automatically — see the next
+section.
 
 ## CI database migrations (both apps) — one-time setup
 
@@ -81,22 +83,29 @@ net, so it's a fast no-op once CI has applied everything.)
 > the *new* schema. Expand (add columns/tables) in one release; contract (drop)
 > only in a later release once no running code needs the old shape.
 
-> **Status: provisioned 2026-06-30.** The grants below are already done against
-> the existing SP `github-actions-civic-restart`
+> **Status: provisioned 2026-06-30, validated in prod 2026-07-01.** The grants
+> below are done against the existing SP `github-actions-civic-restart`
 > (appId `039e8937-55fd-417c-8ba5-54c771351a79`, object id
 > `b615e9a1-c05d-4d6d-8629-57692774dd2f`): a least-privilege custom role
 > **"PG Firewall Rule Manager (CI)"** is assigned at the `arena-pgserver` scope,
 > the SP is a PG Entra admin named **`ci-migrations`**, and the repo secret
-> **`CI_PG_AAD_USER=ci-migrations`** is set. The steps are kept here for
-> reproducibility / disaster recovery. NOTE: the migrate auth could not be
-> end-to-end tested locally (the SP is OIDC-only — no secret to mint a token
-> with), so the **first `release` run is the real test**; if the username is
-> wrong, it's a one-line `gh secret set CI_PG_AAD_USER` fix.
+> **`CI_PG_AAD_USER=ci-migrations`** is set. A full `release` deploy on
+> 2026-07-01 ran both migrate jobs + backend deploys green — the `ci-migrations`
+> token auth works. The steps are kept here for reproducibility / disaster
+> recovery.
 >
-> ⚠️ az-CLI gotcha hit during setup: `az role assignment create/list --scope <id>`
-> throws `MissingSubscription` even with the right default subscription. Work
-> around it by creating the assignment through ARM directly:
-> `az rest --method put --url "https://management.azure.com<scope>/providers/Microsoft.Authorization/roleAssignments/<new-guid>?api-version=2022-04-01" --body '{"properties":{"roleDefinitionId":"<roleDefId>","principalId":"<spObjectId>","principalType":"ServicePrincipal"}}'`.
+> ⚠️ **az-CLI gotchas** (both hit during this work — the migrate job failed twice
+> on the second one before it was right):
+> - `az role assignment create/list --scope <id>` throws `MissingSubscription`
+>   even with the right default subscription. Create the assignment through ARM
+>   instead: `az rest --method put --url "https://management.azure.com<scope>/providers/Microsoft.Authorization/roleAssignments/<new-guid>?api-version=2022-04-01" --body '{"properties":{"roleDefinitionId":"<roleDefId>","principalId":"<spObjectId>","principalType":"ServicePrincipal"}}'`.
+> - `az postgres flexible-server firewall-rule` **flag names differ by az version**:
+>   the GitHub-hosted runner needs `--server-name <server> --name <rule>` (it
+>   rejects `--rule-name`), while older/local az uses `--name <server>
+>   --rule-name <rule>`. The workflows try the runner form and fall back. Do
+>   **not** swap in an ARM `az rest` PUT for firewall rules — that call is async
+>   and races the migration apply; the native command waits for the rule to
+>   actually become active.
 
 This needs a **one-time** Azure setup before the first `release` deploy that
 includes these workflow changes (until it's done, the migrate job — and thus the
@@ -120,7 +129,9 @@ deploy — will fail):
    on `arena` and `civic`. Do **NOT** reuse a personal admin account (see
    `docs/PENDING_prod_entra_admin_cleanup.md`).
    ```pwsh
-   az postgres flexible-server ad-admin create `
+   # NOTE: the subcommand is `microsoft-entra-admin` in current az
+   # (the older `ad-admin` alias is gone).
+   az postgres flexible-server microsoft-entra-admin create `
        -g rg-arena -s arena-pgserver `
        --object-id $spId --display-name "ci-migrations" --type ServicePrincipal
    ```
@@ -130,6 +141,46 @@ deploy — will fail):
    workflows put this in the connection string's `Username`.
 
 Once these exist, every `release` deploy applies migrations first, then deploys.
+
+## Deploy warmup & cold start
+
+Both backends (Arena `backend/` and Civic `backend-civic/`) run DB migration +
+seeding **off the Kestrel critical path** so the container answers its warmup
+probe immediately instead of blocking on the slow managed-identity → Postgres
+handshake. (Inline-before-`app.Run()` migration historically pushed cold starts
+past the platform's ~230s kill threshold and caused flapping deploy outages;
+Civic was migrated to this pattern on the `civic-warmup-readiness` branch.)
+
+- **`DatabaseInitializerService`** (background hosted service) runs
+  `MigrateAsync` + seeding after Kestrel is listening; 3 attempts, 300s/attempt
+  timeout, and it stops the app on hard failure so the platform recycles it.
+- **`StartupReadiness`** gate: until init finishes, non-`/health` requests get
+  `503 + Retry-After`; `/health` returns `200 {status:"starting"}` **without
+  touching the DB** so the platform warmup probe passes fast, then
+  `{status:"healthy","ready":true}` once ready. Background workers also park on
+  readiness. *Verified in prod 2026-07-01: Civic logs show `Now listening` ~2s
+  after init starts — Kestrel is no longer blocked.*
+- **ReadyToRun:** both APIs publish `<PublishReadyToRun>` with `-r linux-x64`
+  (see the deploy workflows) to pre-JIT and cut first-request warmup.
+
+**B1 ceiling.** The remaining cold-start time is the *container* start itself
+(oryx script-gen + base-image CA-cert rehash + dotnet load), ~3 min on the
+shared B1 and outside app control. Driving deploy downtime to ~zero would need a
+Standard (S1) tier + a staging slot with swap-on-warmup — deliberately out of
+scope; we chose to shrink the window, not eliminate it.
+
+**Run-from-package / restart — asymmetric (open item).** Civic runs
+`WEBSITE_RUN_FROM_PACKAGE=1` and its workflow has a post-deploy
+`restart-backend-civic` (`az webapp restart`) so the new package loads.
+**Arena's `deploy.yml` has no restart step.** If Arena is also RFP=1, a *code*
+deploy may keep serving the old package until something restarts it. (Arena's
+warmup-branch change was build-only — ReadyToRun — so this hasn't bitten yet.)
+Verify before Arena ships an actual code change:
+```pwsh
+az webapp config appsettings list -g rg-arena -n arena-api-2af326 `
+    --query "[?name=='WEBSITE_RUN_FROM_PACKAGE']" -o table
+```
+If it's `1`, add an `az webapp restart` step to `deploy.yml` mirroring Civic's.
 
 ## GitHub Actions
 
