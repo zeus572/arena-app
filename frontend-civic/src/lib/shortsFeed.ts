@@ -1,23 +1,21 @@
-import type { CampaignPost } from "@/api/campaign";
 import type { ProvisionSummary } from "@/api/coalition";
 import type { BudgetFact } from "@/api/budgetFacts";
 import type { CivicBriefingSummary } from "@/api/types";
 
 /**
- * One card in the Shorts feed. The feed mixes short content from a breadth of
- * synthesized civic sources; each kind carries its own payload and is rendered by
- * the matching sub-card (see components/shorts/ShortCard).
+ * One card in the Shorts feed. The feed leads with interesting civic facts (budget +
+ * news) and weaves in reflective content (think-deeper prompts, coalition provisions).
+ * Candidate campaign posts are intentionally NOT part of Shorts — they're only relevant
+ * to Campaign Managers and live in the campaign surfaces instead.
  */
 export type ShortItem =
-  | { kind: "post"; key: string; post: CampaignPost }
   | { kind: "coalition"; key: string; provision: ProvisionSummary }
   | { kind: "thinkDeeper"; key: string; briefing: CivicBriefingSummary }
   | { kind: "news"; key: string; briefing: CivicBriefingSummary }
   | { kind: "budget"; key: string; fact: BudgetFact };
 
-/** The finite "interstitial" pools sprinkled between campaign posts. */
+/** The finite content pools the feed is mixed from. */
 export type ShortsPools = {
-  posts: CampaignPost[];
   coalition: ProvisionSummary[];
   thinkDeeper: CivicBriefingSummary[];
   /** News-sourced briefings (carry an upstream publisher) — surfaced as fact cards. */
@@ -32,9 +30,9 @@ export type MixerState = {
   thinkDeeperAt: number;
   budgetAt: number;
   newsAt: number;
-  /** Fact interstitials emitted (budget/news), driving the alternation between them. */
+  /** Facts emitted (budget/news), driving the alternation between them. */
   factCount: number;
-  /** Filler interstitials emitted (think-deeper/coalition), driving their alternation. */
+  /** Fillers emitted (think-deeper/coalition), driving their alternation. */
   fillerCount: number;
 };
 
@@ -47,25 +45,19 @@ export const initialMixerState: MixerState = {
   fillerCount: 0,
 };
 
-/** Inject one interstitial after every N posts. Facts-first, so this also sets the fact cadence. */
-const POSTS_PER_INTERSTITIAL = 2;
+/** Facts are the spine; a reflective/coalition card is woven in after every N facts. */
+const FACTS_PER_FILLER = 3;
 
-/**
- * Facts (budget + news) LEAD the interstitials: a fact is emitted whenever one is available,
- * alternating budget/news so a long run isn't all one kind. Only once both fact pools are
- * drained do the fillers (think-deeper, coalition) take the slot.
- */
+/** Facts alternate budget/news; fillers alternate think-deeper/coalition. */
 const FACT_ROTATION = ["budget", "news"] as const;
 const FILLER_ROTATION = ["thinkDeeper", "coalition"] as const;
 
 /**
- * Pull the next interstitial item, advancing `state`. Facts are exhausted before any filler
- * appears (the "facts lead" rule); within each group the rotation alternates and skips a
- * drained pool rather than leaving a gap. Returns null when every finite pool is drained.
+ * Pull the next fact (budget then news, alternating), advancing `state`. Skips a drained
+ * pool rather than leaving a gap; returns null when both fact pools are spent.
  * Mutates `state` in place.
  */
-function nextInterstitial(pools: ShortsPools, state: MixerState): ShortItem | null {
-  // 1) Facts lead — budget then news, alternating, until both are spent.
+function nextFact(pools: ShortsPools, state: MixerState): ShortItem | null {
   for (let probe = 0; probe < FACT_ROTATION.length; probe++) {
     const slot = FACT_ROTATION[(state.factCount + probe) % FACT_ROTATION.length];
     if (slot === "budget" && state.budgetAt < pools.budget.length) {
@@ -79,7 +71,14 @@ function nextInterstitial(pools: ShortsPools, state: MixerState): ShortItem | nu
       return { kind: "news", key: `nw-${briefing.id}`, briefing };
     }
   }
-  // 2) Fillers fill the remaining slots — think-deeper then coalition, alternating.
+  return null;
+}
+
+/**
+ * Pull the next reflective filler (think-deeper then coalition, alternating), advancing
+ * `state`. Returns null when both filler pools are spent. Mutates `state` in place.
+ */
+function nextFiller(pools: ShortsPools, state: MixerState): ShortItem | null {
   for (let probe = 0; probe < FILLER_ROTATION.length; probe++) {
     const slot = FILLER_ROTATION[(state.fillerCount + probe) % FILLER_ROTATION.length];
     if (slot === "thinkDeeper" && state.thinkDeeperAt < pools.thinkDeeper.length) {
@@ -97,23 +96,42 @@ function nextInterstitial(pools: ShortsPools, state: MixerState): ShortItem | nu
 }
 
 /**
- * Interleave a batch of campaign posts with the finite interstitial pools. Pure
- * apart from advancing `state`, which the caller carries forward across paginated
- * appends so the rotation continues without repeats. Posts are the infinite spine;
- * one interstitial — facts first — is woven in after every {@link POSTS_PER_INTERSTITIAL} posts.
+ * Build a facts-first batch of the Shorts feed. Interesting facts (budget + news, alternating)
+ * are the spine; a reflective filler (think-deeper / coalition) is woven in after every
+ * {@link FACTS_PER_FILLER} facts. Pure apart from advancing `state`, which the caller carries
+ * forward across paginated appends so the rotation never repeats an item.
+ *
+ * `flushFillers` (default true) controls the tail: when this is the last batch it appends any
+ * remaining fillers so nothing synthesized is dropped. While more news pages are still coming
+ * the caller passes `false`, holding fillers back so they keep weaving between facts instead of
+ * clumping between page boundaries.
  */
 export function buildFeed(
-  posts: CampaignPost[],
   pools: ShortsPools,
   state: MixerState,
+  opts: { flushFillers?: boolean } = {},
 ): ShortItem[] {
+  const { flushFillers = true } = opts;
   const out: ShortItem[] = [];
-  posts.forEach((post, i) => {
-    out.push({ kind: "post", key: `post-${post.id}`, post });
-    if ((i + 1) % POSTS_PER_INTERSTITIAL === 0) {
-      const item = nextInterstitial(pools, state);
-      if (item) out.push(item);
+
+  let sinceFiller = 0;
+  let fact: ShortItem | null;
+  while ((fact = nextFact(pools, state)) !== null) {
+    out.push(fact);
+    if (++sinceFiller >= FACTS_PER_FILLER) {
+      const filler = nextFiller(pools, state);
+      if (filler) {
+        out.push(filler);
+        sinceFiller = 0;
+      }
     }
-  });
+  }
+
+  // Facts drained for now — on the final batch, surface any remaining reflective/coalition content.
+  if (flushFillers) {
+    let filler: ShortItem | null;
+    while ((filler = nextFiller(pools, state)) !== null) out.push(filler);
+  }
+
   return out;
 }
