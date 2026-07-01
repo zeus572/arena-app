@@ -53,9 +53,16 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Open PG firewall for this runner
+        # The `az postgres flexible-server firewall-rule` server flag differs by az
+        # version (--server-name on the hosted runner, --name on others); --rule-name
+        # is common. Try one, fall back to the other.
         run: |
           RUNNER_IP=$(curl -s https://api.ipify.org)
           az postgres flexible-server firewall-rule create \
+            --resource-group rg-arena --server-name arena-pgserver \
+            --rule-name ci-migrate-civic-${{ github.run_id }} \
+            --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP" \
+          || az postgres flexible-server firewall-rule create \
             --resource-group rg-arena --name arena-pgserver \
             --rule-name ci-migrate-civic-${{ github.run_id }} \
             --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP"
@@ -70,8 +77,12 @@ jobs:
         if: always()
         run: |
           az postgres flexible-server firewall-rule delete \
+            --resource-group rg-arena --server-name arena-pgserver \
+            --rule-name ci-migrate-civic-${{ github.run_id }} --yes \
+          || az postgres flexible-server firewall-rule delete \
             --resource-group rg-arena --name arena-pgserver \
-            --rule-name ci-migrate-civic-${{ github.run_id }} --yes || true
+            --rule-name ci-migrate-civic-${{ github.run_id }} --yes \
+          || true
 
   deploy-backend-civic:
     needs: migrate-civic
