@@ -41,6 +41,23 @@ type Tokens = { accessToken: string; refreshToken: string };
 
 let refreshInFlight: Promise<string | null> | null = null;
 
+/** HTTP status of an (axios-shaped) error response, or null for network-level failures. */
+export function errorStatus(err: unknown): number | null {
+  const res = (err as { response?: { status?: number } } | null)?.response;
+  return typeof res?.status === "number" ? res.status : null;
+}
+
+/**
+ * True when the backend saw the credentials and refused them (expired/revoked
+ * refresh token, bad request). False for anything transient — offline, DNS,
+ * or a 5xx such as the backend's 503 startup readiness gate — where the
+ * session may still be perfectly valid.
+ */
+function isDefinitiveAuthRejection(err: unknown): boolean {
+  const status = errorStatus(err);
+  return status === 400 || status === 401 || status === 403;
+}
+
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
 }
@@ -107,10 +124,13 @@ export function refreshAccessToken(): Promise<string | null> {
       );
       storeTokens(data);
       return data.accessToken;
-    } catch {
+    } catch (err) {
       // Refresh token expired/revoked → the session is over. Clear so callers
-      // fall back to anonymous rather than replaying a dead token.
-      clearTokens();
+      // fall back to anonymous rather than replaying a dead token. But ONLY on
+      // a definitive rejection: a transient failure (offline, 503 while the
+      // backend cold-starts) must keep the tokens so a later attempt recovers
+      // instead of silently logging the user out.
+      if (isDefinitiveAuthRejection(err)) clearTokens();
       return null;
     } finally {
       refreshInFlight = null;
