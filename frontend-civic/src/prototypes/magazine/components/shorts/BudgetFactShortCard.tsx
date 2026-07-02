@@ -13,7 +13,7 @@ import { ShortCardShell } from "./ShortCardShell";
 export function BudgetFactShortCard({ fact }: { fact: BudgetFact }) {
   return (
     <ShortCardShell>
-      <div className="flex min-h-0 flex-1 items-center">
+      <div className="my-4 flex flex-1 flex-col justify-center">
         <BudgetFactFeatureCard fact={fact} />
       </div>
 
