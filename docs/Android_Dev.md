@@ -6,9 +6,8 @@ Capacitor shell (`frontend-civic/android/`). Web and mobile share one codebase:
 
 ## One-time setup
 
-1. Install **Android Studio** (includes the SDK, emulator, and adb).
-   - During setup, create a device in **Device Manager** (any Pixel image, API 34+).
-   - Add `%LOCALAPPDATA%\Android\Sdk\platform-tools` to PATH so `adb` resolves.
+1. Install the Android toolchain (SDK, JDK 21, emulator, adb) — full guide,
+   including a scriptable no-GUI path for CI/agents: [Android_Setup.md](Android_Setup.md).
 2. `cd frontend-civic && npm install` (Capacitor packages are in package.json).
 3. No `.env` needed for local dev — the localhost API defaults work because of
    `adb reverse` (below).
