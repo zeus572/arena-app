@@ -29,6 +29,7 @@ export default function MagazineOnboarding() {
   const [confidence, setConfidence] = useState<AnswerConfidence>("SomewhatSure");
   const [intensity, setIntensity] = useState<AnswerIntensity>("Medium");
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const navigate = useNavigate();
 
@@ -49,6 +50,7 @@ export default function MagazineOnboarding() {
     if (!q || choiceKey === null) return;
 
     setSubmitting(true);
+    setSaveError(null);
     try {
       await submitAnswer({
         questionId: q.id,
@@ -56,6 +58,11 @@ export default function MagazineOnboarding() {
         confidence,
         intensity,
       });
+    } catch {
+      // Don't advance on failure — the answer wasn't saved, so silently moving on
+      // (or "finishing") would lose it without the user ever knowing.
+      setSaveError("Couldn't save your answer — please try again.");
+      return;
     } finally {
       setSubmitting(false);
     }
@@ -220,10 +227,15 @@ export default function MagazineOnboarding() {
       </section>
 
       <div className="mt-12 flex items-center justify-between">
-        <p className="text-xs text-[var(--muted)]">
-          {choiceKey === null
-            ? "Pick A or B to continue."
-            : "Adjust confidence/intensity if you'd like, then continue."}
+        <p
+          className={`text-xs ${saveError ? "font-semibold text-rose-700" : "text-[var(--muted)]"}`}
+          role={saveError ? "alert" : undefined}
+          data-testid={saveError ? "onboarding-error" : undefined}
+        >
+          {saveError ??
+            (choiceKey === null
+              ? "Pick A or B to continue."
+              : "Adjust confidence/intensity if you'd like, then continue.")}
         </p>
         <Button
           onClick={next}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, X, Compass, ScrollText, Sparkles, PenLine, Star, Flag } from "lucide-react";
 import {
   proposeAmendment,
@@ -149,8 +149,9 @@ function VersionRow({
 
 export default function CoalitionProvisionParticipate() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { d, run, busy } = useProvision(id);
+  const { d, run, busy, error } = useProvision(id);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -159,8 +160,19 @@ export default function CoalitionProvisionParticipate() {
   // True right after a successful present, so we can confirm it landed. Cleared the
   // moment the player edits an answer (they're now drafting a different version).
   const [justPresented, setJustPresented] = useState(false);
+  // Set right after a successful co-sign. Co-signing completes the activity, so we
+  // show an unmistakable confirmation overlay and then return to the overview.
+  const [coSigned, setCoSigned] = useState(false);
 
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
+
+  // After a co-sign lands, let the confirmation register, then back out to the
+  // coalition overview — the participate task is done for this bill.
+  useEffect(() => {
+    if (!coSigned) return;
+    const t = setTimeout(() => navigate(`/coalition/${id}`), 1500);
+    return () => clearTimeout(t);
+  }, [coSigned, id, navigate]);
 
   const answeredKeys = useMemo(() => Object.keys(answers).filter((k) => answers[k]), [answers]);
 
@@ -202,7 +214,12 @@ export default function CoalitionProvisionParticipate() {
     answeredKeys.length > 0 && (rankedPresented[0]?.matches ?? 0) > 0 ? rankedPresented[0]!.v.id : null;
 
   const progressPct = d.subQuestions.length ? (answeredKeys.length / d.subQuestions.length) * 100 : 0;
-  const onAccept = (versionId: string, accept: boolean) => run(() => castAcceptance(id, versionId, accept));
+  const onAccept = async (versionId: string, accept: boolean) => {
+    const ok = await run(() => castAcceptance(id, versionId, accept));
+    // Only confirm + back out if the co-sign actually landed. A co-sign completes the
+    // activity; a decline keeps you here to co-sign another version or present your own.
+    if (ok && accept) setCoSigned(true);
+  };
 
   function pick(key: string, option: string) {
     setJustPresented(false);
@@ -214,11 +231,12 @@ export default function CoalitionProvisionParticipate() {
     const positions = Object.fromEntries(answeredKeys.map((k) => [k, answers[k]]));
     if (Object.keys(positions).length === 0) return;
     const label = noOneHasPresented ? "first reading" : "carve-out";
-    await run(async () => {
+    const ok = await run(async () => {
       // Join with your Civic Compass position the first time you act on this bill.
       if (!d!.youJoined && compass.hasData) await joinProvision(id, compass.bucket);
       return proposeAmendment(id, positions, label);
     });
+    if (!ok) return; // failure already surfaced via `error`; don't fake a success banner
     // Keep the answers in place rather than blanking them: the version we just added
     // is built from these answers, so it now ranks top as a 4/4 "Closest to you" and
     // stays on screen as the confirmation. (Clearing them collapsed the whole compare
@@ -229,6 +247,27 @@ export default function CoalitionProvisionParticipate() {
 
   return (
     <section data-testid="coalition-participate" className="max-w-3xl">
+      {/* Co-sign confirmation — an unmistakable full-view overlay before we route
+          back to the overview, so the action never feels like a silent no-op. */}
+      {coSigned && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6 backdrop-blur-sm"
+          data-testid="cosign-success"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex max-w-sm flex-col items-center gap-3 rounded-3xl border border-emerald-300 bg-[var(--bg-elev)] p-8 text-center shadow-xl">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+              <Check size={30} className="text-emerald-600" />
+            </span>
+            <p className="text-lg font-semibold text-[var(--fg)]">You co-signed this version.</p>
+            <p className="text-sm text-[var(--muted)]">
+              Your name is on it — taking you back to the coalition.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Link to={`/coalition/${id}`} className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--fg)]">
         <ArrowLeft size={14} /> {d.title}
       </Link>
@@ -359,6 +398,17 @@ export default function CoalitionProvisionParticipate() {
       {!resolved && isAuthenticated && (
         <div className="mt-8">
           <StepHeader n={2} title="Where you land" />
+
+          {error && (
+            <div
+              role="alert"
+              data-testid="participate-error"
+              className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800"
+            >
+              <X size={16} className="mt-0.5 shrink-0 text-rose-600" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {answeredKeys.length === 0 ? (
             <p
@@ -498,7 +548,8 @@ export default function CoalitionProvisionParticipate() {
                         size="sm"
                         onClick={async () => {
                           if (!freeText.trim()) return;
-                          await run(() => proposeFreeformAmendment(id, freeText));
+                          const ok = await run(() => proposeFreeformAmendment(id, freeText));
+                          if (!ok) return; // keep the text so they can retry; error banner shows
                           setFreeText("");
                           setFreeOpen(false);
                         }}
