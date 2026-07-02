@@ -11,7 +11,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "android:reverse": "adb reverse tcp:5175 tcp:5175 && adb reverse tcp:5050 tcp:5050 && adb reverse tcp:5000 tcp:5000",
+    "android:dev": "cross-env CAP_SERVER_URL=http://localhost:5175 cap run android",
+    "android:sync": "npm run build && cap sync android",
+    "android:sync:devhttp": "npm run build && cross-env CAP_DEV_HTTP=1 cap sync android",
+    "android:open": "cap open android"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.1",
@@ -37,6 +42,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

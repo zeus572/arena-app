@@ -20,4 +20,13 @@ if (process.env.CAP_SERVER_URL) {
   };
 }
 
+// Bundled-dev mode: the baked bundle is served from https://localhost, so its
+// calls to the http://localhost:* dev backends are mixed content the WebView
+// blocks by default. CAP_DEV_HTTP=1 relaxes that for local testing only —
+// a release sync (neither env var set) stays secure-by-default.
+if (process.env.CAP_DEV_HTTP) {
+  config.android = { allowMixedContent: true };
+  config.server = { ...config.server, cleartext: true };
+}
+
 export default config;
