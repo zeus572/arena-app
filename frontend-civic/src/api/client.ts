@@ -1,14 +1,15 @@
 import axios from "axios";
 import { attach401Refresh, getFreshAccessToken } from "@/auth/tokenManager";
 import { notifyEmailUnverified } from "@/auth/emailVerificationGate";
+import { getStoredItem, setStoredItem } from "@/lib/persistentStorage";
 
 const USER_ID_KEY = "civic-user-id";
 
 export function getAnonymousUserId(): string {
-  let id = localStorage.getItem(USER_ID_KEY);
+  let id = getStoredItem(USER_ID_KEY);
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, id);
+    setStoredItem(USER_ID_KEY, id);
   }
   return id;
 }

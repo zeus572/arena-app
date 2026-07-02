@@ -4,6 +4,7 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { getStoredItem, removeStoredItem, setStoredItem } from "@/lib/persistentStorage";
 
 // ---------------------------------------------------------------------------
 // Shared access-token lifecycle for BOTH API clients (civic + arena).
@@ -59,29 +60,29 @@ function isDefinitiveAuthRejection(err: unknown): boolean {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY);
+  return getStoredItem(ACCESS_KEY);
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY);
+  return getStoredItem(REFRESH_KEY);
 }
 
 export function storeTokens({ accessToken, refreshToken }: Tokens): void {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
+  setStoredItem(ACCESS_KEY, accessToken);
+  setStoredItem(REFRESH_KEY, refreshToken);
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  removeStoredItem(ACCESS_KEY);
+  removeStoredItem(REFRESH_KEY);
 }
 
 export function getTrustedDeviceToken(): string | null {
-  return localStorage.getItem(TRUSTED_DEVICE_KEY);
+  return getStoredItem(TRUSTED_DEVICE_KEY);
 }
 
 export function storeTrustedDeviceToken(token: string): void {
-  localStorage.setItem(TRUSTED_DEVICE_KEY, token);
+  setStoredItem(TRUSTED_DEVICE_KEY, token);
 }
 
 /** Decode a JWT's `exp` (seconds since epoch), or null if it can't be read. */
