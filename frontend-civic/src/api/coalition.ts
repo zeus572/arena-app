@@ -182,6 +182,9 @@ export interface ProvisionDetail {
   outcome: CoalitionOutcome | null;
   yourUserId: string | null;
   youJoined: boolean;
+  /** The current user has co-signed (accepted) at least one version here — a
+   * stronger signal than youJoined, which is also true for a bare join. */
+  youCoSigned: boolean;
   gapWidth: number;
   difficulty: string;
   governance: boolean;

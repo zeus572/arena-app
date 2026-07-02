@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Bot, Compass, Sparkles, ScrollText, Clock, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Check, Compass, Sparkles, ScrollText, Clock, Users } from "lucide-react";
 import {
   getFramings,
   joinProvision,
@@ -117,23 +117,29 @@ function DeadlineRail({ bar }: { bar: ProvisionDetail["spectrumBar"] }) {
 
 export default function CoalitionProvisionDetail() {
   const { id = "" } = useParams();
-  const { d, reload, run, busy } = useProvision(id);
+  const { d, reload, run, busy, error } = useProvision(id);
   const [steelOpen, setSteelOpen] = useState(false);
   const [steelText, setSteelText] = useState("");
   const [framings, setFramings] = useState<Framings | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [lastAward, setLastAward] = useState<{ key: string; points: number; currency: string } | null>(null);
+  // Failure of a Daily-act / Bridge / Steelman write (recordAct), so a dead or 403'd
+  // tap shows something instead of the "+XP" chip simply never lighting.
+  const [actError, setActError] = useState<string | null>(null);
 
   useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
 
-  async function act(type: string, key: string, payload?: string, versionId?: string) {
+  async function act(type: string, key: string, payload?: string, versionId?: string): Promise<boolean> {
+    setActError(null);
     try {
       const r = await recordAct(id, type, payload, versionId);
       setLastAward({ key, points: r.points, currency: r.currency });
       reload();
+      return true;
     } catch {
-      /* swallow */
+      setActError("That didn't go through — please try again.");
+      return false;
     }
   }
 
@@ -151,6 +157,30 @@ export default function CoalitionProvisionDetail() {
     null;
   // How many cohort-presented positions are in play (drafts are neutral seeds, not "on the table").
   const presentedCount = d.versions.filter((v) => v.authorUserId).length;
+
+  // How the current user has engaged this bill, most to least committed:
+  //  · presented  — put their own version on the table (`hasPositioned`)
+  //  · co-signed  — accepted someone's version (`youCoSigned`)
+  //  · joined     — declared a Compass bucket but hasn't acted on a wording yet
+  // `youJoined` is the umbrella flag (true for all three); the finer flags let us
+  // name exactly what they did instead of the vague "you're in this coalition".
+  const youParticipant = d.yourUserId ? d.participants.find((pp) => pp.userId === d.yourUserId) : undefined;
+  const youPositioned = !!youParticipant?.hasPositioned;
+  const engagement = youPositioned ? "presented" : d.youCoSigned ? "cosigned" : "joined";
+  const engagementCopy = {
+    presented: {
+      title: "Your position is on the table",
+      body: "You've put a version up. Revisit to co-sign another wording or refine yours.",
+    },
+    cosigned: {
+      title: "You co-signed this bill",
+      body: "Your name is on a version. Revisit to co-sign another wording or put your own on the table.",
+    },
+    joined: {
+      title: "You've joined this coalition",
+      body: "You're in with your Compass position — revisit to co-sign a version or put your own on the table.",
+    },
+  }[engagement];
   // A prevailing position only exists once someone has actually presented one; until
   // then a seeded draft's wording must not masquerade as it — fall back to neutral text.
   const hasAgreedWording =
@@ -223,6 +253,19 @@ export default function CoalitionProvisionDetail() {
               ))}
             </div>
           </header>
+
+          {/* A single visible home for any failed action on this page, so no mutation
+              (join, co-sign probe, reaction, bridge, steelman) can fail silently. */}
+          {(error || actError) && (
+            <div
+              role="alert"
+              data-testid="detail-error"
+              className="mt-4 flex items-start gap-2 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800"
+            >
+              <span className="mt-0.5 shrink-0 font-bold text-rose-600">!</span>
+              <span>{error ?? actError}</span>
+            </div>
+          )}
 
           {/* Framing — only on desktop does this become the "lede" above the fold */}
           {framings && (
@@ -330,23 +373,50 @@ export default function CoalitionProvisionDetail() {
             <div className="mt-4 md:hidden">{compassJoin}</div>
           )}
 
-          {/* Participate CTA */}
+          {/* Participate CTA — once you've engaged (joined / co-signed / presented),
+              it flips to a "you're in" confirmation so the page reflects your act
+              instead of still inviting you to take a position for the first time. */}
           {!resolved && (
-            <Link
-              to={`/coalition/${id}/participate`}
-              data-testid="participate-cta"
-              className="group mt-6 flex items-center justify-between gap-3 rounded-2xl bg-[var(--accent)] p-5 text-white shadow-sm transition hover:opacity-95"
-            >
-              <div>
-                <p className="text-base font-semibold">
-                  {presentedCount === 0 ? "Be the first to take a position" : "Take your position"}
-                </p>
-                <p className="mt-0.5 text-xs text-white/80">
-                  Answer the sub-questions, co-sign the closest version, or put your own carve-out on the table.
-                </p>
+            d.youJoined ? (
+              <div
+                data-testid="participated-banner"
+                className="mt-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-5"
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                    <Check size={15} className="text-emerald-700" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-emerald-900">{engagementCopy.title}</p>
+                    <p className="mt-0.5 text-xs text-emerald-700">{engagementCopy.body}</p>
+                  </div>
+                </div>
+                <Link
+                  to={`/coalition/${id}/participate`}
+                  data-testid="participate-cta"
+                  className="group mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:text-emerald-900"
+                >
+                  Revisit your position
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </div>
-              <ArrowRight size={20} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            ) : (
+              <Link
+                to={`/coalition/${id}/participate`}
+                data-testid="participate-cta"
+                className="group mt-6 flex items-center justify-between gap-3 rounded-2xl bg-[var(--accent)] p-5 text-white shadow-sm transition hover:opacity-95"
+              >
+                <div>
+                  <p className="text-base font-semibold">
+                    {presentedCount === 0 ? "Be the first to take a position" : "Take your position"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-white/80">
+                    Answer the sub-questions, co-sign the closest version, or put your own carve-out on the table.
+                  </p>
+                </div>
+                <ArrowRight size={20} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            )
           )}
 
           {/* Bridge probes */}
@@ -411,10 +481,23 @@ export default function CoalitionProvisionDetail() {
 
             <div className="mt-3 border-t border-[var(--line)] pt-3">
               {!steelOpen ? (
-                <Button variant="ghost" size="sm" onClick={() => setSteelOpen(true)}>
-                  Add a steelman
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">+ XP</span>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSteelOpen(true)}>
+                    Add a steelman
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">+ XP</span>
+                  </Button>
+                  {/* Confirmation persists after the form collapses, so the reward the
+                      user just earned is actually visible (the form closing was the
+                      only prior signal, and it vanished instantly). */}
+                  {lastAward?.key === "steelman" && (
+                    <span
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
+                      data-testid="steelman-saved"
+                    >
+                      <Check size={13} /> Steelman recorded +{lastAward.points} {lastAward.currency} XP
+                    </span>
+                  )}
+                </div>
               ) : (
                 <div>
                   <label className="text-xs text-[var(--muted)]">
@@ -430,9 +513,12 @@ export default function CoalitionProvisionDetail() {
                   <div className="mt-2 flex items-center gap-2">
                     <Button
                       size="sm"
-                      onClick={() => {
-                        if (steelText.trim()) {
-                          void act("Steelman", "steelman", steelText, leadingVersion?.id);
+                      onClick={async () => {
+                        if (!steelText.trim()) return;
+                        // Await so we only clear + collapse on success; a failure keeps
+                        // the text and surfaces the error banner (via actError).
+                        const ok = await act("Steelman", "steelman", steelText, leadingVersion?.id);
+                        if (ok) {
                           setSteelText("");
                           setSteelOpen(false);
                         }
@@ -520,13 +606,20 @@ export default function CoalitionProvisionDetail() {
             {/* Deadline */}
             <DeadlineRail bar={d.spectrumBar} />
 
-            {/* Participate shortcut */}
+            {/* Participate shortcut — mirrors the main CTA's participated state. */}
             {!resolved && (
               <Link
                 to={`/coalition/${id}/participate`}
-                className="group flex items-center justify-between gap-2 rounded-2xl bg-[var(--accent)] p-4 text-white shadow-sm transition hover:opacity-95"
+                className={`group flex items-center justify-between gap-2 rounded-2xl p-4 shadow-sm transition hover:opacity-95 ${
+                  d.youJoined
+                    ? "border border-emerald-300 bg-emerald-50 text-emerald-900"
+                    : "bg-[var(--accent)] text-white"
+                }`}
               >
-                <p className="text-sm font-semibold">Take your position</p>
+                <p className="flex items-center gap-1.5 text-sm font-semibold">
+                  {d.youJoined && <Check size={14} className="shrink-0 text-emerald-700" />}
+                  {d.youJoined ? "Revisit your position" : "Take your position"}
+                </p>
                 <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
               </Link>
             )}

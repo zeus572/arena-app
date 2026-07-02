@@ -47,6 +47,7 @@ export default function MagazineProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [buildingReceipt, setBuildingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,9 +58,12 @@ export default function MagazineProfile() {
 
   async function generateReceipt() {
     setBuildingReceipt(true);
+    setReceiptError(null);
     try {
       const r = await buildReceipt();
       navigate(`/receipt/${r.id}`);
+    } catch {
+      setReceiptError("Couldn't build your receipt — please try again.");
     } finally {
       setBuildingReceipt(false);
     }
@@ -207,6 +211,11 @@ export default function MagazineProfile() {
           >
             {buildingReceipt ? "Building…" : "Generate Values Receipt"}
           </Button>
+          {receiptError && (
+            <p className="mt-3 text-xs font-semibold text-rose-700" role="alert" data-testid="receipt-error">
+              {receiptError}
+            </p>
+          )}
         </section>
       )}
     </article>

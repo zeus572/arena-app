@@ -115,6 +115,12 @@ public class CoalitionLoopService
         var acceptsByVersion = p.AcceptanceRecords.GroupBy(a => a.VersionId)
             .ToDictionary(g => g.Key, g => (Accepts: g.Count(a => a.Accept), Declines: g.Count(a => !a.Accept)));
 
+        // Whether the current user has co-signed (accept=true) any version here — a
+        // distinct signal from merely joining, so the UI can say "you co-signed" rather
+        // than the vaguer "you're in this coalition".
+        var youCoSigned = currentUserId is not null && p.AcceptanceRecords.Any(a =>
+            a.Accept && string.Equals(a.UserId, currentUserId, StringComparison.OrdinalIgnoreCase));
+
         var versions = p.Versions.OrderBy(v => v.CreatedAt).Select(v =>
         {
             acceptsByVersion.TryGetValue(v.Id, out var counts);
@@ -155,6 +161,7 @@ public class CoalitionLoopService
             barDto, outcome,
             currentUserId,
             currentUserId is not null && participants.Any(c => string.Equals(c.UserId, currentUserId, StringComparison.OrdinalIgnoreCase)),
+            youCoSigned,
             gap, DifficultyLabel(gap), gov, probes);
     }
 

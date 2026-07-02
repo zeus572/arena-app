@@ -70,6 +70,7 @@ public sealed record ProvisionDetailDto(
     OutcomeDto? Outcome,
     string? YourUserId,
     bool YouJoined,
+    bool YouCoSigned,
     double GapWidth,
     string Difficulty,
     bool Governance,

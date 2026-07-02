@@ -25,6 +25,8 @@ export default function MagazineSettings() {
   const [savingName, setSavingName] = useState(false);
   const [savingLocality, setSavingLocality] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [localityError, setLocalityError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
 
@@ -54,10 +56,13 @@ export default function MagazineSettings() {
   async function saveDisplayName() {
     setSavingName(true);
     setNameSaved(false);
+    setNameError(null);
     try {
       await arenaApi.put("/profile/me", { displayName });
       await refreshUser();
       setNameSaved(true);
+    } catch {
+      setNameError("Couldn't save your name — please try again.");
     } finally {
       setSavingName(false);
     }
@@ -65,9 +70,12 @@ export default function MagazineSettings() {
 
   async function changeLocality(value: string) {
     setSavingLocality(true);
+    setLocalityError(null);
     try {
       const updated = await setMyLocality(value);
       setProfile(updated);
+    } catch {
+      setLocalityError("Couldn't update your locality — please try again.");
     } finally {
       setSavingLocality(false);
     }
@@ -119,6 +127,7 @@ export default function MagazineSettings() {
                   onChange={(e) => {
                     setDisplayName(e.target.value);
                     setNameSaved(false);
+                    setNameError(null);
                   }}
                   data-testid="settings-displayname"
                   className="min-w-[14rem] flex-1 border-2 border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-base text-[var(--fg)] outline-none focus:border-[var(--accent)]"
@@ -134,6 +143,11 @@ export default function MagazineSettings() {
                 </Button>
                 {nameSaved && (
                   <span className="text-xs text-[var(--accent)]">Saved</span>
+                )}
+                {nameError && (
+                  <span className="text-xs font-semibold text-rose-700" role="alert" data-testid="settings-name-error">
+                    {nameError}
+                  </span>
                 )}
               </div>
             </label>
@@ -243,6 +257,11 @@ export default function MagazineSettings() {
           </select>
           {savingLocality && (
             <span className="text-xs text-[var(--muted)]">Saving…</span>
+          )}
+          {localityError && (
+            <span className="text-xs font-semibold text-rose-700" role="alert" data-testid="settings-locality-error">
+              {localityError}
+            </span>
           )}
         </div>
       </section>
