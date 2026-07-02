@@ -59,3 +59,51 @@ jobs:
 
       - name: Civic API integration tests
         run: dotnet test backend-civic-tests/Civic.ApiTests --logger "console;verbosity=normal"
+
+  android-build:
+    name: Civersify Android (Capacitor)
+    runs-on: ubuntu-latest
+
+    # Builds the same web bundle the Static Web App deploys, syncs it into the
+    # Capacitor shell, and assembles a debug APK — so a frontend or android/
+    # change that breaks the mobile build fails the PR, not the release.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-civic/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-civic
+
+      - name: Unit tests
+        run: npm test
+        working-directory: frontend-civic
+
+      - name: Build web bundle
+        run: npm run build
+        working-directory: frontend-civic
+
+      - name: Capacitor sync
+        run: npx cap sync android
+        working-directory: frontend-civic
+
+      - name: Assemble debug APK
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        working-directory: frontend-civic/android
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: civersify-debug-apk
+          path: frontend-civic/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
