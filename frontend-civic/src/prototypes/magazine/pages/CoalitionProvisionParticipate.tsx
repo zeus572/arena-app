@@ -170,9 +170,12 @@ export default function CoalitionProvisionParticipate() {
   // coalition overview — the participate task is done for this bill.
   useEffect(() => {
     if (!coSigned) return;
-    const t = setTimeout(() => navigate(`/coalition/${id}`), 1500);
+    // Carry the post-co-sign detail we already hold so the overview reflects the
+    // co-sign immediately, instead of racing a refetch that can return a stale
+    // (pre-co-sign) snapshot until a manual refresh.
+    const t = setTimeout(() => navigate(`/coalition/${id}`, { state: { provision: d } }), 1500);
     return () => clearTimeout(t);
-  }, [coSigned, id, navigate]);
+  }, [coSigned, id, navigate, d]);
 
   const answeredKeys = useMemo(() => Object.keys(answers).filter((k) => answers[k]), [answers]);
 
@@ -268,7 +271,11 @@ export default function CoalitionProvisionParticipate() {
         </div>
       )}
 
-      <Link to={`/coalition/${id}`} className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--fg)]">
+      <Link
+        to={`/coalition/${id}`}
+        state={{ provision: d }}
+        className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--fg)]"
+      >
         <ArrowLeft size={14} /> {d.title}
       </Link>
 
