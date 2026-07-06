@@ -75,12 +75,15 @@ Everything here is non-interactive. On Windows run in PowerShell; the same
 commands work on Linux/macOS with the obvious path changes (CI example at the
 bottom).
 
-1. **JDK 21**:
+1. **JDK 21** — use the portable zip, not winget: the Temurin MSI is a
+   machine-wide install that pops a UAC prompt, which hangs a non-interactive
+   session. The zip needs no admin and keeps everything user-scoped:
 
    ```powershell
-   winget install --silent EclipseAdoptium.Temurin.21.JDK
-   # New terminal after install, or set explicitly:
-   $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21*" | Resolve-Path | Select-Object -First 1 -ExpandProperty Path
+   curl.exe -sSL -o "$env:TEMP\temurin21.zip" "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk"
+   New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Java" | Out-Null
+   Expand-Archive "$env:TEMP\temurin21.zip" "$env:LOCALAPPDATA\Java" -Force
+   $env:JAVA_HOME = (Get-ChildItem "$env:LOCALAPPDATA\Java" -Directory | Where-Object Name -like 'jdk-21*' | Select-Object -First 1).FullName
    ```
 
 2. **SDK command-line tools** — download the "commandlinetools" zip from
@@ -98,13 +101,32 @@ bottom).
 
    (Check the download page for the current zip version number.)
 
-3. **Accept licenses and install components**:
+3. **Accept licenses and install components** — piping `y` into
+   `sdkmanager --licenses` does NOT work on Windows (it detects non-console
+   stdin and bails at the first prompt; verified 2026-07). Pre-write the
+   license hash files instead — Google documents copying the `licenses/`
+   folder between machines for exactly this:
 
    ```powershell
+   $lic = "$env:ANDROID_HOME\licenses"
+   New-Item -ItemType Directory -Force $lic | Out-Null
+   @{
+     "android-sdk-license"           = "8933bad161af4178b1185d1a37fbf41ea5269c55`nd56f5187479451eabf01fb78af6dfcb131a6481e`n24333f8a63b6825ea9c5514f83c2829b004d1fee"
+     "android-sdk-preview-license"   = "84831b9409646a918e30573bab4c9c91346d8abd"
+     "android-googletv-license"      = "601085b94cd77f0b54ff86406957099ebe79c4d6"
+     "android-sdk-arm-dbt-license"   = "859f317696f67ef3d7f30a50a5560e7834b43903"
+     "google-gdk-license"            = "33b6a2b64607f11b759f320ef9dff4ae5c47d97a"
+     "intel-android-extra-license"   = "d975f751698a77b662f1254ddbeed3901e976f5a"
+     "mips-android-sysimage-license" = "e9acab5b5fbb560a72cfaecce8946896ff6aab9d"
+   }.GetEnumerator() | ForEach-Object { [IO.File]::WriteAllText("$lic\$($_.Key)", $_.Value + "`n") }
+
    $sdkmanager = "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat"
-   1..20 | ForEach-Object { "y" } | & $sdkmanager --licenses
    & $sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-36;google_apis;x86_64"
    ```
+
+   Disk budget: the build-only set (drop `emulator` + `system-images;...`)
+   costs ~2 GB including Gradle caches; the emulator + image + one AVD add
+   another ~3–4 GB. Check free space before installing the full set.
 
    Skip `emulator` + `system-images;...` if the machine only needs to build
    APKs (e.g. CI — our `android-build` job builds without an emulator).
