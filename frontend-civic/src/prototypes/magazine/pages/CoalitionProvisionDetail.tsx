@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Bot, Check, Compass, Sparkles, ScrollText, Clock, Users } from "lucide-react";
 import {
   getFramings,
@@ -117,7 +117,21 @@ function DeadlineRail({ bar }: { bar: ProvisionDetail["spectrumBar"] }) {
 
 export default function CoalitionProvisionDetail() {
   const { id = "" } = useParams();
-  const { d, reload, run, busy, error } = useProvision(id);
+  const location = useLocation();
+  const navigate = useNavigate();
+  // A just-completed co-sign (or the participate back-link) hands us the fresh detail
+  // via router state so the page reflects it without a refetch race. Guard on the id
+  // so leftover history state from another bill can't seed the wrong provision.
+  const seeded = location.state as { provision?: ProvisionDetail } | null;
+  const seededProvision = seeded?.provision && seeded.provision.id === id ? seeded.provision : null;
+  const { d, reload, run, busy, error } = useProvision(id, seededProvision);
+
+  // Consume the one-time seed: clear it from history so a later manual refresh does a
+  // normal fetch (router navigation state otherwise survives a reload).
+  useEffect(() => {
+    if (seededProvision) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [steelOpen, setSteelOpen] = useState(false);
   const [steelText, setSteelText] = useState("");
   const [framings, setFramings] = useState<Framings | null>(null);
