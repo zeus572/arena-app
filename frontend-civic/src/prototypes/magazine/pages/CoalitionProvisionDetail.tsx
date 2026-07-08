@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Bot, Check, Compass, Sparkles, ScrollText, Clock, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Check, Compass, Sparkles, ScrollText, Clock, Users, Newspaper } from "lucide-react";
 import {
   getFramings,
   joinProvision,
@@ -267,6 +267,30 @@ export default function CoalitionProvisionDetail() {
               ))}
             </div>
           </header>
+
+          {/* Origin story — the briefing this bill was born from. Lets a reader trace
+              the coalition back to the news that prompted it. Hidden for seeded bills
+              with no source briefing. */}
+          {d.sourceBriefingSlug && (
+            <Link
+              to={`/briefings/${d.sourceBriefingSlug}`}
+              data-testid="origin-story-link"
+              className="group mt-4 flex items-start gap-2.5 rounded-2xl border border-[var(--line)] p-3 transition hover:border-[var(--accent)]"
+            >
+              <Newspaper size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+              <span className="min-w-0">
+                <span className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  Originated from this story
+                </span>
+                <span className="mt-0.5 flex items-center gap-1 text-sm font-medium text-[var(--fg)] group-hover:text-[var(--accent)]">
+                  <span className="min-w-0 truncate">
+                    {d.sourceBriefingHeadline ?? "Read the briefing"}
+                  </span>
+                  <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </span>
+            </Link>
+          )}
 
           {/* A single visible home for any failed action on this page, so no mutation
               (join, co-sign probe, reaction, bridge, steelman) can fail silently. */}

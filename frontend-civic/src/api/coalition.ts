@@ -189,6 +189,11 @@ export interface ProvisionDetail {
   difficulty: string;
   governance: boolean;
   probes: Probe[];
+  /** The briefing (story) this bill was born from — link back to its origin.
+   * Null for seeded/manually-created provisions with no source story. */
+  sourceBriefingId: string | null;
+  sourceBriefingSlug: string | null;
+  sourceBriefingHeadline: string | null;
 }
 
 const BASE = "/coalition/provisions";

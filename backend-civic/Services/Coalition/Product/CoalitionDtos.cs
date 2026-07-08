@@ -74,7 +74,12 @@ public sealed record ProvisionDetailDto(
     double GapWidth,
     string Difficulty,
     bool Governance,
-    IReadOnlyList<ProbeDto> Probes);
+    IReadOnlyList<ProbeDto> Probes,
+    // The briefing (story) this bill was born from, so the detail page can link
+    // back to its origin. Null for seeded/manually-created provisions with no source.
+    Guid? SourceBriefingId = null,
+    string? SourceBriefingSlug = null,
+    string? SourceBriefingHeadline = null);
 
 /// <summary>A bounded "would you also accept this variant?" probe (doc 06 precomputed-choices).</summary>
 public sealed record ProbeDto(Guid VersionId, string Prompt, int Supporters);

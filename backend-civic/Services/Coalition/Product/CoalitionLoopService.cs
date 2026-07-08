@@ -153,6 +153,18 @@ public class CoalitionLoopService
         var (gap, gov) = ProvisionMeta(p, participants);
         var probes = BuildProbes(state, currentUserId);
 
+        // The story this bill was born from — surface its headline so the detail page
+        // can link back to the origin briefing with a meaningful label. One cheap scalar
+        // read, skipped entirely for seeded provisions that have no source briefing.
+        string? sourceHeadline = null;
+        if (p.SourceBriefingId is { } briefingId)
+        {
+            sourceHeadline = await _db.Briefings.AsNoTracking()
+                .Where(b => b.Id == briefingId)
+                .Select(b => b.Headline)
+                .FirstOrDefaultAsync(ct);
+        }
+
         return new ProvisionDetailDto(
             p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(), p.RelevantAxes, p.Deadline,
             subQs.Select(s => new SubQuestionDto(s.Key, s.Prompt, s.TradeoffDescription, s.PositionOptions, s.Origin.ToString())).ToList(),
@@ -162,7 +174,8 @@ public class CoalitionLoopService
             currentUserId,
             currentUserId is not null && participants.Any(c => string.Equals(c.UserId, currentUserId, StringComparison.OrdinalIgnoreCase)),
             youCoSigned,
-            gap, DifficultyLabel(gap), gov, probes);
+            gap, DifficultyLabel(gap), gov, probes,
+            p.SourceBriefingId, p.SourceBriefingSlug, sourceHeadline);
     }
 
     /// <summary>
