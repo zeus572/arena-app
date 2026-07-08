@@ -87,6 +87,25 @@ configuration.
   `versionCode` — bump `minAndroidAppVersion` in backend-civic config only
   when an API change genuinely breaks older bundles.
 
+## iOS (later)
+
+The same web bundle targets iOS via Capacitor — no code changes; the storage
+adapter, deep links, and `/api/meta` gate all carry over. But **iOS can only be
+built on macOS** (Xcode is required and macOS-licensed), so there is no local
+Windows path:
+
+- **CI already verifies it compiles.** The `ios-build` job (`.github/workflows/ci.yml`)
+  runs on a GitHub-hosted macOS runner: it generates the native project
+  (`npx cap add ios`), syncs, and builds **unsigned** with `xcodebuild`. Free
+  for this public repo; needs no Apple account.
+- **`ios/` is NOT committed** (unlike `android/`) — it can't be generated on
+  Windows, so CI regenerates it each run and `.gitignore` excludes it. A Mac
+  dev who wants to pin native tweaks can force-add it and drop the ignore line.
+- **Running on a device / TestFlight / App Store** needs an **Apple Developer
+  account ($99/yr)** plus signing certs — none of which the unsigned CI build
+  requires. Interactive Simulator testing needs a Mac (owned, rented cloud Mac,
+  or Ionic Appflow).
+
 ## Sync discipline (web ↔ mobile)
 
 The Play Store adds days of lag: old app bundles keep hitting the newest API.

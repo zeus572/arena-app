@@ -107,3 +107,52 @@ jobs:
           name: civersify-debug-apk
           path: frontend-civic/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+  ios-build:
+    name: Civersify iOS (Capacitor)
+    runs-on: macos-14
+
+    # Compiles the iOS app UNSIGNED so a frontend or Capacitor-config change
+    # that breaks the iOS build fails the PR — without needing an Apple
+    # Developer account or signing certs (that's only required to run on a
+    # device or ship to TestFlight/App Store). The ios/ project is generated
+    # fresh here rather than committed, because `cap add ios` needs Xcode +
+    # CocoaPods, which only exist on macOS. Free on GitHub-hosted macOS runners
+    # for this public repo.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-civic/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-civic
+
+      - name: Build web bundle
+        run: npm run build
+        working-directory: frontend-civic
+
+      # Generate the native iOS project if it isn't committed, then copy the
+      # web assets + plugins into it. `cap sync` alone would fail on a fresh
+      # checkout where ios/ doesn't exist.
+      - name: Add iOS platform
+        run: |
+          if [ ! -d ios ]; then npx cap add ios; fi
+          npx cap sync ios
+        working-directory: frontend-civic
+
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        working-directory: frontend-civic/ios/App
