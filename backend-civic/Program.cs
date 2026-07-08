@@ -189,6 +189,18 @@ builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
+// Keep a couple of pooled connections warm so the first request after an idle
+// stretch skips the cold Postgres connect — and, in prod, the managed-identity
+// token handshake — which is a big chunk of the first-hit-per-endpoint latency
+// on this low-traffic app. Set in code so it covers BOTH the dev path and the
+// prod MI-datasource path without editing the (credential-bearing) prod secret;
+// NpgsqlConnectionStringBuilder preserves the existing keys (Ssl Mode, Timeout,
+// Trust Server Certificate, etc.).
+connectionString = new Npgsql.NpgsqlConnectionStringBuilder(connectionString)
+{
+    MinPoolSize = 2,
+}.ConnectionString;
+
 if (builder.Environment.IsProduction())
 {
     var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
@@ -335,6 +347,63 @@ static async Task InitializeDatabaseAsync(IServiceProvider services, Cancellatio
     // Seed the coalition demo provisions (constructed agents; idempotent).
     var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
     await coalitionSeeder.SeedAsync();
+
+    // Pre-run the hottest read paths once, while the readiness gate still holds
+    // traffic, so EF compiles their query shapes and the connection pool is warm
+    // BEFORE the first real user. Without this, on a low-traffic app nearly every
+    // page load is a cold "first hit" that pays 1-4s of JIT + EF query-shape
+    // compilation (observed: races ~4s, feed ~1.7s, concepts ~2s). Best-effort:
+    // warmup must never fail startup, so each step is isolated and swallowed.
+    var warmupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await WarmupHotPathsAsync(scope.ServiceProvider, warmupLogger, ct);
+}
+
+// Exercises the read paths behind the slowest page loads so their query shapes
+// and code paths are compiled ahead of the first request. Each step is isolated:
+// a warmup failure is logged and ignored — it must never flip startup readiness
+// to Failed (which would recycle the container).
+static async Task WarmupHotPathsAsync(IServiceProvider scoped, ILogger logger, CancellationToken ct)
+{
+    async Task Step(string name, Func<Task> run)
+    {
+        try
+        {
+            await run();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Warmup step '{Step}' failed (non-fatal)", name);
+        }
+    }
+
+    var db = scoped.GetRequiredService<CivicDbContext>();
+
+    // /api/campaign-manager/races — the slowest cold first hit (~4s).
+    await Step("races", () => scoped.GetRequiredService<CivicCampaignService>().GetRacesAsync(ct));
+
+    // /api/zeitgeist — home strip.
+    await Step("zeitgeist", () => scoped.GetRequiredService<IZeitgeistService>().BuildAsync(ct));
+
+    // /api/campaign/feed (default recent, anonymous) — mirrors the controller's
+    // Include(Fragments)+Include(Candidate) shape, which is what makes it heavy.
+    await Step("campaign-feed", () => db.CampaignPosts
+        .Include(p => p.Fragments)
+        .Include(p => p.Candidate)
+        .Where(p => p.OwnerUserId == null)
+        .OrderByDescending(p => p.CreatedAt)
+        .Take(20)
+        .ToListAsync(ct));
+
+    // /api/briefings (national page 1).
+    await Step("briefings", () => db.Briefings
+        .Where(b => b.Locality == null)
+        .OrderBy(b => b.IssueOrder)
+        .ThenByDescending(b => b.CreatedAt)
+        .Take(20)
+        .ToListAsync(ct));
+
+    // /api/concepts.
+    await Step("concepts", () => db.Concepts.OrderBy(c => c.Title).ToListAsync(ct));
 }
 
 // Exposed for WebApplicationFactory<Program> in Civic.ApiTests.
