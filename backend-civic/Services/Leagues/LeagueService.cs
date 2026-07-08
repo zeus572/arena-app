@@ -125,8 +125,10 @@ public class LeagueService
         var league = await LoadLeagueAsync(leagueId, ct);
         RequireOwner(league, userId);
 
-        if (req.MaxUses is int max && max < 1)
-            throw new LeagueValidationException("Max uses must be at least 1.");
+        // An open share link is meant to be reusable; a cap of 1 would make it single-use
+        // (use the email-invite flow for that). Null means unlimited.
+        if (req.MaxUses is int max && max < 2)
+            throw new LeagueValidationException("Max uses must be at least 2 (leave unset for unlimited).");
 
         var invite = new LeagueInvite
         {
