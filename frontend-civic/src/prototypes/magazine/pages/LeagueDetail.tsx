@@ -482,13 +482,27 @@ function LinkInvites({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [maxUses, setMaxUses] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const links = invites.filter((i) => i.email === null && i.isValid);
 
   async function generate() {
     if (busy) return;
+    const trimmed = maxUses.trim();
+    let parsedMaxUses: number | null = null;
+    if (trimmed !== "") {
+      const n = Number(trimmed);
+      if (!Number.isInteger(n) || n < 2) {
+        setError("Max uses must be a whole number of 2 or more (leave blank for unlimited).");
+        return;
+      }
+      parsedMaxUses = n;
+    }
+    setError(null);
     setBusy(true);
     try {
-      await createInvite(leagueId, {});
+      await createInvite(leagueId, parsedMaxUses === null ? {} : { maxUses: parsedMaxUses });
+      setMaxUses("");
       onChanged();
     } finally {
       setBusy(false);
@@ -497,14 +511,34 @@ function LinkInvites({
 
   return (
     <div className="mt-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-[var(--fg-soft)]">
           Anyone with the link can join — share it in your group chat.
         </p>
-        <Button onClick={generate} disabled={busy} data-testid="generate-invite" className="shrink-0">
-          <Plus className="h-4 w-4" /> New link
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <input
+            type="number"
+            min={2}
+            step={1}
+            inputMode="numeric"
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value)}
+            placeholder="Uses (∞)"
+            aria-label="Maximum number of times this link can be used"
+            data-testid="invite-max-uses"
+            className="w-24 border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--fg)] placeholder:text-[var(--muted)]"
+          />
+          <Button onClick={generate} disabled={busy} data-testid="generate-invite" className="shrink-0">
+            <Plus className="h-4 w-4" /> New link
+          </Button>
+        </div>
       </div>
+
+      {error && (
+        <p className="mt-2 text-sm text-red-600" data-testid="invite-max-uses-error">
+          {error}
+        </p>
+      )}
 
       {links.length === 0 ? (
         <p className="mt-3 text-sm text-[var(--muted)]">
