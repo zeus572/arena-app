@@ -110,15 +110,18 @@ jobs:
 
   ios-build:
     name: Civersify iOS (Capacitor)
-    runs-on: macos-14
+    # Capacitor 8 requires Xcode 16; macos-14 defaults to Xcode 15.4 (Swift 5.10)
+    # and fails to compile the Capacitor core/plugins ("CAPPluginCall has no
+    # member reject"). macos-15 defaults to Xcode 16.x.
+    runs-on: macos-15
 
     # Compiles the iOS app UNSIGNED so a frontend or Capacitor-config change
     # that breaks the iOS build fails the PR — without needing an Apple
     # Developer account or signing certs (that's only required to run on a
     # device or ship to TestFlight/App Store). The ios/ project is generated
-    # fresh here rather than committed, because `cap add ios` needs Xcode +
-    # CocoaPods, which only exist on macOS. Free on GitHub-hosted macOS runners
-    # for this public repo.
+    # fresh here rather than committed, because `cap add ios` needs Xcode,
+    # which only exists on macOS. Free on GitHub-hosted macOS runners for this
+    # public repo.
     steps:
       - uses: actions/checkout@v4
 
