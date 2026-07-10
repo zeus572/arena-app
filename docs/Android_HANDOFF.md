@@ -27,30 +27,53 @@ tests (`npm run build`, `npm test` in `frontend-civic`) pass; a local
 | `8251994`, `69b05d9` | `Android_Setup.md` (GUI + scriptable paths), corrected after a real Path B run. |
 | `e60459b` | iOS: `@capacitor/ios` + unsigned `ios-build` CI job (macOS runner). |
 
+## Status: FIRST SMOKE TEST DONE (2026-07-09)
+
+The emulator is installed and the first full smoke test **passed on emulator-5554**
+(Pixel 7, android-36 google_apis x86_64). All checks green:
+
+| Check | Result |
+|---|---|
+| App launches, WebView loads (Vite live-reload) | ✅ |
+| Home feed renders (civic API :5050) | ✅ |
+| `/shorts` feed (client feed mixer) | ✅ |
+| Login reaches auth :5000 (proper 401 on bad creds, not a network error) | ✅ |
+| Deep link `https://civersify.com/leagues/join/…` → in-app route + :5050 lookup | ✅ |
+| Sign-up (invite-gated) → authenticated session | ✅ |
+| **Token persistence across a full `am force-stop` + relaunch** | ✅ |
+| Coalition write → verified-email gate modal (correct 403 handling) | ✅ |
+
+Two things learned during the run (both now baked into the setup):
+
+- **Emulator disk:** `emulator` + system image need ~7.4 GB free to create the
+  userdata partition; the `pixel_7` device profile re-stamps
+  `disk.dataPartition.size = 6 GB` in `config.ini` on every launch, so shrinking
+  it there does NOT stick. Free host disk instead (clearing `npm cache clean
+  --force` / NuGet caches is the easy win).
+- **Vite over adb reverse:** modern Node binds `localhost` to IPv6 `::1` only, but
+  `adb reverse tcp:5175` forwards to IPv4 `127.0.0.1` → WebView shows
+  `net::ERR_EMPTY_RESPONSE` while `curl localhost:5175` (also ::1) looks fine. Run
+  the dev server as **`npm run dev -- --host 127.0.0.1`** (consider baking
+  `server.host: '127.0.0.1'` into `vite.config.ts`).
+- **Sign-up is invite-gated:** the register form's invite field is `required` and
+  the arena backend validates it against `Auth:InviteCode` (dev value `ARENA7X`).
+  A throwaway dev account `smoke0709@example.com` was created in the dev DB.
+
 ## Status: what's PENDING (the resume TODO list)
 
 Nothing is half-written — these are deliberate next actions, roughly ordered:
 
-1. **Install the emulator** (blocked on disk). Toolchain is installed but the
-   emulator + system image were skipped: C: had only ~6.4 GB free and they need
-   ~3–4 GB more. Free space, then:
-   `sdkmanager --install "emulator" "system-images;android-36;google_apis;x86_64"`
-   and create an AVD (see Android_Setup.md Path B step 4). **Or** test on a
-   physical phone over USB — no emulator needed.
-2. **First real device/emulator smoke test** — login, `/shorts`, a coalition
-   flow, token persistence across app kill, a deep link. This is the "try it
-   tomorrow" step that hasn't happened yet.
-3. **Open the PR** — CI's `android-build` and `ios-build` jobs have NOT run yet
+1. **Open the PR** — CI's `android-build` and `ios-build` jobs have NOT run yet
    (they trigger on PR / master push). The iOS `xcodebuild` invocation is
    unverified until then; expect a possible tweak (scheme/CocoaPods).
-4. **Before any real release build:**
+2. **Before any real release build:**
    - Add `https://localhost` to the `Cors:Origins` app setting on BOTH prod
      Azure App Services (civic + arena/auth).
    - Replace the placeholder SHA-256 in
      `frontend-civic/public/.well-known/assetlinks.json` with the
      release-signing fingerprint, or App Links won't verify.
    - Build with prod `VITE_CIVIC_API_URL` / `VITE_ARENA_API_URL` baked in.
-5. **iOS on a device / TestFlight** — needs an Apple Developer account ($99/yr)
+3. **iOS on a device / TestFlight** — needs an Apple Developer account ($99/yr)
    + signing + a Mac (or cloud Mac / Ionic Appflow) for Simulator testing.
    Deferred; CI only proves it compiles.
 
