@@ -140,9 +140,25 @@ export default function CoalitionProvisionDetail() {
   // Failure of a Daily-act / Bridge / Steelman write (recordAct), so a dead or 403'd
   // tap shows something instead of the "+XP" chip simply never lighting.
   const [actError, setActError] = useState<string | null>(null);
+  // A reaction / culture-sort is a single choice per visit: once you pick one, the
+  // whole group locks and shows what you chose, so the buttons can't be clicked in
+  // sequence to farm XP (each tap otherwise writes its own scored act).
+  const [reactionPicked, setReactionPicked] = useState<string | null>(null);
+  const [bridgePicked, setBridgePicked] = useState<string | null>(null);
 
   useEffect(() => { void getFramings(id).then(setFramings).catch(() => {}); }, [id]);
   useEffect(() => { void getMyProfile().then(setProfile).catch(() => {}); }, []);
+
+  // React Router keeps this component mounted across :id changes, so a prior bill's
+  // lock/award state would otherwise leak onto the next bill. Clear it on navigation.
+  useEffect(() => {
+    setReactionPicked(null);
+    setBridgePicked(null);
+    setLastAward(null);
+    setActError(null);
+    setSteelOpen(false);
+    setSteelText("");
+  }, [id]);
 
   async function act(type: string, key: string, payload?: string, versionId?: string): Promise<boolean> {
     setActError(null);
@@ -342,28 +358,42 @@ export default function CoalitionProvisionDetail() {
                   { key: "bridge-governance", label: "Route to a governance mechanism", payload: "governance" },
                   { key: "bridge-culture", label: "Name the shared cultural value", payload: "culture" },
                 ].map((opt) => {
-                  const lit = lastAward?.key === opt.key;
+                  const picked = bridgePicked === opt.key;
+                  const locked = bridgePicked !== null;
                   return (
                     <button
                       key={opt.key}
-                      onClick={() => act("CultureGovernanceSort", opt.key, opt.payload, leadingVersion?.id)}
-                      disabled={busy}
-                      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:opacity-50 ${
-                        lit ? "border-emerald-400 bg-emerald-50" : "border-[var(--line)] hover:border-[var(--accent)]"
+                      onClick={async () => {
+                        const ok = await act("CultureGovernanceSort", opt.key, opt.payload, leadingVersion?.id);
+                        if (ok) setBridgePicked(opt.key);
+                      }}
+                      disabled={busy || locked}
+                      aria-pressed={picked}
+                      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:cursor-not-allowed ${
+                        picked
+                          ? "border-emerald-400 bg-emerald-50"
+                          : locked
+                            ? "border-[var(--line)] opacity-50"
+                            : "border-[var(--line)] hover:border-[var(--accent)] disabled:opacity-50"
                       }`}
                     >
                       <span>{opt.label}</span>
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                          lit ? "text-emerald-600" : "text-[var(--muted)]"
+                          picked ? "text-emerald-600" : "text-[var(--muted)]"
                         }`}
                       >
-                        {lit ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
+                        {picked && lastAward ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
                       </span>
                     </button>
                   );
                 })}
               </div>
+              {bridgePicked && (
+                <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" data-testid="bridge-locked">
+                  <Check size={13} /> Sorted — one bridge call per bill.
+                </p>
+              )}
             </div>
           )}
 
@@ -483,39 +513,68 @@ export default function CoalitionProvisionDetail() {
                 earn reasoning XP
               </span>
             </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
+            {/* React-with-a-reason only makes sense against a position someone has
+                actually put on the table. Until then the "prevailing" text is just the
+                bill's neutral framing — there is nothing to evaluate — so we hide the
+                reaction grid and point people at taking the first position instead. */}
+            {hasAgreedWording ? (
+              <>
+                <p className="mt-1 text-xs text-[var(--muted)]">React with a reason (governance vocabulary, not like/dislike):</p>
 
-            <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--line)]/20 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                {hasAgreedWording ? "Reacting to the leading wording" : "Reacting to the proposal as proposed"}
+                <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--line)]/20 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Reacting to the leading wording
+                  </p>
+                  <p className="mt-1 text-sm leading-snug text-[var(--fg-soft)]">{prevailingText}</p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {REASON_LABELS.map((label) => {
+                    const picked = reactionPicked === label;
+                    const locked = reactionPicked !== null;
+                    return (
+                      <button
+                        key={label}
+                        onClick={async () => {
+                          const ok = await act("ReactionWithReason", label, label, leadingVersion?.id);
+                          if (ok) setReactionPicked(label);
+                        }}
+                        disabled={busy || locked}
+                        aria-pressed={picked}
+                        data-testid="reaction-reason"
+                        className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:cursor-not-allowed ${
+                          picked
+                            ? "border-emerald-400 bg-emerald-50"
+                            : locked
+                              ? "border-[var(--line)] opacity-50"
+                              : "border-[var(--line)] hover:border-[var(--accent)] disabled:opacity-50"
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                            picked ? "text-emerald-600" : "text-[var(--muted)]"
+                          }`}
+                        >
+                          {picked && lastAward ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {reactionPicked && (
+                  <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" data-testid="reaction-locked">
+                    <Check size={13} /> Logged “{reactionPicked}” — one reaction per position.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="mt-1 text-xs text-[var(--muted)]" data-testid="reaction-gated">
+                Reactions open once someone puts a position on the table. Be the first to
+                take one above — or add a steelman of the bill's question below.
               </p>
-              <p className="mt-1 text-sm leading-snug text-[var(--fg-soft)]">{prevailingText}</p>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {REASON_LABELS.map((label) => {
-                const lit = lastAward?.key === label;
-                return (
-                  <button
-                    key={label}
-                    onClick={() => act("ReactionWithReason", label, label, leadingVersion?.id)}
-                    disabled={busy}
-                    className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-xs font-medium transition disabled:opacity-50 ${
-                      lit ? "border-emerald-400 bg-emerald-50" : "border-[var(--line)] hover:border-[var(--accent)]"
-                    }`}
-                  >
-                    <span>{label}</span>
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                        lit ? "text-emerald-600" : "text-[var(--muted)]"
-                      }`}
-                    >
-                      {lit ? `+${lastAward.points} ${lastAward.currency} XP` : "+ XP"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            )}
 
             <div className="mt-3 border-t border-[var(--line)] pt-3">
               {!steelOpen ? (

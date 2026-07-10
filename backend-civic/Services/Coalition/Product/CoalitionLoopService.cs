@@ -664,6 +664,20 @@ public class CoalitionLoopService
             else versionId = null; // unknown / mismatched version — don't record a dangling reference
         }
 
+        // A reaction-with-reason / culture-sort is a single scored choice per (user,
+        // provision, version): the client greys the buttons after one pick, and this is
+        // the server-side guard so a refresh, a second tab, or a forged POST can't re-click
+        // them to farm XP. A repeat is a no-op (0 pts) — and returning here before the judge
+        // also skips a wasted LLM call. (Mirrors the BriefingRead once-per-day collapse above
+        // and CampaignReaction's new-reaction-only award.)
+        if ((type == CoalitionActType.ReactionWithReason || type == CoalitionActType.CultureGovernanceSort)
+            && !string.IsNullOrWhiteSpace(userId))
+        {
+            if (await _db.CoalitionActs.AnyAsync(a => a.UserId == userId && a.Type == type
+                    && a.ProvisionId == provisionId && a.VersionId == versionId, ct))
+                return (0, CoalitionPoints.Currency(type));
+        }
+
         int governance = 50, quality = 50;
         if (!string.IsNullOrWhiteSpace(payload))
         {
