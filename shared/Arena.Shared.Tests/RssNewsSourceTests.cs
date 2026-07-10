@@ -62,4 +62,29 @@ public class RssNewsSourceTests
         // Two sources produce the same two headlines, so dedup leaves two.
         items.Should().HaveCount(2);
     }
+
+    [Fact]
+    public async Task AggregateNewsFeed_ThrowingSource_DoesNotStarveHealthySources()
+    {
+        var xml = LoadFixture("sample-rss.xml");
+        var http = new HttpClient(StubHttpMessageHandler.FromBody(xml, "application/xml"));
+        var healthy = new RssNewsSource(http, "Healthy", new Uri("https://example.com/a.xml"));
+
+        var feed = new AggregateNewsFeed(new INewsSource[] { new ThrowingSource(), healthy });
+        var items = await feed.FetchAsync(maxItems: 30);
+
+        items.Should().HaveCount(2);
+        items.Should().OnlyContain(i => i.Source == "Healthy");
+    }
+
+    /// <summary>
+    /// In-house sources catch internally, but INewsSource doesn't guarantee it —
+    /// the aggregate must isolate a throwing implementation.
+    /// </summary>
+    private sealed class ThrowingSource : INewsSource
+    {
+        public string Name => "Throwing";
+        public Task<IReadOnlyList<NewsItem>> FetchAsync(CancellationToken ct = default)
+            => throw new InvalidOperationException("provider bug");
+    }
 }

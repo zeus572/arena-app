@@ -27,9 +27,9 @@ builder.Services.AddScoped<IReceiptService, ReceiptService>();
 builder.Services.AddScoped<IZeitgeistService, ZeitgeistService>();
 builder.Services.AddScoped<ICohortService, CohortService>();
 
-// News ingestion + civic content generation. Both backends register the
-// same RssNewsSource pieces from Arena.Shared so the RSS fetch is one
-// implementation across the monorepo.
+// News ingestion + civic content generation. Sources are typed descriptors
+// (News:Sources / News:LocalSources) resolved through the shared provider
+// registry from Arena.Shared — one fetch implementation across the monorepo.
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection("Anthropic"));
 builder.Services.Configure<NewsOptions>(builder.Configuration.GetSection("News"));
 
@@ -39,21 +39,12 @@ builder.Services.AddHttpClient<ILlmClient, ClaudeLlmClient>(c =>
     c.Timeout = TimeSpan.FromSeconds(90);
 });
 
+builder.Services.AddArenaNewsSources();
+
 builder.Services.AddSingleton<INewsFeed>(sp =>
 {
     var newsOpts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<NewsOptions>>().Value;
-    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
-    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-
-    var sources = newsOpts.Sources
-        .Select(kv => (INewsSource)new RssNewsSource(
-            httpFactory.CreateClient("RssNewsSource"),
-            kv.Key,
-            new Uri(kv.Value),
-            logger: loggerFactory.CreateLogger($"RssNewsSource[{kv.Key}]")))
-        .ToList();
-
-    return new AggregateNewsFeed(sources, loggerFactory.CreateLogger<AggregateNewsFeed>());
+    return sp.GetRequiredService<INewsSourceFactory>().CreateFeed(newsOpts.Sources);
 });
 
 builder.Services.AddHttpClient("RssNewsSource", c =>

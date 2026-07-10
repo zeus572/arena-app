@@ -58,7 +58,8 @@ public class BriefingsController : ControllerBase
             .ToListAsync();
 
         // Resolve the upstream publisher for this page's news-sourced briefings in one
-        // query so each feed card can show a small per-source moniker (NPR / BBC / local).
+        // query so each feed card can show a small per-source moniker (NPR / local /
+        // the real outlet behind an aggregator channel).
         var sourceIds = items
             .Where(b => b.SourceNewsItemId is not null)
             .Select(b => b.SourceNewsItemId!.Value)
@@ -68,7 +69,7 @@ public class BriefingsController : ControllerBase
             ? new Dictionary<Guid, string>()
             : await _db.NewsItems
                 .Where(n => sourceIds.Contains(n.Id))
-                .ToDictionaryAsync(n => n.Id, n => n.Source);
+                .ToDictionaryAsync(n => n.Id, n => n.Publisher ?? n.Source);
 
         var dtos = items.Select(b =>
         {

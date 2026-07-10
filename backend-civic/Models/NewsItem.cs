@@ -33,6 +33,14 @@ public class NewsItem
     [Required, MaxLength(60)]
     public string Source { get; set; } = "";
 
+    /// <summary>
+    /// Real publisher of the story when <see cref="Source"/> is an aggregator
+    /// channel (e.g. "Google News Politics" → "NPR"). Null when Source itself
+    /// is the publisher. Display preference is <c>Publisher ?? Source</c>.
+    /// </summary>
+    [MaxLength(120)]
+    public string? Publisher { get; set; }
+
     [Required, MaxLength(800)]
     public string Url { get; set; } = "";
 

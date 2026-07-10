@@ -11,4 +11,11 @@ public record NewsItem(
     string Source,
     string Url,
     string? Summary,
-    DateTime PublishedAt);
+    DateTime PublishedAt)
+{
+    /// <summary>
+    /// Real publisher of the story when <see cref="Source"/> is an aggregator
+    /// channel (e.g. Google News). Null when Source itself is the publisher.
+    /// </summary>
+    public string? Publisher { get; init; }
+}

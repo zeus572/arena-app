@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
+using Arena.Shared.News;
 using WireNewsItem = Arena.Shared.News.NewsItem;
 
 namespace Civic.ApiTests;
@@ -21,19 +22,25 @@ public class NewsIngestionServiceTests
 
     public NewsIngestionServiceTests(DatabaseFixture fx) => _fx = fx;
 
-    private (NewsIngestionService Svc, InMemoryNewsFeed Feed) Build()
+    private (NewsIngestionService Svc, InMemoryNewsFeed Feed) Build(NewsOptions? options = null)
     {
         var feed = new InMemoryNewsFeed();
         var scopes = _fx.Factory.Services.GetRequiredService<IServiceScopeFactory>();
         var httpFactory = _fx.Factory.Services.GetRequiredService<IHttpClientFactory>();
         var loggerFactory = _fx.Factory.Services.GetRequiredService<ILoggerFactory>();
-        var opts = Options.Create(new NewsOptions { IngestIntervalHours = 24 });
+        var sourceFactory = new NewsSourceFactory(
+            new INewsSourceBuilder[]
+            {
+                new RssSourceBuilder(httpFactory, loggerFactory),
+                new GoogleNewsSourceBuilder(httpFactory, loggerFactory),
+            },
+            loggerFactory);
+        var opts = Options.Create(options ?? new NewsOptions { IngestIntervalHours = 24 });
         var svc = new NewsIngestionService(
             scopes,
             feed,
             new TestOptionsMonitor<NewsOptions>(opts.Value),
-            httpFactory,
-            loggerFactory,
+            sourceFactory,
             NullLogger<NewsIngestionService>.Instance,
             _fx.Factory.Services.GetRequiredService<Civic.API.Services.StartupReadiness>());
         return (svc, feed);
@@ -111,6 +118,77 @@ public class NewsIngestionServiceTests
         var row = await db.NewsItems.SingleAsync(n => n.ExternalId == "ext-huge");
         row.Summary.Should().NotBeNull();
         row.Summary!.Length.Should().Be(2000, "the summary should be clamped to the column limit");
+    }
+
+    [Fact]
+    public async Task IngestOnce_PersistsPublisher_ClampedToColumnLimit()
+    {
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-pub", "Aggregator story with real outlet", "Google News", "https://news.google.com/x", null, DateTime.UtcNow)
+                { Publisher = "NPR" },
+            new WireNewsItem("ext-pub-long", "Aggregator story with verbose outlet", "Google News", "https://news.google.com/y", null, DateTime.UtcNow)
+                { Publisher = new string('p', 300) },
+        };
+
+        var added = await svc.IngestOnceAsync();
+
+        added.Should().Be(2);
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        (await db.NewsItems.SingleAsync(n => n.ExternalId == "ext-pub")).Publisher.Should().Be("NPR");
+        (await db.NewsItems.SingleAsync(n => n.ExternalId == "ext-pub-long")).Publisher!.Length
+            .Should().Be(120, "the publisher should be clamped to the column limit");
+    }
+
+    [Fact]
+    public async Task IngestOnce_SkipsDuplicateHeadline_WithinWindow()
+    {
+        // Aggregator channels re-surface stories the direct feeds already
+        // delivered — different ExternalIds, same headline. Within the dedupe
+        // window only the first copy is kept (case-insensitively).
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-npr", "Senate passes the big bill", "NPR", "https://npr.org/big-bill", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(1);
+
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-gn", "SENATE PASSES THE BIG BILL", "Google News", "https://news.google.com/big-bill", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(0, "the same headline within the window is a duplicate even with a new external id");
+    }
+
+    [Fact]
+    public async Task IngestOnce_DuplicateHeadline_OutsideWindow_IsIngested()
+    {
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build(new NewsOptions { IngestIntervalHours = 24, HeadlineDedupeWindowDays = 3 });
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-old", "Recurring headline about the budget", "NPR", "https://npr.org/budget", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(1);
+
+        // Age the stored copy out of the dedupe window.
+        using (var scope = _fx.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+            var row = await db.NewsItems.SingleAsync(n => n.ExternalId == "ext-old");
+            row.IngestedAt = DateTime.UtcNow.AddDays(-4);
+            await db.SaveChangesAsync();
+        }
+
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-new", "Recurring headline about the budget", "Google News", "https://news.google.com/budget", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(1, "an old copy outside the window no longer blocks re-ingestion");
     }
 }
 

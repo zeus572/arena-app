@@ -3,14 +3,14 @@
 How the Civic Arena turns real-world news into the briefings that fill the main
 feed, and how that selection is balanced across sources and localities.
 
-Lives in `backend-civic/Services/Generation/` plus the shared RSS fetch in
+Lives in `backend-civic/Services/Generation/` plus the shared provider layer in
 `shared/Arena.Shared/News/`.
 
 ## Stages
 
 ```
-RSS feeds ──▶ NewsIngestionService ──▶ NewsItems (Status=Ingested)
-                                              │
+news sources ─▶ NewsIngestionService ──▶ NewsItems (Status=Ingested)
+(Rss | GoogleNews)                            │
                                               ▼
                                    CivicContentGenerationService
                                    (Haiku gate → Sonnet write)
@@ -23,9 +23,10 @@ RSS feeds ──▶ NewsIngestionService ──▶ NewsItems (Status=Ingested)
 ```
 
 1. **Ingest** — `NewsIngestionService` (every `News:IngestIntervalHours`, default 2h)
-   pulls each configured RSS feed via the shared `AggregateNewsFeed` /
-   `RssNewsSource`, dedupes, clamps over-long fields, and upserts `NewsItem` rows
-   (idempotent by `ExternalId`). The national feed is tagged `Locality = null`;
+   pulls each configured source via the shared `AggregateNewsFeed` (sources built by
+   `NewsSourceFactory` from the typed `News:Sources` descriptors), dedupes, clamps
+   over-long fields, and upserts `NewsItem` rows (idempotent by `ExternalId`, plus a
+   headline dedupe window — see below). The national feed is tagged `Locality = null`;
    per-locality feeds from `News:LocalSources` are tagged with their state code.
 2. **Generate** — `CivicContentGenerationService` (every
    `News:GenerationIntervalMinutes`, default 120m) selects pending `NewsItem`s and
@@ -47,8 +48,46 @@ generated is invisible to readers — which is the root of the two bugs below.
 | `BatchSize` | 5 | Items processed per generation tick |
 | `MaxItemsPerDay` | 10 | Hard cap on briefings generated per trailing 24h |
 | `MaxStoryAgeDays` | 14 | Stories whose `PublishedAt` is older are never generated |
-| `Sources` | NPR, BBC | National RSS feeds (`name → url`) |
-| `LocalSources` | WA, MD, CA | Per-state RSS feeds (`state → {name → url}`) |
+| `HeadlineDedupeWindowDays` | 3 | Incoming items whose headline matches one ingested this recently are skipped (0 disables) |
+| `Sources` | NPR + 3 Google News channels | National sources (`name → { Kind, ... }` descriptor) |
+| `LocalSources` | WA, MD, CA | Per-state sources (`state → {name → descriptor}`), each a local outlet + a Google News geo channel |
+
+### Source descriptors and providers
+
+Every source entry is a typed `NewsSourceConfig` (`shared/Arena.Shared/News/`):
+the entry's key is the source name (which becomes `NewsItem.Source` and its own
+selection bucket), and `Kind` picks the provider:
+
+- `"Kind": "Rss"` — plain RSS/Atom; needs `Url`.
+- `"Kind": "GoogleNews"` — Google News RSS; `Feed` is `Top`, `Topic` (+`Topic` id,
+  e.g. `POLITICS`/`NATION`), `Geo` (+`Location`), or `Search` (+`Query`). Pinned to
+  the US English edition. **Geo gotcha:** locations must be city-level —
+  state names ("Maryland", "California") return a 200 with an *empty* feed. We
+  use state capitals ("Olympia, Washington", "Annapolis, Maryland",
+  "Sacramento, California"), which also skew toward state-government news.
+
+Optional on any source: `Enabled` (default true), `MaxEntries` (default 15).
+Invalid entries (unknown `Kind`, missing `Url`/`Topic`/...) are skipped with a
+warning — a config typo never takes down ingestion. **BBC (UK front page) and
+Cascade PBS were dropped** when the Google News channels were added (2026-07).
+
+**Adding a news provider:** implement `INewsSourceBuilder` (build an
+`INewsSource` from a `NewsSourceConfig`, return null on bad config), register it
+in `NewsServiceCollectionExtensions.AddArenaNewsSources()`, and reference its
+`Kind` from config. Nothing in `Program.cs` or `NewsIngestionService` changes.
+
+### Publisher attribution and headline dedupe
+
+Aggregator items carry the real outlet in `NewsItem.Publisher` (e.g. Source
+`"Google News Politics"`, Publisher `"Reuters"`); direct-feed items leave it
+null. Everything reader-facing shows `Publisher ?? Source` (the
+`SourcePublisher` DTO field / `SourceBadge`).
+
+Aggregators also re-surface stories the direct feeds already delivered (and the
+GN channels overlap each other), with different `ExternalId`s — so ingestion
+additionally skips any item whose headline (case-insensitive) matches one
+ingested within `HeadlineDedupeWindowDays`. First copy wins; national ingests
+before locals within a tick.
 
 ## Model tiers (Haiku vs Sonnet)
 
@@ -110,10 +149,19 @@ This is go-forward only; existing briefings are untouched.
 ## Source moniker
 
 Each feed card shows a small per-source badge (`SourceBadge.tsx`: colored dot + short
-label, e.g. NPR / BBC / WA Standard) so readers can tell outlets apart. Backed by
-`BriefingSummaryDto.SourcePublisher`, resolved in `BriefingsController.List` via a
-single bounded lookup against `NewsItems` (no schema change / no migration). The
-cover story shows the publisher inline.
+label, e.g. NPR / WA Standard / the real outlet behind a Google News item) so readers
+can tell outlets apart. Backed by `BriefingSummaryDto.SourcePublisher` =
+`NewsItem.Publisher ?? NewsItem.Source`, resolved in `BriefingsController.List` via a
+single bounded lookup against `NewsItems`. The cover story shows the publisher inline.
+
+## Monitoring after source changes
+
+The Google News **Top** channel carries more non-civic content (sports,
+entertainment) than the direct feeds, so the Haiku relevance gate's skip rate
+rises — skipped items burn generation batch slots for that tick (not the daily
+cap). Watch the `"Skipping non-civic NewsItem"` log rate; if the Top channel
+skips too often, the levers are config-only: `"Enabled": false` on it, or lean on
+the pre-filtered Politics/Nation/Geo channels.
 
 ## Future: raising the cap
 
