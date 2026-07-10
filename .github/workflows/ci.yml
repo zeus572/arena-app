@@ -145,10 +145,13 @@ jobs:
           npx cap sync ios
         working-directory: frontend-civic
 
+      # This Capacitor version wires plugins via Swift Package Manager (see the
+      # "Writing Package.swift" line in `cap add ios`), so no App.xcworkspace is
+      # generated — that's a CocoaPods artifact. Build the .xcodeproj directly.
       - name: Build unsigned app
         run: |
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
