@@ -59,3 +59,106 @@ jobs:
 
       - name: Civic API integration tests
         run: dotnet test backend-civic-tests/Civic.ApiTests --logger "console;verbosity=normal"
+
+  android-build:
+    name: Civersify Android (Capacitor)
+    runs-on: ubuntu-latest
+
+    # Builds the same web bundle the Static Web App deploys, syncs it into the
+    # Capacitor shell, and assembles a debug APK — so a frontend or android/
+    # change that breaks the mobile build fails the PR, not the release.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-civic/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-civic
+
+      - name: Unit tests
+        run: npm test
+        working-directory: frontend-civic
+
+      - name: Build web bundle
+        run: npm run build
+        working-directory: frontend-civic
+
+      - name: Capacitor sync
+        run: npx cap sync android
+        working-directory: frontend-civic
+
+      - name: Assemble debug APK
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        working-directory: frontend-civic/android
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: civersify-debug-apk
+          path: frontend-civic/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  ios-build:
+    name: Civersify iOS (Capacitor)
+    # Capacitor 8 requires Xcode 16; macos-14 defaults to Xcode 15.4 (Swift 5.10)
+    # and fails to compile the Capacitor core/plugins ("CAPPluginCall has no
+    # member reject"). macos-15 defaults to Xcode 16.x.
+    runs-on: macos-15
+
+    # Compiles the iOS app UNSIGNED so a frontend or Capacitor-config change
+    # that breaks the iOS build fails the PR — without needing an Apple
+    # Developer account or signing certs (that's only required to run on a
+    # device or ship to TestFlight/App Store). The ios/ project is generated
+    # fresh here rather than committed, because `cap add ios` needs Xcode,
+    # which only exists on macOS. Free on GitHub-hosted macOS runners for this
+    # public repo.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-civic/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-civic
+
+      - name: Build web bundle
+        run: npm run build
+        working-directory: frontend-civic
+
+      # Generate the native iOS project if it isn't committed, then copy the
+      # web assets + plugins into it. `cap sync` alone would fail on a fresh
+      # checkout where ios/ doesn't exist.
+      - name: Add iOS platform
+        run: |
+          if [ ! -d ios ]; then npx cap add ios; fi
+          npx cap sync ios
+        working-directory: frontend-civic
+
+      # This Capacitor version wires plugins via Swift Package Manager (see the
+      # "Writing Package.swift" line in `cap add ios`), so no App.xcworkspace is
+      # generated — that's a CocoaPods artifact. Build the .xcodeproj directly.
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        working-directory: frontend-civic/ios/App

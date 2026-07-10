@@ -220,8 +220,12 @@ else
         options.UseNpgsql(connectionString));
 }
 
+// "https://localhost" is the Capacitor Android WebView origin — the Civersify
+// mobile app authenticates against this backend (/auth/*, /profile/me). It
+// must be allowlisted wherever the mobile app is expected, including prod's
+// Cors:Origins app setting.
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
-    ?? new[] { "http://localhost:5173", "http://localhost:5174" };
+    ?? new[] { "http://localhost:5173", "http://localhost:5174", "https://localhost" };
 
 builder.Services.AddCors(options =>
 {

@@ -517,20 +517,22 @@ function ClosingSoonCard({ bills }: { bills: ProvisionSummary[] }) {
             <Link
               key={p.id}
               to={`/coalition/${p.id}`}
-              className={`flex items-center gap-3 py-3 transition hover:opacity-80 ${
+              className={`flex items-start gap-3 py-3 transition hover:opacity-80 ${
                 i < bills.length - 1 ? "border-b border-[var(--border)]/60" : ""
               }`}
             >
-              <span className="flex-1 text-sm font-semibold text-[var(--fg)]">{p.title}</span>
-              <GovChip governance={p.governance} />
-              <DifficultyChip difficulty={p.difficulty} />
-              <span
-                className={`w-[78px] text-right text-[11px] font-bold ${
-                  d?.urgent ? "text-rose-600" : "text-[var(--muted)]"
-                }`}
-              >
-                {d ? `Closes ${d.short}` : "Open"}
-              </span>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-[var(--fg)]">{p.title}</span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <GovChip governance={p.governance} />
+                <DifficultyChip difficulty={p.difficulty} />
+                <span
+                  className={`text-[11px] font-bold ${
+                    d?.urgent ? "text-rose-600" : "text-[var(--muted)]"
+                  }`}
+                >
+                  {d ? `Closes ${d.short}` : "Open"}
+                </span>
+              </div>
             </Link>
           );
         })}

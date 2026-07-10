@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -13,5 +14,10 @@ export default defineConfig({
   server: {
     port: 5175,
     strictPort: true,
+  },
+  test: {
+    // Playwright owns e2e/*.spec.ts (run via npm run test:e2e); keep Vitest
+    // to the unit tests so `npm test` doesn't trip over Playwright's runner.
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })

@@ -3,3 +3,10 @@ dist
 .vite
 *.tsbuildinfo
 .env.local
+
+# The native iOS project is generated on demand (npx cap add ios) — it needs
+# Xcode + CocoaPods, which are macOS-only, so it can't live in a Windows-authored
+# commit the way android/ does. CI regenerates it each run. A Mac dev who wants
+# to commit it (to pin native tweaks, as android/ is) can force-add and drop
+# this line. See docs/Android_Dev.md / the ios-build CI job.
+ios/
