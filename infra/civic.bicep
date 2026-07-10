@@ -125,8 +125,12 @@ resource civicWeb 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'News__GenerationIntervalMinutes', value: '120' }
         { name: 'News__BatchSize', value: '5' }
         { name: 'News__MaxItemsPerDay', value: '10' }
-        { name: 'News__Sources__NPR', value: 'https://feeds.npr.org/1001/rss.xml' }
-        { name: 'News__Sources__BBC', value: 'https://feeds.bbci.co.uk/news/rss.xml' }
+        // News__Sources__* env vars were removed when sources became typed
+        // descriptors (name → { Kind, ... }) — a flat string here would make
+        // options binding throw at startup. Source lists live in the committed
+        // backend-civic/appsettings.json. If the live app still has the old
+        // News__Sources__NPR/BBC settings, DELETE them before deploying code
+        // built after this change.
         { name: 'Debate__ApiBaseUrl', value: debateApiBaseUrl }
         { name: 'Debate__WebBaseUrl', value: debateWebBaseUrl }
         // Placeholder origin (the resource-name SWA host). The real SWA hostname

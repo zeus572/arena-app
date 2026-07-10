@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>Top stories - Google News</title>
+    <link>https://news.google.com/</link>
+    <description>Google News</description>
+    <item>
+      <title>Senate passes sweeping voting rights overhaul - NPR</title>
+      <link>https://news.google.com/rss/articles/CBMiVoting?oc=5</link>
+      <guid isPermaLink="false">CBMiqwFBVV95cUxQVm90aW5nUmlnaHRzT3ZlcmhhdWxHdWlkVmFsdWU</guid>
+      <pubDate>Wed, 08 Jul 2026 12:00:00 GMT</pubDate>
+      <description>&lt;a href="https://news.google.com/rss/articles/CBMiVoting?oc=5" target="_blank"&gt;Senate passes sweeping voting rights overhaul&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;NPR&lt;/font&gt;</description>
+      <source url="https://www.npr.org">NPR</source>
+    </item>
+    <item>
+      <title>Governors clash over federal disaster funding rules – The Washington Post</title>
+      <link>https://news.google.com/rss/articles/CBMiDisaster?oc=5</link>
+      <guid isPermaLink="false">CBMiDisasterFundingGuid</guid>
+      <pubDate>Wed, 08 Jul 2026 10:30:00 GMT</pubDate>
+      <description>&lt;a href="https://news.google.com/rss/articles/CBMiDisaster?oc=5"&gt;Governors clash&lt;/a&gt;</description>
+      <source url="https://www.washingtonpost.com">The Washington Post</source>
+    </item>
+    <item>
+      <title>State legislatures debate AI regulation frameworks</title>
+      <link>https://news.google.com/rss/articles/CBMiAiReg?oc=5</link>
+      <guid isPermaLink="false">CBMiAiRegulationGuid</guid>
+      <pubDate>Wed, 08 Jul 2026 09:00:00 GMT</pubDate>
+      <description>No source element on this one.</description>
+    </item>
+    <item>
+      <title>Debt-ceiling standoff enters third week - Reuters</title>
+      <link>https://news.google.com/rss/articles/CBMiDebt?oc=5</link>
+      <guid isPermaLink="false">CBMiDebtCeilingGuid</guid>
+      <pubDate>Wed, 08 Jul 2026 08:00:00 GMT</pubDate>
+      <description>&lt;a href="#"&gt;cluster&lt;/a&gt;</description>
+      <source url="https://www.reuters.com">Reuters</source>
+    </item>
+    <item>
+      <title>Big news today - Chronicle</title>
+      <link>https://news.google.com/rss/articles/CBMiShort?oc=5</link>
+      <guid isPermaLink="false">CBMiShortGuid</guid>
+      <pubDate>Wed, 08 Jul 2026 07:00:00 GMT</pubDate>
+      <description>Stripped headline falls below the min title length.</description>
+      <source url="https://www.chronicle.example">Chronicle</source>
+    </item>
+  </channel>
+</rss>

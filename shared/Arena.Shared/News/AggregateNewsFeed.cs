@@ -20,7 +20,10 @@ public class AggregateNewsFeed : INewsFeed
 
     public async Task<IReadOnlyList<NewsItem>> FetchAsync(int maxItems = 30, CancellationToken ct = default)
     {
-        var fetches = _sources.Select(s => s.FetchAsync(ct)).ToArray();
+        // Each source is guarded individually: a source that throws (in-house
+        // ones catch internally, but that's a convention, not a contract) must
+        // not fault the whole aggregate and starve the healthy sources.
+        var fetches = _sources.Select(s => FetchSafeAsync(s, ct)).ToArray();
         var batches = await Task.WhenAll(fetches);
 
         var all = batches.SelectMany(b => b).ToList();
@@ -37,5 +40,18 @@ public class AggregateNewsFeed : INewsFeed
             all.Count, fetches.Length, deduped.Count);
 
         return deduped;
+    }
+
+    private async Task<IReadOnlyList<NewsItem>> FetchSafeAsync(INewsSource source, CancellationToken ct)
+    {
+        try
+        {
+            return await source.FetchAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AggregateNewsFeed: source {Source} threw; treating as empty", source.Name);
+            return Array.Empty<NewsItem>();
+        }
     }
 }

@@ -171,7 +171,9 @@ JWT issuance (`/api/auth/{register,login,refresh,logout}`). Civic Arena does
 
 ## 6. News pipeline (shared ingestion → fan-out)
 
-One RSS fetch feeds **both** apps via `Arena.Shared.News` (NPR + BBC by default,
+One news-fetch layer feeds **both** apps via `Arena.Shared.News` (typed source
+descriptors resolved through `NewsSourceFactory`; providers: plain RSS + Google
+News channels. Civic ships NPR + Google News Top/Politics/Nation nationally,
 deduped). Each app consumes it independently:
 
 - **Debate:** `NewsTopicService` turns headlines into debate questions

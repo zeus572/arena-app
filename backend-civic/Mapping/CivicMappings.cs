@@ -57,7 +57,7 @@ public static class CivicMappings
         RelatedConcepts = b.RelatedConcepts,
         WhereToGoNext = b.WhereToGoNext,
         SourceUrl = source?.Url,
-        SourcePublisher = source?.Source,
+        SourcePublisher = source is null ? null : source.Publisher ?? source.Source,
         SourcePublishedAt = source is null ? null : DateTime.SpecifyKind(source.PublishedAt, DateTimeKind.Utc),
         Locality = b.Locality,
         CoalitionProvisionId = coalition?.Id,

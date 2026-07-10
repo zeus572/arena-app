@@ -14,16 +14,15 @@ namespace Civic.API.Services.Generation;
 ///
 /// The injected <see cref="INewsFeed"/> is the national feed (items tagged
 /// Locality=null). Per-locality feeds from <see cref="NewsOptions.LocalSources"/>
-/// are built on the fly here (reusing <see cref="RssNewsSource"/>) and their
-/// items are tagged with the state code.
+/// are built on the fly here (via the shared <see cref="INewsSourceFactory"/>)
+/// and their items are tagged with the state code.
 /// </summary>
 public class NewsIngestionService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopes;
     private readonly INewsFeed _feed;
     private readonly IOptionsMonitor<NewsOptions> _opts;
-    private readonly IHttpClientFactory _httpFactory;
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly INewsSourceFactory _sourceFactory;
     private readonly ILogger<NewsIngestionService> _log;
     private readonly StartupReadiness _readiness;
 
@@ -31,16 +30,14 @@ public class NewsIngestionService : BackgroundService
         IServiceScopeFactory scopes,
         INewsFeed feed,
         IOptionsMonitor<NewsOptions> opts,
-        IHttpClientFactory httpFactory,
-        ILoggerFactory loggerFactory,
+        INewsSourceFactory sourceFactory,
         ILogger<NewsIngestionService> log,
         StartupReadiness readiness)
     {
         _scopes = scopes;
         _feed = feed;
         _opts = opts;
-        _httpFactory = httpFactory;
-        _loggerFactory = loggerFactory;
+        _sourceFactory = sourceFactory;
         _log = log;
         _readiness = readiness;
     }
@@ -84,20 +81,44 @@ public class NewsIngestionService : BackgroundService
         using var scope = _scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
 
+        // Headlines already ingested in the recent window: aggregator channels
+        // (Google News) re-surface stories the direct feeds delivered, and the
+        // GN channels overlap each other within a single tick. ExternalId
+        // idempotency can't catch those (each channel has its own ids), so we
+        // also dedupe by headline. Grown after each successful save so feeds
+        // later in this tick dedupe against feeds ingested earlier in it.
+        var recentHeadlines = await LoadRecentHeadlinesAsync(db, ct);
+
         // Each feed is ingested in its own try/catch so one failing feed (a flaky
         // RSS source, or an item that trips a DB constraint) can't starve the
         // others. Before this guard, a single oversized WA item aborted the whole
         // tick, taking national + MD + CA down with it.
-        var total = await SafeIngestAsync(_feed, locality: null, db, ct);
+        var total = await SafeIngestAsync(_feed, locality: null, db, recentHeadlines, ct);
 
         foreach (var (state, sources) in _opts.CurrentValue.LocalSources)
         {
-            var feed = BuildLocalFeed(state, sources);
-            if (feed is null) continue;
-            total += await SafeIngestAsync(feed, locality: state, db, ct);
+            if (sources.Count == 0) continue;
+            var feed = _sourceFactory.CreateFeed(sources);
+            total += await SafeIngestAsync(feed, locality: state, db, recentHeadlines, ct);
         }
 
         return total;
+    }
+
+    private async Task<HashSet<string>> LoadRecentHeadlinesAsync(CivicDbContext db, CancellationToken ct)
+    {
+        var windowDays = _opts.CurrentValue.HeadlineDedupeWindowDays;
+        if (windowDays <= 0)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var cutoff = DateTime.UtcNow.AddDays(-windowDays);
+        var headlines = await db.NewsItems
+            .Where(n => n.IngestedAt >= cutoff)
+            .Select(n => n.Headline)
+            .ToListAsync(ct);
+        return new HashSet<string>(headlines.Select(h => h.Trim()), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -106,12 +127,12 @@ public class NewsIngestionService : BackgroundService
     /// EF tracked entities from the failed SaveChanges are detached so they don't
     /// re-poison the next feed's save on the shared <paramref name="db"/>.
     /// </summary>
-    private async Task<int> SafeIngestAsync(INewsFeed feed, string? locality, CivicDbContext db, CancellationToken ct)
+    private async Task<int> SafeIngestAsync(INewsFeed feed, string? locality, CivicDbContext db, HashSet<string> recentHeadlines, CancellationToken ct)
     {
         var label = locality ?? "national";
         try
         {
-            return await IngestFeedAsync(feed, locality, db, ct);
+            return await IngestFeedAsync(feed, locality, db, recentHeadlines, ct);
         }
         catch (Exception ex)
         {
@@ -128,33 +149,11 @@ public class NewsIngestionService : BackgroundService
             entry.State = EntityState.Detached;
     }
 
-    /// <summary>Build an aggregate feed for one locality from its configured RSS sources.</summary>
-    private INewsFeed? BuildLocalFeed(string state, Dictionary<string, string> sources)
-    {
-        var rssSources = new List<INewsSource>();
-        foreach (var (name, url) in sources)
-        {
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            {
-                _log.LogWarning("NewsIngestionService: skipping invalid local source {State}/{Name}: {Url}", state, name, url);
-                continue;
-            }
-            rssSources.Add(new RssNewsSource(
-                _httpFactory.CreateClient("RssNewsSource"),
-                name,
-                uri,
-                logger: _loggerFactory.CreateLogger($"RssNewsSource[{state}:{name}]")));
-        }
-
-        if (rssSources.Count == 0) return null;
-        return new AggregateNewsFeed(rssSources, _loggerFactory.CreateLogger<AggregateNewsFeed>());
-    }
-
     /// <summary>
     /// Fetch a single feed and upsert its items, tagging each fresh row with
     /// <paramref name="locality"/> (null for national). Returns fresh count.
     /// </summary>
-    private async Task<int> IngestFeedAsync(INewsFeed feed, string? locality, CivicDbContext db, CancellationToken ct)
+    private async Task<int> IngestFeedAsync(INewsFeed feed, string? locality, CivicDbContext db, HashSet<string> recentHeadlines, CancellationToken ct)
     {
         var label = locality ?? "national";
         var items = await feed.FetchAsync(maxItems: 30, ct);
@@ -173,6 +172,9 @@ public class NewsIngestionService : BackgroundService
         var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var fresh = items
             .Where(i => !existingSet.Contains(i.ExternalId))
+            // Compare the clamped, trimmed headline — that's the form stored
+            // rows (and thus recentHeadlines) carry.
+            .Where(i => !recentHeadlines.Contains(Clamp(i.Headline, NewsFieldLimits.Headline)!.Trim()))
             .Select(i => new DbNewsItem
             {
                 Id = Guid.NewGuid(),
@@ -183,6 +185,7 @@ public class NewsIngestionService : BackgroundService
                 ExternalId = Clamp(i.ExternalId, NewsFieldLimits.ExternalId)!,
                 Headline = Clamp(i.Headline, NewsFieldLimits.Headline)!,
                 Source = Clamp(i.Source, NewsFieldLimits.Source)!,
+                Publisher = Clamp(i.Publisher, NewsFieldLimits.Publisher),
                 Url = Clamp(i.Url, NewsFieldLimits.Url)!,
                 Summary = Clamp(i.Summary, NewsFieldLimits.Summary),
                 PublishedAt = DateTime.SpecifyKind(i.PublishedAt, DateTimeKind.Utc),
@@ -209,6 +212,14 @@ public class NewsIngestionService : BackgroundService
 
         db.NewsItems.AddRange(fresh);
         await db.SaveChangesAsync(ct);
+
+        // Only after a successful save: a failed feed must not poison the
+        // dedupe set for the feeds that follow it in this tick.
+        foreach (var f in fresh)
+        {
+            recentHeadlines.Add(f.Headline.Trim());
+        }
+
         _log.LogInformation(
             "NewsIngestionService: {Label} — ingested {Added} new items; summaries: longest {Longest} chars, {Truncated}/{Added} truncated to {Limit}",
             label, fresh.Count, longest, truncated, fresh.Count, NewsFieldLimits.Summary);
@@ -230,6 +241,7 @@ internal static class NewsFieldLimits
     public const int ExternalId = 600;
     public const int Headline = 400;
     public const int Source = 60;
+    public const int Publisher = 120;
     public const int Url = 800;
     public const int Summary = 2000;
 }

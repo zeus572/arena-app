@@ -15,10 +15,12 @@ public class RssNewsSource : INewsSource
     private readonly HttpClient _http;
     private readonly Uri _feedUrl;
     private readonly int _maxEntries;
-    private readonly int _minTitleLength;
     private readonly ILogger _logger;
 
     public string Name { get; }
+
+    /// <summary>Titles shorter than this (after trimming) are skipped.</summary>
+    protected int MinTitleLength { get; }
 
     public RssNewsSource(
         HttpClient http,
@@ -32,7 +34,7 @@ public class RssNewsSource : INewsSource
         Name = name;
         _feedUrl = feedUrl;
         _maxEntries = maxEntries;
-        _minTitleLength = minTitleLength;
+        MinTitleLength = minTitleLength;
         _logger = logger ?? NullLogger.Instance;
     }
 
@@ -47,21 +49,11 @@ public class RssNewsSource : INewsSource
             var items = new List<NewsItem>();
             foreach (var item in feed.Items.Take(_maxEntries))
             {
-                var title = item.Title?.Text?.Trim();
-                if (string.IsNullOrEmpty(title) || title.Length < _minTitleLength)
+                var mapped = MapItem(item);
+                if (mapped is not null)
                 {
-                    continue;
+                    items.Add(mapped);
                 }
-
-                var publishedAt = item.PublishDate != DateTimeOffset.MinValue
-                    ? item.PublishDate.UtcDateTime
-                    : DateTime.UtcNow;
-
-                var url = item.Links.FirstOrDefault()?.Uri?.ToString() ?? _feedUrl.ToString();
-                var externalId = string.IsNullOrEmpty(item.Id) ? url : item.Id!;
-                var summary = item.Summary?.Text;
-
-                items.Add(new NewsItem(externalId, title, Name, url, summary, publishedAt));
             }
             return items;
         }
@@ -70,5 +62,29 @@ public class RssNewsSource : INewsSource
             _logger.LogWarning(ex, "RssNewsSource[{Source}]: fetch from {Url} failed", Name, _feedUrl);
             return Array.Empty<NewsItem>();
         }
+    }
+
+    /// <summary>
+    /// Projects one syndication entry to a <see cref="NewsItem"/>, or null to
+    /// skip it. Subclasses override to apply provider-specific mapping (e.g.
+    /// aggregators that encode the publisher in the entry).
+    /// </summary>
+    protected virtual NewsItem? MapItem(SyndicationItem item)
+    {
+        var title = item.Title?.Text?.Trim();
+        if (string.IsNullOrEmpty(title) || title.Length < MinTitleLength)
+        {
+            return null;
+        }
+
+        var publishedAt = item.PublishDate != DateTimeOffset.MinValue
+            ? item.PublishDate.UtcDateTime
+            : DateTime.UtcNow;
+
+        var url = item.Links.FirstOrDefault()?.Uri?.ToString() ?? _feedUrl.ToString();
+        var externalId = string.IsNullOrEmpty(item.Id) ? url : item.Id!;
+        var summary = item.Summary?.Text;
+
+        return new NewsItem(externalId, title, Name, url, summary, publishedAt);
     }
 }
