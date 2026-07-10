@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { useCountUp } from "@/lib/useCountUp";
+import { usePrefersReducedMotion } from "@/lib/useReducedMotion";
 import {
   getCampaign,
   type CivicCampaignDetail,
@@ -218,7 +220,7 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
       {/* ===== Dashboard grid ===== */}
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Left column */}
-        <div className="flex flex-col gap-4">
+        <div className="motion-stagger flex flex-col gap-4">
           <QuestsCard
             quests={quests}
             done={questsDone}
@@ -229,7 +231,7 @@ export default function PlayerHome({ me, campaigns, provisions }: PlayerHomeProp
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-4">
+        <div className="motion-stagger flex flex-col gap-4">
           <PlayerStatsCard
             name={user?.displayName ?? user?.email ?? "Player"}
             level={level}
@@ -448,12 +450,12 @@ function QuestsCard({
           <Link
             key={q.title}
             to={q.to}
-            className={`flex items-center gap-3 py-2.5 transition ${
+            className={`motion-press flex items-center gap-3 py-2.5 ${
               i < quests.length - 1 ? "border-b border-[var(--border)]/60" : ""
             } ${q.done ? "" : "hover:opacity-80"}`}
           >
             {q.done ? (
-              <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-emerald-500">
+              <span className="motion-pop flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-emerald-500">
                 <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
               </span>
             ) : (
@@ -473,7 +475,7 @@ function QuestsCard({
             </span>
             <span
               className={`text-[10px] font-bold uppercase tracking-[0.08em] ${
-                q.done ? "text-emerald-600" : "text-[var(--accent)]"
+                q.done ? "motion-pop text-emerald-600" : "text-[var(--accent)]"
               }`}
             >
               +{q.xp} XP
@@ -564,7 +566,12 @@ function PlayerStatsCard({
   planksPassed: number;
   scarcePoints: number;
 }) {
-  const deg = Math.round(xpFraction * 360);
+  // Sweep the ring and count the XP up on mount — the payoff of a level screen
+  // is watching progress fill in, not seeing it pre-landed. Both share a small
+  // start delay so they kick off together, just after the card rises in.
+  const animatedFraction = useCountUp(xpFraction, { durationMs: 1000, delayMs: 180 });
+  const animatedXp = Math.round(useCountUp(xpInto, { durationMs: 1000, delayMs: 180 }));
+  const deg = Math.round(animatedFraction * 360);
   return (
     <div className="border border-[var(--border)] bg-[var(--bg-elev)] p-5" data-testid="player-stats-card">
       <div className="flex items-center gap-3.5">
@@ -582,8 +589,8 @@ function PlayerStatsCard({
         </div>
         <div>
           <p className="text-base font-bold text-[var(--fg)]">{name}</p>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">
-            {xpInto} / {XP_PER_LEVEL} XP to Level {level + 1}
+          <p className="mt-0.5 text-xs text-[var(--muted)]" data-testid="xp-into-label">
+            {animatedXp} / {XP_PER_LEVEL} XP to Level {level + 1}
           </p>
           {circleName && (
             <p className="mt-2 inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--accent)]">
@@ -762,11 +769,25 @@ function GovChip({ governance }: { governance: boolean }) {
 }
 
 function Track({ value, className = "" }: { value: number; className?: string }) {
+  const target = Math.min(100, Math.max(0, value));
+  const prefersReduced = usePrefersReducedMotion();
+  // Fill grows from 0 → target on mount (CSS width transition). Under reduced
+  // motion we start at target so there's no animation to see.
+  const [width, setWidth] = useState(prefersReduced ? target : 0);
+  useEffect(() => {
+    if (prefersReduced) {
+      setWidth(target);
+      return;
+    }
+    // rAF lets the browser paint the 0 state first so the transition actually runs.
+    const id = requestAnimationFrame(() => setWidth(target));
+    return () => cancelAnimationFrame(id);
+  }, [target, prefersReduced]);
   return (
     <div className={`h-1.5 overflow-hidden rounded-full bg-[var(--border)] ${className}`}>
       <div
-        className="h-full rounded-full bg-[var(--accent)]"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-700 ease-out motion-reduce:transition-none"
+        style={{ width: `${width}%` }}
       />
     </div>
   );
@@ -785,9 +806,10 @@ function Meter({ label, pct }: { label: string; pct: number }) {
 }
 
 function StatTile({ value, label, accent = false }: { value: number; label: string; accent?: boolean }) {
+  const shown = Math.round(useCountUp(value, { durationMs: 700, delayMs: 180 }));
   return (
     <div className="flex-1 border border-[var(--border)] p-2.5">
-      <p className={`display text-2xl leading-none ${accent ? "text-[var(--accent)]" : ""}`}>{value}</p>
+      <p className={`display text-2xl leading-none ${accent ? "text-[var(--accent)]" : ""}`}>{shown}</p>
       <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--muted)]">{label}</p>
     </div>
   );

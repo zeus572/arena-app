@@ -3,6 +3,7 @@ import { AuthProvider } from "@/auth/AuthContext";
 import EmailVerificationGateModal from "@/auth/EmailVerificationGateModal";
 import DeepLinkListener from "@/lib/DeepLinkListener";
 import UpdateGate from "@/lib/UpdateGate";
+import BootSplash from "@/lib/BootSplash";
 
 import MagazineLayout from "@/prototypes/magazine/Layout";
 import MagazineHomeIndex from "@/prototypes/magazine/pages/HomeIndex";
@@ -50,6 +51,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <BootSplash />
         <DeepLinkListener />
         <UpdateGate />
         <EmailVerificationGateModal />
