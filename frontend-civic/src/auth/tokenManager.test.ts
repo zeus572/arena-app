@@ -90,13 +90,29 @@ describe("tokenManager", () => {
     expect(b).toBe(c);
   });
 
-  it("clears tokens and returns null when the refresh fails", async () => {
-    postMock.mockRejectedValue(new Error("refresh token revoked"));
+  it("clears tokens and returns null when the refresh is definitively rejected (401)", async () => {
+    postMock.mockRejectedValue({ response: { status: 401 } });
     storeTokens({ accessToken: jwt(-10), refreshToken: "dead" });
 
     expect(await refreshAccessToken()).toBeNull();
     expect(localStorage.getItem("arena-access-token")).toBeNull();
     expect(localStorage.getItem("arena-refresh-token")).toBeNull();
+  });
+
+  it("keeps tokens on a transient refresh failure (network error)", async () => {
+    postMock.mockRejectedValue(new Error("network down"));
+    storeTokens({ accessToken: jwt(-10), refreshToken: "still-good" });
+
+    expect(await refreshAccessToken()).toBeNull();
+    expect(localStorage.getItem("arena-refresh-token")).toBe("still-good");
+  });
+
+  it("keeps tokens when the backend is cold-starting (503 readiness gate)", async () => {
+    postMock.mockRejectedValue({ response: { status: 503 } });
+    storeTokens({ accessToken: jwt(-10), refreshToken: "still-good" });
+
+    expect(await refreshAccessToken()).toBeNull();
+    expect(localStorage.getItem("arena-refresh-token")).toBe("still-good");
   });
 
   it("does not attempt a refresh when there is no refresh token", async () => {

@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
 import EmailVerificationGateModal from "@/auth/EmailVerificationGateModal";
+import DeepLinkListener from "@/lib/DeepLinkListener";
+import UpdateGate from "@/lib/UpdateGate";
 
 import MagazineLayout from "@/prototypes/magazine/Layout";
 import MagazineHomeIndex from "@/prototypes/magazine/pages/HomeIndex";
@@ -48,6 +50,8 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <DeepLinkListener />
+        <UpdateGate />
         <EmailVerificationGateModal />
         <Routes>
           {/* Immersive full-screen feed — intentionally OUTSIDE MagazineLayout so it

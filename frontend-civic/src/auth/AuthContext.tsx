@@ -10,6 +10,7 @@ import { arenaApi } from "./arenaAuthClient";
 import { civicApi, getAnonymousUserId } from "@/api/client";
 import {
   clearTokens,
+  errorStatus,
   getFreshAccessToken,
   getRefreshToken,
   getTrustedDeviceToken,
@@ -66,22 +67,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     // Proactively renew the token if it's expired/near-expiry (single-flight in
-    // the token manager). Null means no token or the refresh failed → logged out.
+    // the token manager). Null means no token, or the refresh failed.
     const token = await getFreshAccessToken();
     if (!token) {
-      clearTokens();
-      setUser(null);
+      // Only treat this as "logged out" when the refresh token is gone too
+      // (never signed in, or the refresh was definitively rejected and the
+      // token manager cleared it). If a refresh token survives, the failure
+      // was transient — offline, or the backend's 503 startup gate — so keep
+      // it and let a later attempt restore the session.
+      if (!getRefreshToken()) {
+        clearTokens();
+        setUser(null);
+      }
       setIsLoading(false);
       return;
     }
     try {
       // The arena client's 401 backstop covers a token that fails for a non-
-      // expiry reason; if it still throws, the session is genuinely over.
+      // expiry reason; if it still throws 401, the session is genuinely over.
       const res = await arenaApi.get<AuthUser>("/profile/me");
       setUser(res.data);
-    } catch {
-      clearTokens();
-      setUser(null);
+    } catch (err) {
+      // Anything but a 401 (503 cold start, network blip) is transient: keep
+      // the tokens and whatever user state we had rather than logging out.
+      if (errorStatus(err) === 401) {
+        clearTokens();
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }

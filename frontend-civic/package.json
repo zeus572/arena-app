@@ -11,9 +11,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "android:reverse": "adb reverse tcp:5175 tcp:5175 && adb reverse tcp:5050 tcp:5050 && adb reverse tcp:5000 tcp:5000",
+    "android:dev": "cross-env CAP_SERVER_URL=http://localhost:5175 cap run android",
+    "android:sync": "npm run build && cap sync android",
+    "android:sync:devhttp": "npm run build && cross-env CAP_DEV_HTTP=1 cap sync android",
+    "android:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
+    "@capacitor/preferences": "^8.0.1",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tailwindcss/postcss": "^4.2.2",
     "axios": "^1.13.6",
@@ -27,12 +36,15 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
