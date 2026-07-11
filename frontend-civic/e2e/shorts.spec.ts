@@ -35,21 +35,23 @@ const PROVISION = {
   locality: "Washington",
 };
 
+// Deliberately long copy — the real "did you know?" facts run this long, and it's
+// the length that overflows a short viewport (see the body-overflow regression test).
 const BUDGET_FACT = {
   id: "fact-1",
   factDate: "2026-06-01",
-  category: "Defense",
-  tensionLabel: "National security vs. the deficit",
+  category: "Taxation",
+  tensionLabel: "Does West Virginia's gas tax punish its poorest drivers?",
   perspectiveA:
-    "Defense spending sustains an industrial base spread across more than 300 congressional districts, funding shipyards, aircraft plants, and hundreds of thousands of skilled manufacturing jobs.",
-  sourceA: "Congressional Budget Office",
-  sourceUrlA: "https://cbo.gov",
+    "West Virginia has a combined state and federal gas tax burden — with the federal excise tax fixed at 18.4 cents per gallon — that applies uniformly regardless of income, meaning a low-wage West Virginia worker filling a tank pays the exact same cents-per-gallon as a wealthy driver.",
+  sourceA: "USAFacts",
+  sourceUrlA: "https://usafacts.org",
   perspectiveB:
-    "At roughly half of all discretionary spending, the defense budget crowds out investment in infrastructure, research, and education, and outpaces inflation.",
-  sourceB: "Office of Management and Budget",
-  sourceUrlB: "https://omb.gov",
+    "West Virginia has one of the lowest median household incomes in the United States, meaning gas taxes — a flat per-gallon levy — consume a significantly larger share of a typical West Virginian's income than they do for residents of wealthier states like California, even though California's pump prices are far higher in absolute terms at around $5.79 per gallon.",
+  sourceB: "USAFacts",
+  sourceUrlB: "https://usafacts.org",
   explanation:
-    "Both statements are supported by the same appropriations data — the disagreement is about priorities, not facts.",
+    "The federal gas tax is designed as a user fee for road infrastructure, but its flat-cents-per-gallon structure makes it proportionally far more burdensome for low-income West Virginians than for high-income residents of wealthier states, even when those states pay more at the pump in absolute dollars.",
 };
 
 // One news briefing (has sourcePublisher) and one think-deeper briefing (has a
@@ -187,6 +189,40 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
       `${r.kind} CTA is ${r.belowFoldPx}px below the slide fold`,
     ).toBe(true);
   }
+});
+
+test("shorts: budget fact body doesn't overflow onto the react bar", async ({
+  page,
+}) => {
+  // Distinct from the CTA-in-slide check: the budget card wrapped a bordered,
+  // `h-full` feature card in a `min-h-0 flex-1` middle. On a short viewport that
+  // middle shrank below its content, and the card's own text (the italic
+  // explanation + source links) bled past its border onto the react bar below —
+  // an overlap the CTA-position assertion never caught because the CTA still sat
+  // inside the slide. Pin it: the feature card's box must end above the react bar.
+  const slide = page
+    .locator('[data-testid="shorts-scroll"] > *')
+    .filter({ has: page.getByTestId("short-budget-open") });
+  await slide.scrollIntoViewIfNeeded();
+
+  const overlap = await slide.evaluate((el) => {
+    const shell = el.firstElementChild as HTMLElement;
+    shell.scrollTop = shell.scrollHeight; // exhaust the safety-valve scroll
+    // The overflow is of the card's *children* spilling past its (shrunk) box — the
+    // article's own rect stays at its layout height, so measure the lowest descendant.
+    const card = el.querySelector('[data-testid="feature-budget-fact"]')!;
+    const lowestBottom = Array.from(card.querySelectorAll("*")).reduce(
+      (max, node) => Math.max(max, node.getBoundingClientRect().bottom),
+      card.getBoundingClientRect().bottom,
+    );
+    const react = el
+      .querySelector('[data-testid="short-budget-react"]')!
+      .getBoundingClientRect();
+    return Math.round(lowestBottom - react.top);
+  });
+
+  // Body's bottom edge must sit at/above the react bar's top (tolerate 1px rounding).
+  expect(overlap, `budget card body overlaps the react bar by ${overlap}px`).toBeLessThanOrEqual(1);
 });
 
 test("shorts: cards and header reserve iOS safe-area insets", async ({
