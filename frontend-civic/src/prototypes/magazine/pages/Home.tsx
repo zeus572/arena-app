@@ -101,15 +101,29 @@ export default function MagazineHome() {
           This issue is still being assembled. Check back soon.
         </p>
       )}
-      <FeatureRotator
-        budgetFacts={budgetFacts}
-        budgetFactsLoaded={budgetFactsLoaded}
-        featuredCampaign={featuredCampaign}
-      />
+      {/* Top cluster. On mobile the cover story leads and the feature rotator drops
+          below the "Inside this issue" list, so editorial (not the promo conveyor)
+          is what greets you above the fold. Desktop keeps the rotator on top. */}
+      <div className="flex flex-col">
+        <div className="order-3 md:order-1">
+          <FeatureRotator
+            budgetFacts={budgetFacts}
+            budgetFactsLoaded={budgetFactsLoaded}
+            featuredCampaign={featuredCampaign}
+          />
+        </div>
 
-      {cover && <CoverStory briefing={cover} />}
+        {cover && (
+          <div className="order-1 md:order-2">
+            <CoverStory briefing={cover} />
+          </div>
+        )}
 
-      <section ref={explainersRef} className="mt-14 scroll-mt-24" data-testid="explainers-section">
+        <section
+          ref={explainersRef}
+          className="order-2 mt-14 scroll-mt-24 md:order-3"
+          data-testid="explainers-section"
+        >
         <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
           Inside this issue
         </p>
@@ -215,7 +229,8 @@ export default function MagazineHome() {
             </button>
           </nav>
         )}
-      </section>
+        </section>
+      </div>
 
       <section
         className="mt-16 grid gap-3 border border-indigo-200 bg-indigo-50 p-8 md:grid-cols-[1fr_auto] md:items-center"

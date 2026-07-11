@@ -13,9 +13,126 @@
     />
     <meta name="description" content="Civersify — diverse conversations in civics." />
     <title>Civersify</title>
+    <!-- Boot splash critical CSS. Inlined so the branded loading screen paints
+         on the very first frame — before the JS bundle loads — killing the
+         white flash on the native (Capacitor) shell. React's <BootSplash>
+         fades and removes #boot-splash once the app is hydrated + auth-ready. -->
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: oklch(0.985 0.008 60);
+        opacity: 1;
+        transition: opacity 0.45s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #boot-splash.boot-splash--hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #boot-splash .boot-splash__mark {
+        width: 96px;
+        height: 96px;
+        object-fit: contain;
+        animation:
+          boot-splash-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both,
+          boot-splash-breathe 2.6s ease-in-out 0.6s infinite;
+      }
+      #boot-splash .boot-splash__word {
+        font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia,
+          serif;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: oklch(0.15 0.01 50);
+        opacity: 0;
+        animation: boot-splash-fade 0.5s ease 0.25s both;
+      }
+      #boot-splash .boot-splash__bar {
+        position: relative;
+        width: 132px;
+        height: 3px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: oklch(0.85 0.01 50);
+        opacity: 0;
+        animation: boot-splash-fade 0.5s ease 0.4s both;
+      }
+      #boot-splash .boot-splash__bar::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 999px;
+        background: oklch(0.6 0.22 35);
+        animation: boot-splash-slide 1.15s ease-in-out infinite;
+      }
+      @keyframes boot-splash-in {
+        from {
+          opacity: 0;
+          transform: scale(0.82);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes boot-splash-fade {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes boot-splash-breathe {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+      @keyframes boot-splash-slide {
+        0% {
+          transform: translateX(-120%);
+        }
+        100% {
+          transform: translateX(330%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash .boot-splash__mark,
+        #boot-splash .boot-splash__word,
+        #boot-splash .boot-splash__bar {
+          animation: none;
+          opacity: 1;
+        }
+        #boot-splash .boot-splash__bar::after {
+          animation: none;
+          width: 100%;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Branded loading screen. Removed by <BootSplash> after the app mounts;
+         kept in the DOM (not JS-rendered) so it shows during the bundle fetch. -->
+    <div id="boot-splash" role="status" aria-label="Loading Civersify">
+      <img class="boot-splash__mark" src="/brand-mark.png" alt="" />
+      <div class="boot-splash__word">Civersify</div>
+      <div class="boot-splash__bar"></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

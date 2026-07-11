@@ -64,6 +64,19 @@ export function FeatureRotator({ budgetFacts, budgetFactsLoaded, featuredCampaig
   // Random start: seeded once, and only before the user takes over.
   const seededRef = useRef(false);
   const touchedRef = useRef(false);
+  // Auto-advance is a desktop-only affordance. On mobile (< md / 768px) the conveyor
+  // holds still and is driven only by the arrows/dots, so it never pulls content out
+  // from under someone mid-read. The carousel itself still renders on every width;
+  // only the 7s timer is gated. Tracked via matchMedia so it flips live on resize.
+  const [autoAdvance, setAutoAdvance] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const sync = () => setAutoAdvance(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     void getQuizQuestions(8)
@@ -129,12 +142,12 @@ export function FeatureRotator({ budgetFacts, budgetFactsLoaded, featuredCampaig
   }, [quizLoaded, taxLoaded, budgetFactsLoaded, n]);
 
   useEffect(() => {
-    if (!canRotate) return;
+    if (!canRotate || !autoAdvance) return;
     const id = window.setInterval(() => {
       if (!hovered && !locked && !paused) setOffset((o) => o + 1);
     }, ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [canRotate, hovered, locked, paused]);
+  }, [canRotate, autoAdvance, hovered, locked, paused]);
 
   // Read the index with modulo so a shrinking/growing pool never goes out of range.
   const currentIdx = ((offset % n) + n) % n;
@@ -199,17 +212,21 @@ export function FeatureRotator({ budgetFacts, budgetFactsLoaded, featuredCampaig
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setPaused((p) => !p)}
-            aria-label={paused ? "Resume auto-rotation" : "Pause auto-rotation"}
-            aria-pressed={paused}
-            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--fg-soft)] transition hover:text-[var(--accent)]"
-            data-testid="feature-rotator-pause"
-          >
-            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-            {paused ? "Play" : "Pause"}
-          </button>
+          {/* Play/Pause only makes sense where the timer runs (desktop). On mobile the
+              rotator is manual-only, so a "Pause" control would toggle nothing. */}
+          {autoAdvance && (
+            <button
+              type="button"
+              onClick={() => setPaused((p) => !p)}
+              aria-label={paused ? "Resume auto-rotation" : "Pause auto-rotation"}
+              aria-pressed={paused}
+              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--fg-soft)] transition hover:text-[var(--accent)]"
+              data-testid="feature-rotator-pause"
+            >
+              {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+              {paused ? "Play" : "Pause"}
+            </button>
+          )}
         </div>
       )}
     </div>

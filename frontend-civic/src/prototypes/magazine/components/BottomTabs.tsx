@@ -39,7 +39,7 @@ export function BottomTabs() {
                 data-testid={t.testId}
                 className={({ isActive }) =>
                   [
-                    "flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] transition",
+                    "motion-press flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] transition",
                     // Shorts stays accent-colored even when inactive so it reads as
                     // the standout "new, fun" destination.
                     t.accent
