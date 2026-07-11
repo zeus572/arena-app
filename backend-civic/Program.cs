@@ -398,6 +398,39 @@ static async Task WarmupHotPathsAsync(IServiceProvider scoped, ILogger logger, C
 
     // /api/concepts.
     await Step("concepts", () => db.Concepts.OrderBy(c => c.Title).ToListAsync(ct));
+
+    // /api/coalition/provisions — the magazine's slowest warm call (an N+1 before the
+    // batch-load rework). This shares LoadProvisionsForReadAsync with /api/coalition/me,
+    // so it also warms the me path's heavy query shape — which we can't warm directly
+    // because GetMeAsync writes (ensures circle membership).
+    await Step("coalition-provisions",
+        () => scoped.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionLoopService>().ListAsync(null, ct));
+
+    // The remaining, read-only /api/coalition/me shapes (points ledger + circle standings)
+    // that ListAsync doesn't touch. Sentinel user id → matches nothing, just JITs the query.
+    await Step("coalition-me-reads", async () =>
+    {
+        await db.CoalitionActs.AsNoTracking().Where(a => a.UserId == "__warmup__").ToListAsync(ct);
+        await db.CoalitionCircles.AsNoTracking().OrderBy(l => l.GapTier).ToListAsync(ct);
+        await db.CoalitionCircleMembers.AsNoTracking().FirstOrDefaultAsync(m => m.UserId == "__warmup__", ct);
+    });
+
+    // /api/elections/next — soonest upcoming election.
+    await Step("elections", () => db.Elections.AsNoTracking()
+        .Where(e => e.ScheduledAt >= DateTime.UtcNow)
+        .OrderBy(e => e.ScheduledAt)
+        .FirstOrDefaultAsync(ct));
+
+    // /api/quiz/questions — question bank + the 60-day poll-tally GroupBy.
+    await Step("quiz", async () =>
+    {
+        await db.QuizQuestions.AsNoTracking().ToListAsync(ct);
+        var cutoff = DateTime.UtcNow.AddDays(-Civic.API.Controllers.Api.QuizController.PollWindowDays);
+        await db.QuizResponses.AsNoTracking().Where(r => r.CreatedAt >= cutoff)
+            .GroupBy(r => r.QuestionId)
+            .Select(g => new { g.Key, Total = g.Count() })
+            .ToListAsync(ct);
+    });
 }
 
 // Exposed for WebApplicationFactory<Program> in Civic.ApiTests.
