@@ -68,25 +68,24 @@ public class CoalitionLoopService
         // to readers in the matching state. Resolve the caller's locality once.
         var userLocality = await ResolveUserLocalityAsync(currentUserId, ct);
 
-        var provisions = await _db.Provisions.AsNoTracking()
-            .Where(p => p.Locality == null || p.Locality == userLocality)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync(ct);
-        var result = new List<ProvisionSummaryDto>();
+        // Batch-load the whole visible set + its collections in a fixed number of queries,
+        // then build state/meta in memory — was an N+1 (a split load + participants query
+        // per row) that dominated this endpoint's warm latency.
+        var (provisions, participantsByProvision) = await LoadProvisionsForReadAsync(
+            _db.Provisions
+                .Where(p => p.Locality == null || p.Locality == userLocality)
+                .OrderByDescending(p => p.CreatedAt),
+            ct);
+
+        var result = new List<ProvisionSummaryDto>(provisions.Count);
         foreach (var p in provisions)
         {
-            // Load each provision's heavy data once (split + no-tracking) and reuse it
-            // for both state and meta, rather than loading it twice per row.
-            var full = await LoadProvisionForReadAsync(p.Id, ct);
-            var participants = full is null
-                ? (IReadOnlyList<CoalitionParticipant>)Array.Empty<CoalitionParticipant>()
-                : await _db.CoalitionParticipants.AsNoTracking()
-                    .Where(c => c.ProvisionId == p.Id).OrderBy(c => c.CreatedAt).ToListAsync(ct);
-            var state = full is null ? null : BuildState(full, participants);
-            var bar = state is null ? null : SpectrumBarBuilder.Build(state);
-            var (gap, gov) = full is null ? (0.0, false) : ProvisionMeta(full, participants);
+            var participants = participantsByProvision.TryGetValue(p.Id, out var ps) ? ps : _noParticipants;
+            var state = BuildState(p, participants);
+            var bar = SpectrumBarBuilder.Build(state);
+            var (gap, gov) = ProvisionMeta(p, participants);
             result.Add(new ProvisionSummaryDto(p.Id, p.Slug, p.Title, p.NeutralText, p.State.ToString(),
-                bar?.Distance ?? 1.0, bar?.CoveredBuckets ?? 0, bar?.TotalBuckets ?? 0, p.Deadline,
+                bar.Distance, bar.CoveredBuckets, bar.TotalBuckets, p.Deadline,
                 gap, DifficultyLabel(gap), gov, p.Locality));
         }
         return result;
@@ -471,6 +470,49 @@ public class CoalitionLoopService
             .Include(p => p.AcceptanceRecords)
             .FirstOrDefaultAsync(p => p.Id == provisionId, ct);
 
+    /// <summary>
+    /// Batch-loads a set of provisions (selected by <paramref name="query"/>) with their
+    /// Versions / Positions / AcceptanceRecords collections attached and participants grouped
+    /// by provision — in a fixed number of queries (one per table) instead of the per-provision
+    /// split loads that made <see cref="ListAsync"/> / <see cref="LoadWorldAsync"/> N+1. The
+    /// returned rows feed BuildState / BuildAllAgents / ProvisionMeta with no further DB access.
+    /// No-tracking (pure read path), so navigation collections are assigned by hand rather than
+    /// relying on EF fix-up.
+    /// </summary>
+    private async Task<(List<Provision> Provisions, IReadOnlyDictionary<Guid, List<CoalitionParticipant>> ParticipantsByProvision)>
+        LoadProvisionsForReadAsync(IQueryable<Provision> query, CancellationToken ct)
+    {
+        var provisions = await query.AsNoTracking().ToListAsync(ct);
+        if (provisions.Count == 0)
+            return (provisions, new Dictionary<Guid, List<CoalitionParticipant>>());
+
+        var ids = provisions.Select(p => p.Id).ToList();
+
+        var versionsBy = (await _db.ProvisionVersions.AsNoTracking()
+                .Where(v => ids.Contains(v.ProvisionId)).ToListAsync(ct))
+            .GroupBy(v => v.ProvisionId).ToDictionary(g => g.Key, g => g.ToList());
+        var positionsBy = (await _db.ProvisionPositions.AsNoTracking()
+                .Where(x => ids.Contains(x.ProvisionId)).ToListAsync(ct))
+            .GroupBy(x => x.ProvisionId).ToDictionary(g => g.Key, g => g.ToList());
+        var acceptsBy = (await _db.AcceptanceRecords.AsNoTracking()
+                .Where(a => ids.Contains(a.ProvisionId)).ToListAsync(ct))
+            .GroupBy(a => a.ProvisionId).ToDictionary(g => g.Key, g => g.ToList());
+        var participantsBy = (await _db.CoalitionParticipants.AsNoTracking()
+                .Where(c => ids.Contains(c.ProvisionId)).OrderBy(c => c.CreatedAt).ToListAsync(ct))
+            .GroupBy(c => c.ProvisionId).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var p in provisions)
+        {
+            if (versionsBy.TryGetValue(p.Id, out var v)) p.Versions = v;
+            if (positionsBy.TryGetValue(p.Id, out var x)) p.Positions = x;
+            if (acceptsBy.TryGetValue(p.Id, out var a)) p.AcceptanceRecords = a;
+        }
+
+        return (provisions, participantsBy);
+    }
+
+    private static readonly IReadOnlyList<CoalitionParticipant> _noParticipants = Array.Empty<CoalitionParticipant>();
+
     // ---------------------------------------------------------------- locality hard wall
 
     /// <summary>The reader's chosen locality (state code), or null for national-only.</summary>
@@ -702,15 +744,6 @@ public class CoalitionLoopService
 
     private static bool Eq(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Build CoalitionAgents for ALL participants (agents from JSON; humans from derived region).</summary>
-    private async Task<(List<CoalitionAgent> Agents, VersionPoint? BaseVersion)> BuildAllAgentsAsync(Guid provisionId, CancellationToken ct)
-    {
-        var p = await LoadProvisionAsync(provisionId, ct);
-        if (p is null) return (new(), null);
-        var participants = await _db.CoalitionParticipants.Where(c => c.ProvisionId == provisionId).ToListAsync(ct);
-        return BuildAllAgents(p, participants);
-    }
-
     /// <summary>Build CoalitionAgents from already-loaded data (no DB access).</summary>
     private (List<CoalitionAgent> Agents, VersionPoint? BaseVersion) BuildAllAgents(Provision p, IReadOnlyList<CoalitionParticipant> participants)
     {
@@ -744,13 +777,17 @@ public class CoalitionLoopService
 
     private async Task<List<ProvisionWorld>> LoadWorldAsync(CancellationToken ct)
     {
-        var provisions = await _db.Provisions.ToListAsync(ct);
-        var worlds = new List<ProvisionWorld>();
+        // Batch-load every provision + its collections in a fixed number of queries, then
+        // build state AND agents in memory from the same rows. Was the worst N+1 in the
+        // service: per provision it loaded the row TWICE (once for state, once for agents),
+        // each a 4-trip split load + a participants query — ~10 round trips per provision.
+        var (provisions, participantsByProvision) = await LoadProvisionsForReadAsync(_db.Provisions, ct);
+        var worlds = new List<ProvisionWorld>(provisions.Count);
         foreach (var p in provisions)
         {
-            var state = await LoadStateAsync(p.Id, ct);
-            if (state is null) continue;
-            var (agents, baseV) = await BuildAllAgentsAsync(p.Id, ct);
+            var participants = participantsByProvision.TryGetValue(p.Id, out var ps) ? ps : _noParticipants;
+            var state = BuildState(p, participants);
+            var (agents, baseV) = BuildAllAgents(p, participants);
             var gap = (baseV is not null && agents.Count > 0) ? GapWidthEstimator.NormalizedGap(agents, baseV) : 0.0;
             var gov = GovernanceClassifier.IsGovernance(p.RelevantAxes, p.Title);
             var pass = p.State == ProvisionState.Passed ? _sm.ResolvePassOutcome(state) : null;

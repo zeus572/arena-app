@@ -8,6 +8,7 @@ import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
+import { WhenVisible } from "@/lib/WhenVisible";
 import { ButtonLink } from "../components/Button";
 import { CoverStory } from "../components/CoverStory";
 import { FeatureRotator } from "../components/FeatureRotator";
@@ -266,7 +267,13 @@ export default function MagazineHome() {
         </div>
       </section>
 
-      <CampaignFeedQuoteCard />
+      {/* Both self-fetch on mount and sit well below the fold. They're also the two
+          slowest calls on the page (the campaign feed and the coalition provisions
+          list), so mounting them only as they near the viewport keeps them out of
+          the initial load burst that would otherwise delay the cover + feature tile. */}
+      <WhenVisible>
+        <CampaignFeedQuoteCard />
+      </WhenVisible>
 
       {budgetFacts.length > 0 && (
         <section className="mt-16" data-testid="budget-facts">
@@ -286,7 +293,9 @@ export default function MagazineHome() {
         </section>
       )}
 
-      <CoalitionQuestionCard />
+      <WhenVisible>
+        <CoalitionQuestionCard />
+      </WhenVisible>
 
       <section className="mt-16" data-testid="learn-more-grid">
         <p className="display text-xs font-semibold uppercase tracking-[0.3em] text-[var(--muted)]">
