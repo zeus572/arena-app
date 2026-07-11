@@ -62,12 +62,17 @@ export function MobileMenu() {
             aria-label="Close menu"
             tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
+          {/* `theme-magazine` is required here: the drawer is portaled to <body>,
+              outside the app's theme wrapper, so without it the --bg-elev/--fg/--border
+              tokens are undefined and the panel renders with a transparent background
+              (the page shows through — unreadable). Same pattern as the verify-email
+              modal. Keep it on the panel so the scrim behind stays see-through. */}
           <nav
             aria-label="All sections"
             data-testid="mobile-menu-panel"
-            className="absolute inset-y-0 right-0 flex w-72 max-w-[82%] flex-col border-l border-[var(--border)] bg-[var(--bg-elev)] shadow-xl"
+            className="theme-magazine absolute inset-y-0 right-0 flex w-72 max-w-[82%] flex-col border-l border-[var(--border)] bg-[var(--bg-elev)] shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
