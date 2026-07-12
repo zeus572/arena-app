@@ -3,6 +3,7 @@ using Civic.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using DbNewsItem = Civic.API.Models.NewsItem;
+using WireNewsItem = Arena.Shared.News.NewsItem;
 using NewsItemStatus = Civic.API.Models.NewsItemStatus;
 
 namespace Civic.API.Services.Generation;
@@ -81,36 +82,41 @@ public class NewsIngestionService : BackgroundService
         using var scope = _scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
 
-        // Headlines already ingested in the recent window: aggregator channels
-        // (Google News) re-surface stories the direct feeds delivered, and the
-        // GN channels overlap each other within a single tick. ExternalId
-        // idempotency can't catch those (each channel has its own ids), so we
-        // also dedupe by headline. Grown after each successful save so feeds
-        // later in this tick dedupe against feeds ingested earlier in it.
-        var recentHeadlines = await LoadRecentHeadlinesAsync(db, ct);
+        // Signatures of stories already ingested in the recent window. Aggregator
+        // channels (Google News) re-surface stories the direct feeds delivered,
+        // the GN channels overlap each other within a single tick, and a big
+        // breaking story is carried by many outlets in slightly different words.
+        // ExternalId idempotency can't catch those (each channel has its own ids)
+        // and exact-headline matching misses the reworded copies, so we dedupe on
+        // the significant-word signature of the headline. Grown after each
+        // successful save so feeds later in this tick dedupe against feeds
+        // ingested earlier in it.
+        var recentSignatures = await LoadRecentSignaturesAsync(db, ct);
 
         // Each feed is ingested in its own try/catch so one failing feed (a flaky
         // RSS source, or an item that trips a DB constraint) can't starve the
         // others. Before this guard, a single oversized WA item aborted the whole
         // tick, taking national + MD + CA down with it.
-        var total = await SafeIngestAsync(_feed, locality: null, db, recentHeadlines, ct);
+        var total = await SafeIngestAsync(_feed, locality: null, db, recentSignatures, ct);
 
         foreach (var (state, sources) in _opts.CurrentValue.LocalSources)
         {
             if (sources.Count == 0) continue;
             var feed = _sourceFactory.CreateFeed(sources);
-            total += await SafeIngestAsync(feed, locality: state, db, recentHeadlines, ct);
+            total += await SafeIngestAsync(feed, locality: state, db, recentSignatures, ct);
         }
 
         return total;
     }
 
-    private async Task<HashSet<string>> LoadRecentHeadlinesAsync(CivicDbContext db, CancellationToken ct)
+    private async Task<List<HashSet<string>>> LoadRecentSignaturesAsync(CivicDbContext db, CancellationToken ct)
     {
         var windowDays = _opts.CurrentValue.HeadlineDedupeWindowDays;
         if (windowDays <= 0)
         {
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // No look-back against stored rows; in-tick dedupe still applies as
+            // survivor signatures accumulate through the tick.
+            return new List<HashSet<string>>();
         }
 
         var cutoff = DateTime.UtcNow.AddDays(-windowDays);
@@ -118,7 +124,7 @@ public class NewsIngestionService : BackgroundService
             .Where(n => n.IngestedAt >= cutoff)
             .Select(n => n.Headline)
             .ToListAsync(ct);
-        return new HashSet<string>(headlines.Select(h => h.Trim()), StringComparer.OrdinalIgnoreCase);
+        return headlines.Select(NewsDedup.Tokenize).ToList();
     }
 
     /// <summary>
@@ -127,12 +133,12 @@ public class NewsIngestionService : BackgroundService
     /// EF tracked entities from the failed SaveChanges are detached so they don't
     /// re-poison the next feed's save on the shared <paramref name="db"/>.
     /// </summary>
-    private async Task<int> SafeIngestAsync(INewsFeed feed, string? locality, CivicDbContext db, HashSet<string> recentHeadlines, CancellationToken ct)
+    private async Task<int> SafeIngestAsync(INewsFeed feed, string? locality, CivicDbContext db, List<HashSet<string>> recentSignatures, CancellationToken ct)
     {
         var label = locality ?? "national";
         try
         {
-            return await IngestFeedAsync(feed, locality, db, recentHeadlines, ct);
+            return await IngestFeedAsync(feed, locality, db, recentSignatures, ct);
         }
         catch (Exception ex)
         {
@@ -153,7 +159,7 @@ public class NewsIngestionService : BackgroundService
     /// Fetch a single feed and upsert its items, tagging each fresh row with
     /// <paramref name="locality"/> (null for national). Returns fresh count.
     /// </summary>
-    private async Task<int> IngestFeedAsync(INewsFeed feed, string? locality, CivicDbContext db, HashSet<string> recentHeadlines, CancellationToken ct)
+    private async Task<int> IngestFeedAsync(INewsFeed feed, string? locality, CivicDbContext db, List<HashSet<string>> recentSignatures, CancellationToken ct)
     {
         var label = locality ?? "national";
         var items = await feed.FetchAsync(maxItems: 30, ct);
@@ -168,63 +174,93 @@ public class NewsIngestionService : BackgroundService
             .Where(n => externalIds.Contains(n.ExternalId))
             .Select(n => n.ExternalId)
             .ToListAsync(ct);
-
         var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var fresh = items
+
+        // Build a candidate row for everything not already stored by ExternalId,
+        // then collapse near-duplicates below. Rows carry the clamped headline —
+        // the form stored rows (and thus recentSignatures) are compared in.
+        var candidates = items
             .Where(i => !existingSet.Contains(i.ExternalId))
-            // Compare the clamped, trimmed headline — that's the form stored
-            // rows (and thus recentHeadlines) carry.
-            .Where(i => !recentHeadlines.Contains(Clamp(i.Headline, NewsFieldLimits.Headline)!.Trim()))
-            .Select(i => new DbNewsItem
-            {
-                Id = Guid.NewGuid(),
-                // Clamp every string field to its column limit. RSS feeds vary
-                // wildly — some put the full article body in <description> — and
-                // an over-long value otherwise throws Postgres 22001 on save,
-                // aborting the feed. Summary is a preview, so clipping is benign.
-                ExternalId = Clamp(i.ExternalId, NewsFieldLimits.ExternalId)!,
-                Headline = Clamp(i.Headline, NewsFieldLimits.Headline)!,
-                Source = Clamp(i.Source, NewsFieldLimits.Source)!,
-                Publisher = Clamp(i.Publisher, NewsFieldLimits.Publisher),
-                Url = Clamp(i.Url, NewsFieldLimits.Url)!,
-                Summary = Clamp(i.Summary, NewsFieldLimits.Summary),
-                PublishedAt = DateTime.SpecifyKind(i.PublishedAt, DateTimeKind.Utc),
-                IngestedAt = DateTime.UtcNow,
-                Status = NewsItemStatus.Ingested,
-                Locality = locality,
-            })
+            .Select(i => BuildRow(i, locality))
             .ToList();
 
-        if (fresh.Count == 0)
+        var threshold = _opts.CurrentValue.HeadlineSimilarityThreshold;
+        var dedupeEnabled = threshold > 0;
+
+        // Near-duplicate collapse: a big breaking story is carried by many outlets
+        // in the same ingest window with slightly different wording, and each copy
+        // would otherwise become its own briefing. Take the deepest copy first
+        // (fullest summary — see NewsDedup.DepthKey) and drop any later near-
+        // duplicate, so exactly one, most-in-depth row survives per story.
+        var accepted = new List<DbNewsItem>();
+        var acceptedSignatures = new List<HashSet<string>>();
+        foreach (var row in candidates
+                     .OrderByDescending(r => NewsDedup.DepthKey(r.Summary, r.Headline)))
         {
-            _log.LogInformation("NewsIngestionService: {Label} — 0 new items (all {Total} already ingested)", label, items.Count);
+            var signature = NewsDedup.Tokenize(row.Headline);
+            var isDuplicate = dedupeEnabled && recentSignatures
+                .Concat(acceptedSignatures)
+                .Any(sig => NewsDedup.AreNearDuplicates(signature, sig, threshold));
+            if (isDuplicate)
+            {
+                _log.LogInformation(
+                    "NewsIngestionService: {Label} — dropped near-duplicate headline \"{Headline}\"",
+                    label, row.Headline);
+                continue;
+            }
+
+            accepted.Add(row);
+            acceptedSignatures.Add(signature);
+        }
+
+        if (accepted.Count == 0)
+        {
+            _log.LogInformation("NewsIngestionService: {Label} — 0 new items (all {Total} already ingested or duplicate)", label, items.Count);
             return 0;
         }
 
         // Metric: how long are the raw summaries, and how much are we clipping?
         // Logged as structured fields so the trend (truncated rate, longest seen)
         // is visible over time in the log store without a DB query.
-        var summaryLengths = fresh
+        var summaryLengths = accepted
             .Select(f => items.First(i => i.ExternalId == f.ExternalId).Summary?.Length ?? 0)
             .ToList();
         var truncated = summaryLengths.Count(len => len > NewsFieldLimits.Summary);
         var longest = summaryLengths.Count > 0 ? summaryLengths.Max() : 0;
 
-        db.NewsItems.AddRange(fresh);
+        db.NewsItems.AddRange(accepted);
         await db.SaveChangesAsync(ct);
 
         // Only after a successful save: a failed feed must not poison the
         // dedupe set for the feeds that follow it in this tick.
-        foreach (var f in fresh)
-        {
-            recentHeadlines.Add(f.Headline.Trim());
-        }
+        recentSignatures.AddRange(acceptedSignatures);
 
         _log.LogInformation(
-            "NewsIngestionService: {Label} — ingested {Added} new items; summaries: longest {Longest} chars, {Truncated}/{Added} truncated to {Limit}",
-            label, fresh.Count, longest, truncated, fresh.Count, NewsFieldLimits.Summary);
-        return fresh.Count;
+            "NewsIngestionService: {Label} — ingested {Added} new items ({Dropped} near-duplicates dropped); summaries: longest {Longest} chars, {Truncated}/{Added} truncated to {Limit}",
+            label, accepted.Count, candidates.Count - accepted.Count, longest, truncated, accepted.Count, NewsFieldLimits.Summary);
+        return accepted.Count;
     }
+
+    /// <summary>
+    /// Materialize a wire item into a persisted row. Clamps every string field to
+    /// its column limit: RSS feeds vary wildly — some put the full article body in
+    /// <c>&lt;description&gt;</c> — and an over-long value otherwise throws Postgres
+    /// 22001 on save, aborting the feed. Summary is a preview, so clipping is benign.
+    /// </summary>
+    private static DbNewsItem BuildRow(WireNewsItem i, string? locality) => new()
+    {
+        Id = Guid.NewGuid(),
+        ExternalId = Clamp(i.ExternalId, NewsFieldLimits.ExternalId)!,
+        Headline = Clamp(i.Headline, NewsFieldLimits.Headline)!,
+        Source = Clamp(i.Source, NewsFieldLimits.Source)!,
+        Publisher = Clamp(i.Publisher, NewsFieldLimits.Publisher),
+        Url = Clamp(i.Url, NewsFieldLimits.Url)!,
+        Summary = Clamp(i.Summary, NewsFieldLimits.Summary),
+        PublishedAt = DateTime.SpecifyKind(i.PublishedAt, DateTimeKind.Utc),
+        IngestedAt = DateTime.UtcNow,
+        Status = NewsItemStatus.Ingested,
+        Locality = locality,
+    };
 
     /// <summary>Trim a string to <paramref name="max"/> chars; null/short values pass through unchanged.</summary>
     private static string? Clamp(string? value, int max) =>
