@@ -18,12 +18,23 @@ public class NewsOptions
     public int MaxStoryAgeDays { get; set; } = 14;
 
     /// <summary>
-    /// An incoming item whose headline matches (case-insensitive) one ingested
-    /// within this many days is skipped as a duplicate — aggregator channels
-    /// (Google News) re-surface stories the direct feeds already delivered, and
-    /// overlap each other within a tick. 0 disables headline dedupe.
+    /// An incoming item whose headline is a near-duplicate of one ingested
+    /// within this many days is skipped — aggregator channels (Google News)
+    /// re-surface stories the direct feeds already delivered, and a big breaking
+    /// story is carried by many outlets within the window. 0 disables the
+    /// look-back against already-stored rows (in-tick dedupe still applies).
     /// </summary>
     public int HeadlineDedupeWindowDays { get; set; } = 3;
+
+    /// <summary>
+    /// Overlap-coefficient threshold above which two headlines count as the same
+    /// story during ingestion dedupe. Higher is stricter (fewer collapses); a
+    /// value &lt;= 0 disables near-duplicate detection entirely (exact-only). See
+    /// <see cref="NewsDedup"/>. Default catches "Sen. Lindsey Graham dies at 70"
+    /// vs "Lindsey Graham, longtime senator, dead at 70" while leaving distinct
+    /// same-day stories that merely share an actor apart.
+    /// </summary>
+    public double HeadlineSimilarityThreshold { get; set; } = NewsDedup.DefaultThreshold;
 
     /// <summary>
     /// National sources to ingest, keyed by source name (the name becomes
