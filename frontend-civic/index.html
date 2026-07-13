@@ -13,6 +13,20 @@
     />
     <meta name="description" content="Civersify — diverse conversations in civics." />
     <title>Civersify</title>
+    <!-- Social share card. Static (the app is a client-rendered SPA, so crawlers
+         only see index.html) — a single strong card for links like
+         civersify.com/welcome. Swap og-welcome.png in for a dedicated 1200x630
+         image to upgrade to a large card. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Civersify" />
+    <meta property="og:title" content="Stop picking a side. Start writing the deal." />
+    <meta property="og:description" content="Civersify turns each week's headline into a bill you can shape — build coalitions across ten value axes, not one left–right line." />
+    <meta property="og:url" content="https://civersify.com/welcome" />
+    <meta property="og:image" content="https://civersify.com/logo-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Stop picking a side. Start writing the deal." />
+    <meta name="twitter:description" content="Every week's headline, rewritten as a bill you can actually shape. Civics without the shouting." />
+    <meta name="twitter:image" content="https://civersify.com/logo-512.png" />
     <!-- Boot splash critical CSS. Inlined so the branded loading screen paints
          on the very first frame — before the JS bundle loads — killing the
          white flash on the native (Capacitor) shell. React's <BootSplash>
