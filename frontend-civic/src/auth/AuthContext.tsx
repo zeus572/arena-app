@@ -46,6 +46,7 @@ type AuthContextValue = {
     displayName: string,
     inviteCode: string,
     dateOfBirth: string,
+    acceptedTermsVersion: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -142,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     displayName: string,
     inviteCode: string,
     dateOfBirth: string,
+    acceptedTermsVersion: string,
   ) => {
     const anonId = getAnonymousUserId();
     const res = await arenaApi.post<AuthResponse>("/auth/register", {
@@ -150,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName,
       inviteCode,
       dateOfBirth,
+      acceptedTermsVersion,
       app: "civic",
     });
     storeTokens(res.data);

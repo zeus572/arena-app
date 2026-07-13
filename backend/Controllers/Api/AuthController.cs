@@ -31,6 +31,14 @@ public class AuthController : ControllerBase
     // COPPA: we do not knowingly create accounts for children under 13.
     private const int MinimumSignupAge = 13;
 
+    // Current Terms of Service version. Signups must accept exactly this version;
+    // it's stored on the account so we can detect who predates a later revision.
+    // Keep in sync with the frontends' TERMS_VERSION and the Terms page's
+    // effective date. Overridable via config for staging.
+    private const string DefaultTermsVersion = "2026-07-13";
+    private string CurrentTermsVersion =>
+        _config["Terms:CurrentVersion"] is { Length: > 0 } v ? v : DefaultTermsVersion;
+
     public AuthController(
         ArenaDbContext db,
         JwtTokenService jwt,
@@ -81,6 +89,12 @@ public class AuthController : ControllerBase
         if (age < MinimumSignupAge)
             return BadRequest(new { error = $"You must be at least {MinimumSignupAge} years old to create an account." });
 
+        // Terms of Service: capture explicit agreement to the current version.
+        // Reject if it's missing or stale (e.g. an old cached bundle) so the
+        // stored version is always meaningful.
+        if (!string.Equals(request.AcceptedTermsVersion, CurrentTermsVersion, StringComparison.Ordinal))
+            return BadRequest(new { error = "Please review and accept the current Terms of Service." });
+
         var check = await _emailPolicy.ValidateAsync(request.Email);
         if (!check.Accepted)
             return BadRequest(new { error = check.Message });
@@ -102,6 +116,8 @@ public class AuthController : ControllerBase
             EmailVerified = false,
             Plan = UserPlan.Free,
             DateOfBirth = dob,
+            TermsVersionAccepted = CurrentTermsVersion,
+            TermsAcceptedAt = DateTime.UtcNow,
         };
         user.PasswordHash = _hasher.HashPassword(user, request.Password);
 

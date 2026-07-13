@@ -4,6 +4,7 @@ import { Button } from "../components/Button";
 import { useAuth } from "@/auth/AuthContext";
 import { setMyDemographics } from "@/api/profile";
 import { computeAge, ageRangeFromDob, MINIMUM_SIGNUP_AGE } from "@/lib/age";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export default function MagazineRegister() {
   const { register } = useAuth();
@@ -18,6 +19,7 @@ export default function MagazineRegister() {
   const [inviteCode, setInviteCode] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,9 +44,13 @@ export default function MagazineRegister() {
       setError(`You must be at least ${MINIMUM_SIGNUP_AGE} to create an account.`);
       return;
     }
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await register(email, password, displayName, inviteCode, dateOfBirth);
+      await register(email, password, displayName, inviteCode, dateOfBirth, TERMS_VERSION);
       // Persist the sign-up personalization fields to the civic profile (keyed by
       // the new user identity). The local-news region is derived from the ZIP
       // server-side, and the age bucket is derived from the DOB. Non-fatal: a
@@ -191,6 +197,28 @@ export default function MagazineRegister() {
           <span className="text-xs text-[var(--muted)]">
             You must be at least {MINIMUM_SIGNUP_AGE} to create an account. Helps
             us tune the experience to your perspective.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2 text-sm text-[var(--fg-soft)]">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            required
+            className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+            data-testid="register-terms"
+          />
+          <span>
+            I agree to the{" "}
+            <Link to="/terms" target="_blank" className="text-[var(--accent)] underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" target="_blank" className="text-[var(--accent)] underline">
+              Privacy Policy
+            </Link>
+            .
           </span>
         </label>
 
