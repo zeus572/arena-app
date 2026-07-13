@@ -203,6 +203,18 @@ export default function MagazineRegister() {
         >
           {submitting ? "Creating…" : "Create account"}
         </Button>
+
+        <p className="text-xs leading-relaxed text-[var(--muted)]">
+          By creating an account you agree to our{" "}
+          <Link to="/terms" className="text-[var(--accent)] underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="text-[var(--accent)] underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="mt-6 text-sm text-[var(--fg-soft)]">
