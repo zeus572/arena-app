@@ -23,6 +23,7 @@
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
     "@capacitor/preferences": "^8.0.1",
+    "@microsoft/applicationinsights-web": "^3.4.3",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tailwindcss/postcss": "^4.2.2",
     "axios": "^1.13.6",
