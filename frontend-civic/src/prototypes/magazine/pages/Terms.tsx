@@ -153,13 +153,33 @@ export default function Terms() {
           ),
         },
         {
-          heading: "Changes & contact",
+          heading: "Changes to these Terms",
+          body: (
+            <>
+              <p>
+                Each version of these Terms is identified by the effective date
+                shown at the top. We may update these Terms from time to time as the
+                Service evolves. When we do, we will revise that effective date and,
+                for material changes, take reasonable steps to let you know — for
+                example, an in-product notice or email.
+              </p>
+              <p>
+                <strong>
+                  Your continued use of the Service after an updated version takes
+                  effect constitutes your acceptance of the updated Terms.
+                </strong>{" "}
+                If you do not agree to a change, your remedy is to stop using the
+                Service and close your account. For significant changes we may also
+                ask you to re-acknowledge these Terms before you continue.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Contact",
           body: (
             <p>
-              We may update these Terms; material changes update the effective date
-              above and, where appropriate, we will notify you. Continued use after
-              changes means you accept them. Questions? Email {LEGAL_CONTACT_EMAIL}.
-              See also our{" "}
+              Questions? Email {LEGAL_CONTACT_EMAIL}. See also our{" "}
               <Link to="/privacy" className="text-[var(--accent)] underline">
                 Privacy Policy
               </Link>{" "}
