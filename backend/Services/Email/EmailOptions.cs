@@ -19,8 +19,20 @@ public class EmailOptions
     /// <summary>Display name shown as the From name.</summary>
     public string SenderName { get; set; } = "Political Arena";
 
-    /// <summary>Physical sender identity shown in the email footer (CAN-SPAM).</summary>
+    /// <summary>Legal-entity identity shown in the email footer (CAN-SPAM). Set
+    /// this to the real registered business name in production.</summary>
     public string SenderIdentity { get; set; } = "Political Arena";
+
+    /// <summary>Physical mailing address shown in the email footer (CAN-SPAM
+    /// requires a valid postal address on commercial mail; we include it on
+    /// transactional mail too as the compliance-safest posture). Blank in dev —
+    /// set the real address as an app setting in production.</summary>
+    public string SenderPostalAddress { get; set; } = "";
+
+    /// <summary>Base URL for the public legal pages (Privacy Policy / Terms),
+    /// e.g. "https://civersify.com". Footer links are built from this; blank
+    /// omits the links.</summary>
+    public string LegalBaseUrl { get; set; } = "";
 
     /// <summary>ACS connection string (secret). Null = use managed identity via
     /// <see cref="AcsEndpoint"/>.</summary>
