@@ -203,9 +203,6 @@ export default function MagazineRegister() {
         >
           {submitting ? "Creating…" : "Create account"}
         </Button>
-        {/* The explicit Terms/Privacy agreement checkbox is added in the
-            registration (age-gate) change so it can also send the accepted
-            Terms version to the server. */}
       </form>
 
       <p className="mt-6 text-sm text-[var(--fg-soft)]">
