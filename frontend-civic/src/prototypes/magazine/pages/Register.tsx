@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { useAuth } from "@/auth/AuthContext";
-import { setMyDemographics, AGE_RANGES } from "@/api/profile";
+import { setMyDemographics } from "@/api/profile";
+import { computeAge, ageRangeFromDob, MINIMUM_SIGNUP_AGE } from "@/lib/age";
 
 export default function MagazineRegister() {
   const { register } = useAuth();
@@ -16,7 +17,7 @@ export default function MagazineRegister() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [ageRange, setAgeRange] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,14 +33,24 @@ export default function MagazineRegister() {
       setError("Please enter a 5-digit ZIP code.");
       return;
     }
+    const age = computeAge(dateOfBirth);
+    if (age === null) {
+      setError("Please enter a valid date of birth.");
+      return;
+    }
+    if (age < MINIMUM_SIGNUP_AGE) {
+      setError(`You must be at least ${MINIMUM_SIGNUP_AGE} to create an account.`);
+      return;
+    }
     setSubmitting(true);
     try {
-      await register(email, password, displayName, inviteCode);
+      await register(email, password, displayName, inviteCode, dateOfBirth);
       // Persist the sign-up personalization fields to the civic profile (keyed by
       // the new user identity). The local-news region is derived from the ZIP
-      // server-side. Non-fatal: a failure here shouldn't block sign-up.
+      // server-side, and the age bucket is derived from the DOB. Non-fatal: a
+      // failure here shouldn't block sign-up.
       try {
-        await setMyDemographics(zipCode, ageRange);
+        await setMyDemographics(zipCode, ageRangeFromDob(dateOfBirth));
       } catch {
         /* editable later from the profile page */
       }
@@ -166,26 +177,20 @@ export default function MagazineRegister() {
 
         <label className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Age range
+            Date of birth
           </span>
-          <select
-            value={ageRange}
-            onChange={(e) => setAgeRange(e.target.value)}
+          <input
+            type="date"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
             required
+            max={new Date().toISOString().slice(0, 10)}
             className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-base text-[var(--fg)] outline-none focus:border-[var(--accent)]"
-            data-testid="register-age-range"
-          >
-            <option value="" disabled>
-              Select…
-            </option>
-            {AGE_RANGES.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </select>
+            data-testid="register-dob"
+          />
           <span className="text-xs text-[var(--muted)]">
-            Helps us tune the experience to your perspective.
+            You must be at least {MINIMUM_SIGNUP_AGE} to create an account. Helps
+            us tune the experience to your perspective.
           </span>
         </label>
 

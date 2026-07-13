@@ -30,7 +30,7 @@ interface AuthState {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   completeMfaChallenge: (mfaToken: string, code: string, rememberDevice: boolean) => Promise<void>;
-  register: (email: string, password: string, displayName: string, inviteCode: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, inviteCode: string, dateOfBirth: string) => Promise<void>;
   loginWithGoogle: (inviteCode?: string) => void;
   loginWithMicrosoft: (inviteCode?: string) => void;
   logout: () => Promise<void>;
@@ -120,8 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data.user);
   };
 
-  const register = async (email: string, password: string, displayName: string, inviteCode: string) => {
-    const res = await api.post<{ accessToken: string; refreshToken: string; user: UserProfile }>("/auth/register", { email, password, displayName, inviteCode });
+  const register = async (email: string, password: string, displayName: string, inviteCode: string, dateOfBirth: string) => {
+    const res = await api.post<{ accessToken: string; refreshToken: string; user: UserProfile }>("/auth/register", { email, password, displayName, inviteCode, dateOfBirth });
     storeTokens(res.data.accessToken, res.data.refreshToken);
     setUser(res.data.user);
   };

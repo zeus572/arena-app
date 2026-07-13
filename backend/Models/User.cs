@@ -16,6 +16,11 @@ public class User
     public bool IsAnonymous { get; set; }
     public int Xp { get; set; }
 
+    // Date of birth captured at signup. Used to enforce the COPPA under-13 gate
+    // and as the source of truth for age-based features. Nullable because legacy
+    // accounts (and anonymous users) predate the field.
+    public DateOnly? DateOfBirth { get; set; }
+
     // TOTP two-factor authentication (opt-in). When MfaEnabled is true, login
     // requires a second factor. TotpSecretEnc holds the AES-GCM-encrypted base32
     // secret — it is set during setup (before enable) and stays set while enabled.
