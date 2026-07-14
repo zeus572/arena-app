@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Civic.API.Data;
 using Civic.API.Services;
 using Civic.API.Services.Auth;
+using Civic.API.Services.Bills;
 using Civic.API.Services.Campaign;
 using Civic.API.Services.Generation;
 using Civic.API.Services.Leagues;
@@ -55,6 +56,25 @@ builder.Services.AddHttpClient("RssNewsSource", c =>
 
 builder.Services.AddHostedService<NewsIngestionService>();
 builder.Services.AddHostedService<CivicContentGenerationService>();
+
+// Bills: ingest real legislation (seed + optional Congress.gov) then synthesize
+// each bill's position on the Civic Compass axes via the shared LLM client.
+builder.Services.Configure<BillOptions>(builder.Configuration.GetSection(BillOptions.SectionName));
+builder.Services.AddHttpClient("CongressGov", c =>
+{
+    c.BaseAddress = new Uri("https://api.congress.gov/");
+    c.Timeout = TimeSpan.FromSeconds(30);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; CivicArenaBot/1.0)");
+});
+builder.Services.AddSingleton<IBillSource>(sp =>
+{
+    var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("CongressGov");
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BillOptions>>().Value;
+    var log = sp.GetRequiredService<ILogger<CongressGovClient>>();
+    return new CongressGovClient(http, opts.ApiKey, log);
+});
+builder.Services.AddHostedService<BillIngestionService>();
+builder.Services.AddHostedService<BillSynthesisService>();
 
 // Virtual Candidates: campaign post generation + reactions + matching.
 builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection("Campaign"));

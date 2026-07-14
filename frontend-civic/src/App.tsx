@@ -26,6 +26,8 @@ import MagazineQuizzes from "@/prototypes/magazine/pages/Quizzes";
 import MagazineConceptDetail from "@/prototypes/magazine/pages/ConceptDetail";
 import MagazineTeachers from "@/prototypes/magazine/pages/Teachers";
 import MagazineBillTimeline from "@/prototypes/magazine/pages/BillTimeline";
+import MagazineBills from "@/prototypes/magazine/pages/Bills";
+import MagazineBillDetail from "@/prototypes/magazine/pages/BillDetail";
 import MagazineCampaignFeed from "@/prototypes/magazine/pages/CampaignFeed";
 import MagazineCandidateProfile from "@/prototypes/magazine/pages/CandidateProfile";
 import MagazineCandidateSources from "@/prototypes/magazine/pages/CandidateSources";
@@ -86,6 +88,8 @@ function App() {
             <Route path="concepts/:slug" element={<MagazineConceptDetail />} />
             <Route path="teachers" element={<MagazineTeachers />} />
             <Route path="timelines/bill" element={<MagazineBillTimeline />} />
+            <Route path="bills" element={<MagazineBills />} />
+            <Route path="bills/:id" element={<MagazineBillDetail />} />
             <Route path="candidates" element={<MagazineCampaignFeed />} />
             <Route path="candidates/:slug" element={<MagazineCandidateProfile />} />
             <Route path="candidates/:slug/sources" element={<MagazineCandidateSources />} />
