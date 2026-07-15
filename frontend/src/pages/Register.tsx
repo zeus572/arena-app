@@ -3,6 +3,13 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
+import { computeAge, MINIMUM_SIGNUP_AGE } from "@/lib/age";
+import { TERMS_VERSION } from "@/lib/terms";
+
+// The Privacy/Terms pages are hosted canonically on the Civersify domain (one
+// operator, one set of policies — same links the email footer uses).
+const TERMS_URL = "https://civersify.com/terms";
+const PRIVACY_URL = "https://civersify.com/privacy";
 
 export default function Register() {
   const { register, loginWithGoogle, loginWithMicrosoft } = useAuth();
@@ -14,6 +21,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,9 +37,22 @@ export default function Register() {
       setError("Invite code is required.");
       return;
     }
+    const age = computeAge(dateOfBirth);
+    if (age === null) {
+      setError("Please enter a valid date of birth.");
+      return;
+    }
+    if (age < MINIMUM_SIGNUP_AGE) {
+      setError(`You must be at least ${MINIMUM_SIGNUP_AGE} to create an account.`);
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
     setLoading(true);
     try {
-      await register(email, password, displayName, inviteCode.trim());
+      await register(email, password, displayName, inviteCode.trim(), dateOfBirth, TERMS_VERSION);
       navigate(redirect);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -81,6 +103,38 @@ export default function Register() {
             minLength={8}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Date of birth
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              required
+              max={new Date().toISOString().slice(0, 10)}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+          </label>
+
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              required
+              className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+            />
+            <span>
+              I agree to the{" "}
+              <a href={TERMS_URL} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
 
           {error && (
             <p className="text-xs text-destructive">{error}</p>
