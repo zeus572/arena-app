@@ -68,5 +68,40 @@
     "lowLabel": "Present relief",
     "highLabel": "Future resilience",
     "order": 10
+  },
+  {
+    "key": "religion",
+    "name": "Faith in public life",
+    "lowLabel": "Secular governance",
+    "highLabel": "Faith-informed",
+    "order": 11
+  },
+  {
+    "key": "social-values",
+    "name": "Social change",
+    "lowLabel": "Traditional",
+    "highLabel": "Progressive",
+    "order": 12
+  },
+  {
+    "key": "nationalism",
+    "name": "Nation & world",
+    "lowLabel": "Global cooperation",
+    "highLabel": "Sovereignty-first",
+    "order": 13
+  },
+  {
+    "key": "environment",
+    "name": "Environment",
+    "lowLabel": "Growth-first",
+    "highLabel": "Ecological limits",
+    "order": 14
+  },
+  {
+    "key": "immigration",
+    "name": "Immigration",
+    "lowLabel": "Restrictionist",
+    "highLabel": "Open & pluralist",
+    "order": 15
   }
 ]

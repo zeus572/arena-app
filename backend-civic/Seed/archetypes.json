@@ -91,7 +91,43 @@
     "axisVector": [
       { "axisKey": "speech", "expectedScore": -0.3 },
       { "axisKey": "expertise", "expectedScore": 0.2 },
-      { "axisKey": "community", "expectedScore": 0.3 }
+      { "axisKey": "community", "expectedScore": 0.3 },
+      { "axisKey": "immigration", "expectedScore": 0.3 }
+    ]
+  },
+  {
+    "key": "faith-community-traditionalist",
+    "name": "The Faith & Community Traditionalist",
+    "description": "Grounds public life in faith, family, and time-tested traditions.",
+    "axisVector": [
+      { "axisKey": "religion", "expectedScore": 0.7 },
+      { "axisKey": "social-values", "expectedScore": -0.7 },
+      { "axisKey": "community", "expectedScore": 0.6 },
+      { "axisKey": "change-speed", "expectedScore": -0.5 },
+      { "axisKey": "nationalism", "expectedScore": 0.4 }
+    ]
+  },
+  {
+    "key": "global-cosmopolitan",
+    "name": "The Global Cosmopolitan",
+    "description": "Favors open borders, global cooperation, and secular, evolving norms.",
+    "axisVector": [
+      { "axisKey": "religion", "expectedScore": -0.6 },
+      { "axisKey": "social-values", "expectedScore": 0.7 },
+      { "axisKey": "nationalism", "expectedScore": -0.7 },
+      { "axisKey": "immigration", "expectedScore": 0.7 },
+      { "axisKey": "environment", "expectedScore": 0.5 }
+    ]
+  },
+  {
+    "key": "green-steward",
+    "name": "The Green Steward",
+    "description": "Puts ecological limits and long-term resilience at the center.",
+    "axisVector": [
+      { "axisKey": "environment", "expectedScore": 0.8 },
+      { "axisKey": "time-horizon", "expectedScore": 0.7 },
+      { "axisKey": "risk", "expectedScore": -0.3 },
+      { "axisKey": "govt-role", "expectedScore": 0.4 }
     ]
   }
 ]

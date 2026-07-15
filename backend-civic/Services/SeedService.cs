@@ -33,8 +33,36 @@ public class SeedService : ISeedService
         await SeedElectionsAsync(ct);
         await SeedQuizQuestionsAsync(ct);
         await SeedBillTimelineAsync(ct);
+        await SeedBillsAsync(ct);
         await SeedElectionCyclesAsync(ct);
         await SeedVirtualCandidatesAsync(ct);
+    }
+
+    private async Task SeedBillsAsync(CancellationToken ct)
+    {
+        var items = LoadJson<List<Bill>>("Seed.bills.json");
+        if (items is null) return;
+
+        var existing = await _db.Bills.Select(b => b.ExternalId).ToListAsync(ct);
+        var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var toAdd = items.Where(b => !existingSet.Contains(b.ExternalId)).ToList();
+        foreach (var b in toAdd)
+        {
+            b.Id = Guid.NewGuid();
+            b.IntroducedDate = DateTime.SpecifyKind(b.IntroducedDate, DateTimeKind.Utc);
+            if (b.LatestActionDate is { } lad)
+                b.LatestActionDate = DateTime.SpecifyKind(lad, DateTimeKind.Utc);
+            b.IngestedAt = DateTime.UtcNow;
+            b.SynthesisStatus = BillSynthesisStatus.Ingested;
+            b.GenerationSource = CivicGenerationSource.Seed;
+        }
+
+        if (toAdd.Count > 0)
+        {
+            _db.Bills.AddRange(toAdd);
+            await _db.SaveChangesAsync(ct);
+            _log.LogInformation("Seeded {Count} bills", toAdd.Count);
+        }
     }
 
     private async Task SeedElectionCyclesAsync(CancellationToken ct)

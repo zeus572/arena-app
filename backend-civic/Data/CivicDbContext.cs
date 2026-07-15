@@ -27,6 +27,8 @@ public class CivicDbContext : DbContext
     public DbSet<Cohort> Cohorts => Set<Cohort>();
     public DbSet<CohortMember> CohortMembers => Set<CohortMember>();
     public DbSet<BillTimelineStep> BillTimelineSteps => Set<BillTimelineStep>();
+    public DbSet<Bill> Bills => Set<Bill>();
+    public DbSet<BillAxisPosition> BillAxisPositions => Set<BillAxisPosition>();
     public DbSet<NewsItem> NewsItems => Set<NewsItem>();
     public DbSet<VirtualCandidate> VirtualCandidates => Set<VirtualCandidate>();
     public DbSet<CandidateAxisScore> CandidateAxisScores => Set<CandidateAxisScore>();
@@ -226,6 +228,27 @@ public class CivicDbContext : DbContext
             e.HasIndex(x => x.ExternalId).IsUnique();
             e.HasIndex(x => new { x.Status, x.IngestedAt });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<Bill>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.ExternalId).IsUnique();
+            e.HasIndex(x => new { x.SynthesisStatus, x.IngestedAt });
+            e.HasIndex(x => new { x.Jurisdiction, x.LatestActionDate });
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.SynthesisStatus).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Jurisdiction).HasConversion<string>().HasMaxLength(20);
+            e.HasMany(x => x.AxisPositions)
+                .WithOne(p => p.Bill!)
+                .HasForeignKey(p => p.BillId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BillAxisPosition>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => new { p.BillId, p.AxisKey }).IsUnique();
         });
 
         modelBuilder.Entity<ValuesReceipt>(e =>

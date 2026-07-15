@@ -33,6 +33,7 @@ export const NAV_COMPETE: NavGroup = {
 export const NAV_EXPLORE: NavGroup = {
   heading: "Explore",
   links: [
+    { to: "/bills", label: "Bills" },
     { to: "/quizzes", label: "Quizzes" },
     { to: "/zeitgeist", label: "Zeitgeist" },
     { to: "/briefings/who-gets-your-tax-dollar", label: "Tax Dollar" },

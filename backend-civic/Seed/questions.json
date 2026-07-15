@@ -499,5 +499,245 @@
         ]
       }
     ]
+  },
+  {
+    "externalId": "q-religion-01-public-role",
+    "type": "SimplePairing",
+    "topic": "Faith in public life",
+    "order": 20,
+    "prompt": "What role should religious values play in making public policy?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Laws should rest on secular, shared reasoning",
+        "axisDeltas": [
+          { "axisKey": "religion", "delta": -0.6 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Faith traditions are a legitimate guide for public life",
+        "axisDeltas": [
+          { "axisKey": "religion", "delta": 0.6 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-religion-02-institutions",
+    "type": "ForcedTradeoff",
+    "topic": "Faith in public life",
+    "order": 21,
+    "prompt": "A faith-based group runs an excellent public service. Which concern weighs more?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Keep a firm separation of church and state",
+        "axisDeltas": [
+          { "axisKey": "religion", "delta": -0.5 },
+          { "axisKey": "community", "delta": -0.2 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Welcome the good the faith community does",
+        "axisDeltas": [
+          { "axisKey": "religion", "delta": 0.5 },
+          { "axisKey": "community", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-social-01-change",
+    "type": "SimplePairing",
+    "topic": "Social change",
+    "order": 22,
+    "prompt": "When it comes to changing social norms and traditions, which is closer to your view?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Time-tested traditions are usually worth keeping",
+        "axisDeltas": [
+          { "axisKey": "social-values", "delta": -0.6 },
+          { "axisKey": "change-speed", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Society should keep evolving toward new norms",
+        "axisDeltas": [
+          { "axisKey": "social-values", "delta": 0.6 },
+          { "axisKey": "change-speed", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-social-02-family",
+    "type": "ForcedTradeoff",
+    "topic": "Social change",
+    "order": 23,
+    "prompt": "Which should public institutions emphasize more?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Continuity — stable family and cultural expectations",
+        "axisDeltas": [
+          { "axisKey": "social-values", "delta": -0.5 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Inclusion — adapting to many ways of living",
+        "axisDeltas": [
+          { "axisKey": "social-values", "delta": 0.5 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-nationalism-01-cooperation",
+    "type": "SimplePairing",
+    "topic": "Nation & world",
+    "order": 24,
+    "prompt": "How should the country relate to the rest of the world?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Work through alliances and shared global rules",
+        "axisDeltas": [
+          { "axisKey": "nationalism", "delta": -0.6 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Put national sovereignty and interests first",
+        "axisDeltas": [
+          { "axisKey": "nationalism", "delta": 0.6 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-nationalism-02-tradeoff",
+    "type": "ForcedTradeoff",
+    "topic": "Nation & world",
+    "order": 25,
+    "prompt": "An international agreement would help globally but limits some national control. You lean toward…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Sign on — shared problems need shared solutions",
+        "axisDeltas": [
+          { "axisKey": "nationalism", "delta": -0.5 },
+          { "axisKey": "authority", "delta": 0.2 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Stay out — keep decisions in national hands",
+        "axisDeltas": [
+          { "axisKey": "nationalism", "delta": 0.5 },
+          { "axisKey": "authority", "delta": -0.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-environment-01-priority",
+    "type": "SimplePairing",
+    "topic": "Environment",
+    "order": 26,
+    "prompt": "When environmental protection and economic growth conflict, which comes first?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Growth and jobs — prosperity funds everything else",
+        "axisDeltas": [
+          { "axisKey": "environment", "delta": -0.6 },
+          { "axisKey": "time-horizon", "delta": -0.3 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Ecological limits — protect the planet for the long run",
+        "axisDeltas": [
+          { "axisKey": "environment", "delta": 0.6 },
+          { "axisKey": "time-horizon", "delta": 0.3 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-environment-02-regulation",
+    "type": "ForcedTradeoff",
+    "topic": "Environment",
+    "order": 27,
+    "prompt": "A new climate rule would cut emissions but raise costs. You lean toward…",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Hold off — the economic cost is too high",
+        "axisDeltas": [
+          { "axisKey": "environment", "delta": -0.5 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Adopt it — the climate benefit is worth the cost",
+        "axisDeltas": [
+          { "axisKey": "environment", "delta": 0.5 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-immigration-01-approach",
+    "type": "SimplePairing",
+    "topic": "Immigration",
+    "order": 28,
+    "prompt": "What should guide immigration policy most?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Tighter limits and stronger border control",
+        "axisDeltas": [
+          { "axisKey": "immigration", "delta": -0.6 },
+          { "axisKey": "nationalism", "delta": 0.2 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Openness and pathways for newcomers",
+        "axisDeltas": [
+          { "axisKey": "immigration", "delta": 0.6 },
+          { "axisKey": "nationalism", "delta": -0.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "externalId": "q-immigration-02-tradeoff",
+    "type": "ForcedTradeoff",
+    "topic": "Immigration",
+    "order": 29,
+    "prompt": "Which worry weighs more when you think about immigration?",
+    "choices": [
+      {
+        "key": "A",
+        "label": "Strain on jobs, services, and national identity",
+        "axisDeltas": [
+          { "axisKey": "immigration", "delta": -0.5 }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Turning away people who could contribute and need refuge",
+        "axisDeltas": [
+          { "axisKey": "immigration", "delta": 0.5 }
+        ]
+      }
+    ]
   }
 ]
