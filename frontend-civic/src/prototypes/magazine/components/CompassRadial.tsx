@@ -51,6 +51,7 @@ export default function CompassRadial({
   reducedMotion?: boolean;
 }) {
   const [active, setActive] = useState<string | null>(null);
+  const motion = !reducedMotion;
 
   const layout = useMemo(() => {
     const n = Math.max(axes.length, 1);
@@ -96,6 +97,47 @@ export default function CompassRadial({
         role="img"
         aria-label="The bill's position across value axes"
       >
+        {motion && (
+          <style>{`
+            .compass-bloom {
+              animation: compassBloom 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+              transform-box: view-box;
+              transform-origin: ${C}px ${C}px;
+            }
+            @keyframes compassBloom {
+              from { transform: scale(0.9); opacity: 0; }
+              to   { transform: scale(1);   opacity: 1; }
+            }
+            .compass-ping {
+              transform-box: fill-box;
+              transform-origin: center;
+              animation: compassPing 2.8s ease-out infinite;
+              pointer-events: none;
+            }
+            @keyframes compassPing {
+              0%        { transform: scale(0.6); opacity: 0.4; }
+              70%, 100% { transform: scale(3.4); opacity: 0; }
+            }
+            .compass-glow { animation: compassGlow 4.6s ease-in-out infinite; }
+            @keyframes compassGlow {
+              0%, 100% { fill-opacity: 0.08; }
+              50%      { fill-opacity: 0.15; }
+            }
+            .compass-hub {
+              transform-box: fill-box;
+              transform-origin: center;
+              animation: compassHub 2.6s ease-in-out infinite;
+            }
+            @keyframes compassHub {
+              0%, 100% { transform: scale(1);    }
+              50%      { transform: scale(1.16); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .compass-bloom, .compass-ping, .compass-glow, .compass-hub { animation: none !important; }
+            }
+          `}</style>
+        )}
+
         {/* Reference rings */}
         {[0.5, 1].map((f) => (
           <circle
@@ -134,6 +176,8 @@ export default function CompassRadial({
           </g>
         ))}
 
+        {/* Data layer — blooms in from center on mount */}
+        <g className={motion ? "compass-bloom" : undefined}>
         {/* User shape (underlay) */}
         {userPolygon && (
           <polygon
@@ -153,10 +197,11 @@ export default function CompassRadial({
           fillOpacity={0.1}
           stroke="var(--accent)"
           strokeWidth={1.5}
+          className={motion ? "compass-glow" : undefined}
         />
 
         {/* Per-axis colored lean segments + markers */}
-        {layout.map((l) => {
+        {layout.map((l, i) => {
           const color = spokeColor(l.a);
           const isActive = active === l.a.axisKey;
           return (
@@ -186,6 +231,16 @@ export default function CompassRadial({
                   strokeWidth={2}
                 />
               )}
+              {motion && (
+                <circle
+                  cx={l.billPt.x}
+                  cy={l.billPt.y}
+                  r={4.5}
+                  fill={color}
+                  className="compass-ping"
+                  style={{ animationDelay: `${(i * 0.32).toFixed(2)}s` }}
+                />
+              )}
               <circle
                 cx={l.billPt.x}
                 cy={l.billPt.y}
@@ -202,7 +257,14 @@ export default function CompassRadial({
         })}
 
         {/* Center hub */}
-        <circle cx={C} cy={C} r={5} fill="var(--fg)" />
+        <circle
+          cx={C}
+          cy={C}
+          r={5}
+          fill="var(--fg)"
+          className={motion ? "compass-hub" : undefined}
+        />
+        </g>
       </svg>
 
       {/* Legend */}
