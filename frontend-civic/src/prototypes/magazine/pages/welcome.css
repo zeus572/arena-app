@@ -1,0 +1,357 @@
+/* Welcome / landing page. Scoped under .welcome; relies on the magazine theme
+   tokens (the wrapper adds .theme-magazine). Sharp corners + serif display are
+   the Civersify house style, not defaults — kept deliberately on-brand. */
+
+.welcome {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.welcome-wrap {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+@media (min-width: 768px) {
+  .welcome-wrap {
+    padding: 0 2rem;
+  }
+}
+
+/* ---- shared bits ---- */
+.welcome-eyebrow,
+.welcome-kicker {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+}
+.welcome-kicker {
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+}
+
+.welcome-section {
+  padding: 3.5rem 0;
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 768px) {
+  .welcome-section {
+    padding: 5rem 0;
+  }
+}
+
+/* ---- hero ---- */
+.welcome-hero {
+  padding: 4.5rem 0 3.5rem;
+}
+@media (min-width: 768px) {
+  .welcome-hero {
+    padding: 7rem 0 5rem;
+  }
+}
+
+.welcome-headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  font-size: clamp(2.9rem, 8vw, 6rem);
+  margin: 0.75rem 0 0;
+}
+.welcome-em {
+  color: var(--accent);
+  font-style: italic;
+}
+/* "a side" gets crossed out — the provocation made literal */
+.welcome-strike {
+  position: relative;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.welcome-strike::after {
+  content: "";
+  position: absolute;
+  left: -0.06em;
+  right: -0.06em;
+  top: 54%;
+  height: 0.09em;
+  background: var(--accent);
+  transform: rotate(-3deg);
+  transform-origin: center;
+}
+
+/* signature bridge rule: terracotta ↔ federal blue, meeting at a node */
+.welcome-bridge {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 2rem 0 1.75rem;
+  max-width: 22rem;
+}
+.welcome-bridge-left,
+.welcome-bridge-right {
+  height: 2px;
+  flex: 1;
+}
+.welcome-bridge-left {
+  background: linear-gradient(90deg, transparent, var(--accent));
+}
+.welcome-bridge-right {
+  background: linear-gradient(90deg, var(--federal), transparent);
+}
+.welcome-bridge-node {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  transform: rotate(45deg);
+  background: var(--fg);
+  margin: 0 -1px;
+}
+
+.welcome-sub {
+  font-size: 1.14rem;
+  line-height: 1.6;
+  color: var(--fg-soft);
+  max-width: 40rem;
+}
+
+.welcome-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.welcome-btn--solid {
+  background: var(--accent);
+  color: #fff;
+}
+.welcome-btn--solid:hover {
+  transform: translateY(-2px);
+}
+.welcome-btn--ghost {
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+.welcome-btn--ghost:hover {
+  border-color: var(--fg);
+}
+
+/* ---- this-week feature ---- */
+.welcome-feature-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-elev);
+  padding: 1.75rem;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+@media (min-width: 768px) {
+  .welcome-feature-card {
+    padding: 2.5rem;
+  }
+}
+.welcome-feature-card:hover {
+  transform: translateY(-2px);
+  border-left-color: var(--federal);
+}
+.welcome-feature-head {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  margin: 0;
+}
+.welcome-feature-sum {
+  margin: 1rem 0 1.25rem;
+  color: var(--fg-soft);
+  line-height: 1.6;
+  max-width: 44rem;
+}
+.welcome-feature-link {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+/* ---- steps ---- */
+.welcome-steps {
+  display: grid;
+  gap: 1.75rem;
+}
+@media (min-width: 768px) {
+  .welcome-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+  }
+}
+.welcome-step {
+  border-top: 2px solid var(--fg);
+  padding-top: 1rem;
+}
+.welcome-step-n {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.welcome-step-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0.6rem;
+}
+.welcome-step-body {
+  color: var(--fg-soft);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---- thesis / axes ---- */
+.welcome-axes-grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  .welcome-axes-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 4rem;
+  }
+}
+.welcome-axes-head {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  font-size: clamp(1.9rem, 4.5vw, 3rem);
+  margin: 0 0 1rem;
+}
+.welcome-axes-body {
+  color: var(--fg-soft);
+  line-height: 1.65;
+  max-width: 34rem;
+  margin: 0;
+}
+.welcome-axes {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(6px, 1.6vw, 14px);
+  height: 190px;
+  padding: 1rem 0;
+}
+.welcome-axis {
+  flex: 1;
+  height: var(--h);
+  min-height: 10%;
+  background: var(--border);
+  transform-origin: bottom;
+  animation: welcome-axis-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i) * 55ms);
+}
+.welcome-axis--mark {
+  background: var(--accent);
+}
+
+/* ---- close ---- */
+.welcome-close {
+  background: var(--fg);
+  color: var(--bg);
+  border-top: none;
+}
+.welcome-close-inner {
+  text-align: center;
+}
+.welcome-close-head {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  margin: 0 auto;
+  max-width: 18ch;
+}
+.welcome-close-sub {
+  margin: 1.25rem auto 0;
+  max-width: 40rem;
+  line-height: 1.65;
+  color: color-mix(in oklch, var(--bg) 78%, var(--fg));
+}
+.welcome-close .welcome-cta {
+  justify-content: center;
+}
+.welcome-close .welcome-btn--ghost {
+  border-color: color-mix(in oklch, var(--bg) 40%, transparent);
+  color: var(--bg);
+}
+.welcome-close .welcome-btn--ghost:hover {
+  border-color: var(--bg);
+}
+.welcome-signin {
+  margin-top: 1.75rem;
+  font-size: 0.85rem;
+  color: color-mix(in oklch, var(--bg) 65%, var(--fg));
+}
+.welcome-signin-link {
+  color: var(--bg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- load reveal ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: welcome-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes welcome-reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes welcome-axis-rise {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .welcome-axis {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

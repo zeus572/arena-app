@@ -46,6 +46,7 @@ import MagazineAbout from "@/prototypes/magazine/pages/About";
 import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
 import MagazineCohort from "@/prototypes/magazine/pages/Cohort";
 import MagazineShortsFeed from "@/prototypes/magazine/pages/ShortsFeed";
+import MagazineWelcome from "@/prototypes/magazine/pages/Welcome";
 import MagazinePrivacy from "@/prototypes/magazine/pages/Privacy";
 import MagazineTerms from "@/prototypes/magazine/pages/Terms";
 import MagazineEula from "@/prototypes/magazine/pages/Eula";
@@ -63,6 +64,9 @@ function App() {
           {/* Immersive full-screen feed — intentionally OUTSIDE MagazineLayout so it
               gets the full viewport with no sticky header / bottom tabs. */}
           <Route path="/shorts" element={<MagazineShortsFeed />} />
+          {/* Public social-linked landing page — intentionally OUTSIDE
+              MagazineLayout for full creative control (no header / tabs). */}
+          <Route path="/welcome" element={<MagazineWelcome />} />
           <Route path="/" element={<MagazineLayout />}>
             <Route index element={<MagazineHomeIndex />} />
             <Route path="magazine" element={<MagazineReadView />} />
