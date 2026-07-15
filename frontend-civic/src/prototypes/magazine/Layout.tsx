@@ -187,10 +187,13 @@ export default function MagazineLayout() {
           <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
             Civics for the world you actually live in
           </p>
-          <div className="mt-4 flex items-center justify-center gap-5 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
             <Link to="/about" className="hover:text-[var(--accent)]">About</Link>
             <Link to="/coalition" className="hover:text-[var(--accent)]">Coalitions</Link>
             <Link to="/zeitgeist" className="hover:text-[var(--accent)]">Zeitgeist</Link>
+            <Link to="/privacy" className="hover:text-[var(--accent)]">Privacy</Link>
+            <Link to="/terms" className="hover:text-[var(--accent)]">Terms</Link>
+            <Link to="/eula" className="hover:text-[var(--accent)]">EULA</Link>
           </div>
         </div>
       </footer>
