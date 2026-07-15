@@ -127,9 +127,9 @@ public class NewsIngestionServiceTests
         var (svc, feed) = Build();
         feed.Items = new[]
         {
-            new WireNewsItem("ext-pub", "Aggregator story with real outlet", "Google News", "https://news.google.com/x", null, DateTime.UtcNow)
+            new WireNewsItem("ext-pub", "City council debates a new zoning ordinance", "Google News", "https://news.google.com/x", null, DateTime.UtcNow)
                 { Publisher = "NPR" },
-            new WireNewsItem("ext-pub-long", "Aggregator story with verbose outlet", "Google News", "https://news.google.com/y", null, DateTime.UtcNow)
+            new WireNewsItem("ext-pub-long", "Supreme court hears the redistricting appeal", "Google News", "https://news.google.com/y", null, DateTime.UtcNow)
                 { Publisher = new string('p', 300) },
         };
 
@@ -162,6 +162,74 @@ public class NewsIngestionServiceTests
             new WireNewsItem("ext-gn", "SENATE PASSES THE BIG BILL", "Google News", "https://news.google.com/big-bill", null, DateTime.UtcNow),
         };
         (await svc.IngestOnceAsync()).Should().Be(0, "the same headline within the window is a duplicate even with a new external id");
+    }
+
+    [Fact]
+    public async Task IngestOnce_CollapsesNearDuplicateHeadlines_KeepingDeepestStory()
+    {
+        // A big breaking story carried by several outlets in the same tick with
+        // slightly different wording. Exact-headline dedupe missed these (no two
+        // are identical), so each became its own briefing. They must now collapse
+        // to a single row — the one with the most in-depth summary.
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-npr", "Senator Lindsey Graham dies at 70", "NPR",
+                "https://npr.org/graham", "A brief wire note.", DateTime.UtcNow),
+            new WireNewsItem("ext-bbc", "Lindsey Graham, longtime South Carolina senator, dead at 70", "BBC",
+                "https://bbc.com/graham",
+                new string('x', 900) /* the fullest write-up — deepest story */, DateTime.UtcNow),
+            new WireNewsItem("ext-ap", "Graham, veteran senator from South Carolina, has died", "AP",
+                "https://ap.org/graham", "Medium-length recap of the news.", DateTime.UtcNow),
+        };
+
+        var added = await svc.IngestOnceAsync();
+
+        added.Should().Be(1, "the three outlets cover one story, so only one row survives");
+        using var scope = _fx.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var rows = await db.NewsItems.ToListAsync();
+        rows.Should().ContainSingle();
+        rows[0].ExternalId.Should().Be("ext-bbc", "the outlet with the deepest (longest) summary wins the cluster");
+    }
+
+    [Fact]
+    public async Task IngestOnce_DistinctStoriesSharingAnActor_AreBothKept()
+    {
+        // Two genuinely different stories that merely share a proper noun must not
+        // be collapsed — dedupe requires substantial word overlap, not one name.
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-a", "Senate passes the annual defense budget", "NPR", "https://npr.org/a", null, DateTime.UtcNow),
+            new WireNewsItem("ext-b", "Senate confirms a new ambassador to France", "NPR", "https://npr.org/b", null, DateTime.UtcNow),
+        };
+
+        var added = await svc.IngestOnceAsync();
+
+        added.Should().Be(2, "sharing only the word 'Senate' does not make two stories duplicates");
+    }
+
+    [Fact]
+    public async Task IngestOnce_NearDuplicateAcrossTicks_IsSkipped()
+    {
+        // The reworded copy arrives a tick later (a new aggregator channel picks
+        // it up). The look-back against stored rows must still recognise it.
+        await _fx.ResetMutableAsync();
+        var (svc, feed) = Build();
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-first", "Governor signs the sweeping new climate law", "NPR", "https://npr.org/climate", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(1);
+
+        feed.Items = new[]
+        {
+            new WireNewsItem("ext-second", "Governor signs sweeping climate law into effect", "Google News", "https://news.google.com/climate", null, DateTime.UtcNow),
+        };
+        (await svc.IngestOnceAsync()).Should().Be(0, "a near-duplicate of a recently stored headline is a duplicate");
     }
 
     [Fact]
