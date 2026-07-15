@@ -156,9 +156,46 @@ public class EmailDispatchService
         $"<div style=\"font-family:system-ui,Arial,sans-serif;max-width:480px;margin:0 auto;color:#111\">" +
         $"<h2 style=\"color:#111\">{heading}</h2>{body}" +
         $"<hr style=\"border:none;border-top:1px solid #eee;margin:20px 0\">" +
-        $"<p style=\"color:#999;font-size:11px\">{System.Net.WebUtility.HtmlEncode(_options.SenderIdentity)}. " +
-        "This is a transactional message about your account.</p></div>";
+        $"<p style=\"color:#999;font-size:11px;line-height:1.5\">{FooterHtml()}</p></div>";
 
-    private string FooterText() =>
-        $"{_options.SenderIdentity}. This is a transactional message about your account.";
+    // CAN-SPAM footer: sender legal identity + physical postal address, plus
+    // links to the public legal pages. Address/links are only rendered when
+    // configured, so dev (blank defaults) stays clean while prod is complete.
+    private string FooterHtml()
+    {
+        static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
+        var sb = new System.Text.StringBuilder();
+        sb.Append(Enc(_options.SenderIdentity));
+        if (!string.IsNullOrWhiteSpace(_options.SenderPostalAddress))
+            sb.Append("<br>").Append(Enc(_options.SenderPostalAddress));
+        sb.Append("<br>This is a transactional message about your account.");
+
+        var (privacy, terms) = LegalLinks();
+        if (privacy is not null && terms is not null)
+            sb.Append("<br><a href=\"").Append(privacy).Append("\" style=\"color:#999\">Privacy Policy</a>")
+              .Append(" &middot; ")
+              .Append("<a href=\"").Append(terms).Append("\" style=\"color:#999\">Terms of Service</a>");
+        return sb.ToString();
+    }
+
+    private string FooterText()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(_options.SenderIdentity);
+        if (!string.IsNullOrWhiteSpace(_options.SenderPostalAddress))
+            sb.Append('\n').Append(_options.SenderPostalAddress);
+        sb.Append("\nThis is a transactional message about your account.");
+
+        var (privacy, terms) = LegalLinks();
+        if (privacy is not null && terms is not null)
+            sb.Append("\nPrivacy Policy: ").Append(privacy).Append("\nTerms of Service: ").Append(terms);
+        return sb.ToString();
+    }
+
+    private (string? privacy, string? terms) LegalLinks()
+    {
+        if (string.IsNullOrWhiteSpace(_options.LegalBaseUrl)) return (null, null);
+        var b = _options.LegalBaseUrl.TrimEnd('/');
+        return ($"{b}/privacy", $"{b}/terms");
+    }
 }
