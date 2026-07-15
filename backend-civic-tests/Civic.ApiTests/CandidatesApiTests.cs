@@ -47,7 +47,7 @@ public class CandidatesApiTests
         c!.Name.Should().Be("Sofia Alvarez");
         c.IsFictional.Should().BeTrue();
         c.PlatformPlanks.Should().HaveCountGreaterOrEqualTo(4);
-        c.Values.Should().HaveCount(10); // all catalog axes are projected
+        c.Values.Should().HaveCount(15); // all catalog axes are projected
         c.Values.Should().Contain(v => v.AxisKey == "time-horizon" && v.Score > 0);
     }
 
@@ -62,7 +62,7 @@ public class CandidatesApiTests
     public async Task Values_ReturnsAllAxes()
     {
         var values = await Client().GetFromJsonAsync<List<CandidateValueDto>>("/api/candidates/marcus-reed/values");
-        values!.Should().HaveCount(10);
+        values!.Should().HaveCount(15);
         values.Should().Contain(v => v.AxisKey == "govt-role");
     }
 

@@ -36,7 +36,7 @@ public class ProfileControllerTests
         dto.Should().NotBeNull();
         dto!.ProfileVersion.Should().Be(0);
         dto.AnswerCount.Should().Be(0);
-        dto.Axes.Should().HaveCount(10);
+        dto.Axes.Should().HaveCount(15);
         dto.Axes.Should().OnlyContain(a => a.Score == 0 && a.SupportingAnswerCount == 0);
         dto.ArchetypeBlend.Should().BeEmpty();
     }
@@ -149,6 +149,6 @@ public class ProfileControllerTests
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var dto = await resp.Content.ReadFromJsonAsync<ProfileDto>();
         dto.Should().NotBeNull();
-        dto!.Axes.Should().HaveCount(10);
+        dto!.Axes.Should().HaveCount(15);
     }
 }
