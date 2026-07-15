@@ -47,6 +47,10 @@ import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
 import MagazineCohort from "@/prototypes/magazine/pages/Cohort";
 import MagazineShortsFeed from "@/prototypes/magazine/pages/ShortsFeed";
 import MagazineWelcome from "@/prototypes/magazine/pages/Welcome";
+import MagazinePrivacy from "@/prototypes/magazine/pages/Privacy";
+import MagazineTerms from "@/prototypes/magazine/pages/Terms";
+import MagazineEula from "@/prototypes/magazine/pages/Eula";
+import CookieConsent from "@/prototypes/magazine/components/CookieConsent";
 
 function App() {
   return (
@@ -109,8 +113,12 @@ function App() {
             <Route path="about" element={<MagazineAbout />} />
             <Route path="zeitgeist" element={<MagazineZeitgeist />} />
             <Route path="cohort" element={<MagazineCohort />} />
+            <Route path="privacy" element={<MagazinePrivacy />} />
+            <Route path="terms" element={<MagazineTerms />} />
+            <Route path="eula" element={<MagazineEula />} />
           </Route>
         </Routes>
+        <CookieConsent />
       </AuthProvider>
     </BrowserRouter>
   );

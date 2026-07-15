@@ -10,6 +10,11 @@ using Arena.API.Services.FactProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Basic request/dependency telemetry via Application Insights. No-ops unless a
+// connection string is configured (APPLICATIONINSIGHTS_CONNECTION_STRING app
+// setting in prod); nothing to configure locally.
+builder.Services.AddApplicationInsightsTelemetry();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 

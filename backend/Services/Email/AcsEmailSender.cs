@@ -49,8 +49,13 @@ public class AcsEmailSender : IEmailSender
             PlainText = textBody,
             Html = htmlBody,
         };
+        // ACS applies the friendly From name when the sender is formatted as
+        // "Display Name <address>". Fall back to the bare address if no name is set.
+        var sender = string.IsNullOrWhiteSpace(_options.SenderName)
+            ? _options.SenderAddress
+            : $"{_options.SenderName} <{_options.SenderAddress}>";
         var message = new EmailMessage(
-            senderAddress: _options.SenderAddress,
+            senderAddress: sender,
             recipientAddress: toAddress,
             content: content);
 

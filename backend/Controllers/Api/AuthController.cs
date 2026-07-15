@@ -28,6 +28,17 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly PasswordHasher<User> _hasher = new();
 
+    // COPPA: we do not knowingly create accounts for children under 13.
+    private const int MinimumSignupAge = 13;
+
+    // Current Terms of Service version. Signups must accept exactly this version;
+    // it's stored on the account so we can detect who predates a later revision.
+    // Keep in sync with the frontends' TERMS_VERSION and the Terms page's
+    // effective date. Overridable via config for staging.
+    private const string DefaultTermsVersion = "2026-07-13";
+    private string CurrentTermsVersion =>
+        _config["Terms:CurrentVersion"] is { Length: > 0 } v ? v : DefaultTermsVersion;
+
     public AuthController(
         ArenaDbContext db,
         JwtTokenService jwt,
@@ -61,6 +72,29 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             return BadRequest(new { error = "Password must be at least 8 characters." });
 
+        // COPPA age gate: require a plausible date of birth and reject under-13
+        // before any account row is created. This endpoint is the single signup
+        // path for both the Debate Arena and Civic frontends, so the gate here
+        // protects both apps. (When OAuth signup is implemented — see the
+        // GoogleLogin/MicrosoftLogin stubs below — it must apply the same gate.)
+        if (request.DateOfBirth is not { } dob)
+            return BadRequest(new { error = "Please enter your date of birth." });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (dob > today || dob < today.AddYears(-120))
+            return BadRequest(new { error = "Please enter a valid date of birth." });
+
+        var age = today.Year - dob.Year;
+        if (dob > today.AddYears(-age)) age--; // birthday hasn't occurred yet this year
+        if (age < MinimumSignupAge)
+            return BadRequest(new { error = $"You must be at least {MinimumSignupAge} years old to create an account." });
+
+        // Terms of Service: capture explicit agreement to the current version.
+        // Reject if it's missing or stale (e.g. an old cached bundle) so the
+        // stored version is always meaningful.
+        if (!string.Equals(request.AcceptedTermsVersion, CurrentTermsVersion, StringComparison.Ordinal))
+            return BadRequest(new { error = "Please review and accept the current Terms of Service." });
+
         var check = await _emailPolicy.ValidateAsync(request.Email);
         if (!check.Accepted)
             return BadRequest(new { error = check.Message });
@@ -81,6 +115,9 @@ public class AuthController : ControllerBase
             IsAnonymous = false,
             EmailVerified = false,
             Plan = UserPlan.Free,
+            DateOfBirth = dob,
+            TermsVersionAccepted = CurrentTermsVersion,
+            TermsAcceptedAt = DateTime.UtcNow,
         };
         user.PasswordHash = _hasher.HashPassword(user, request.Password);
 
