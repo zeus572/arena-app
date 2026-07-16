@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="TestData\congress_bill_list_119.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\backend-civic\Civic.API.csproj" />
   </ItemGroup>
 
