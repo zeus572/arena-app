@@ -33,6 +33,11 @@ public class CongressGovClient : IBillSource
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true,
+        // Congress.gov serializes numeric fields (e.g. bill "number") as JSON
+        // strings ("144"), so allow reading numbers from strings — otherwise
+        // deserialization throws on the first bill and the whole fetch yields
+        // nothing (silently, since FetchRecentAsync swallows the exception).
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
     public CongressGovClient(HttpClient http, string apiKey, ILogger<CongressGovClient> log)

@@ -1,0 +1,313 @@
+{
+    "bills": [
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-07-13",
+                "text": "Placed on the Union Calendar, Calendar No. 650."
+            },
+            "number": "4541",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "EARLY Act Reauthorization of 2025",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/4541?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-07-06",
+                "text": "Referred to the House Committee on Energy and Commerce."
+            },
+            "number": "9593",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Keep Food Containers Safe from PFAS Act of 2026",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/9593?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-07-06",
+                "text": "Referred to the House Committee on Energy and Commerce."
+            },
+            "number": "9594",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "No PFAS in Cosmetics Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/9594?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-24",
+                "text": "Read twice and referred to the Committee on Health, Education, Labor, and Pensions."
+            },
+            "number": "4941",
+            "originChamber": "Senate",
+            "originChamberCode": "S",
+            "title": "Modernizing Opioid Treatment Access Act 2.0 of 2026",
+            "type": "S",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/s/4941?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-07-02",
+                "text": "Referred to the House Committee on Financial Services."
+            },
+            "number": "9584",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "The Housing Voucher Funding Reallocation Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/9584?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-24",
+                "text": "Read twice and referred to the Committee on Commerce, Science, and Transportation."
+            },
+            "number": "4934",
+            "originChamber": "Senate",
+            "originChamberCode": "S",
+            "title": "National Fab Lab Network Act of 2026",
+            "type": "S",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/s/4934?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-24",
+                "text": "Read twice and referred to the Committee on Banking, Housing, and Urban Affairs."
+            },
+            "number": "4942",
+            "originChamber": "Senate",
+            "originChamberCode": "S",
+            "title": "SAFE Banking Act of 2026",
+            "type": "S",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/s/4942?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-04-08",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Veterans' Affairs."
+            },
+            "number": "877",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Deliver for Veterans Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/877?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-06-27",
+                "text": "Received in the Senate and Read twice and referred to the Committee on the Judiciary."
+            },
+            "number": "875",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Jeremy and Angel Seay and Sergeant Brandon Mendoza Protect Our Communities from DUIs Act of 2025",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/875?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-03-04",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Homeland Security and Governmental Affairs."
+            },
+            "number": "872",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Federal Contractor Cybersecurity Vulnerability Reduction Act of 2025",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/872?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-04-29",
+                "text": "Received in the Senate."
+            },
+            "number": "866",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "ROUTERS Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/866?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-09",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Foreign Relations."
+            },
+            "number": "8665",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Allied Defense Sales Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8665?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-08",
+                "text": "Received in the Senate."
+            },
+            "number": "8646",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Agriculture, Rural Development, Food and Drug Administration, and Related Agency Appropriations Act, 2027",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8646?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-03-11",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Commerce, Science, and Transportation."
+            },
+            "number": "862",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "TSA Commuting Fairness Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/862?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-04-30",
+                "text": "Received in the Senate. Read twice. Placed on Senate Legislative Calendar under General Orders. Calendar No. 64."
+            },
+            "number": "859",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Informing Consumers about Smart Devices Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/859?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2025-03-04",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Homeland Security and Governmental Affairs."
+            },
+            "number": "856",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Safe and Smart Federal Purchasing Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/856?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-07-14",
+                "text": "Read the second time. Placed on Senate Legislative Calendar under General Orders. Calendar No. 455."
+            },
+            "number": "8469",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Making appropriations for military construction, the Department of Veterans Affairs, and related agencies for the fiscal year ending September 30, 2027, and for other purposes.",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8469?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-09",
+                "text": "Received in the Senate and Read twice and referred to the Committee on Homeland Security and Governmental Affairs."
+            },
+            "number": "8466",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "TRUE Accountability Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8466?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-11",
+                "text": "Received in the Senate."
+            },
+            "number": "8467",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "ZOMBIE Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8467?format=json"
+        },
+        {
+            "congress": 119,
+            "latestAction": {
+                "actionDate": "2026-06-11",
+                "text": "Received in the Senate."
+            },
+            "number": "8464",
+            "originChamber": "House",
+            "originChamberCode": "H",
+            "title": "Stopping Fraudulent Payments Act",
+            "type": "HR",
+            "updateDate": "2026-07-15",
+            "updateDateIncludingText": "2026-07-15",
+            "url": "https://api.congress.gov/v3/bill/119/hr/8464?format=json"
+        }
+    ],
+    "pagination": {
+        "count": 17437,
+        "next": "https://api.congress.gov/v3/bill/119?sort=updateDate desc&offset=20&limit=20&format=json"
+    },
+    "request": {
+        "congress": "119",
+        "contentType": "application/json",
+        "format": "json"
+    }
+}
