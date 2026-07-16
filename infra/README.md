@@ -13,6 +13,11 @@ the existing PostgreSQL Flex Server, one Free-tier Static Web App.
 | Linux Web App | `civic-api-<6 hex>` | shared `plan-arena` (B1 Linux) |
 | Static Web App | `civic-frontend-<6 hex>` | Free |
 | PostgreSQL database | `civic` on `arena-pgserver` | (no SKU — db only) |
+| Log Analytics workspace | `log-arena` | PerGB2018 (30-day) |
+| Application Insights | `appi-arena` (shared) | workspace-based |
+
+The last two are **shared telemetry infra** used by both backends and the civic
+frontend — see [Application Insights](#application-insights-telemetry) below.
 
 Both Azure-generated hostnames are used as the public site names — no custom
 domain wiring in this iteration.
@@ -194,9 +199,44 @@ The `.github/workflows/deploy-civic.yml` workflow expects these repo settings:
 - `AZURE_STATIC_WEB_APPS_API_TOKEN_CIVIC` — token printed by the bootstrap script
 - `VITE_CIVIC_API_URL` — `https://<civic-api-host>/api`
 - `VITE_ARENA_API_URL` — `https://arena-api-2af326.azurewebsites.net/api`
+- `VITE_APPINSIGHTS_CONNECTION_STRING` — the `appi-arena` connection string
+  (baked into the civic frontend build for cookieless page-hit telemetry). Unset
+  builds are a no-op, so this is safe to omit while bootstrapping.
 
 The workflow runs on pushes to `release` that touch `backend-civic/**`,
 `frontend-civic/**`, `shared/**`, or this folder, and on `workflow_dispatch`.
+
+## Application Insights (telemetry)
+
+`AddApplicationInsightsTelemetry()` (both backends) and the civic frontend's
+`initTelemetry()` are already in the code (PR #73) but **no-op until a connection
+string is supplied**. A single shared, workspace-based component — `appi-arena`,
+backed by the `log-arena` Log Analytics workspace — is the sink for all three
+surfaces so one Logs/Live-Metrics query spans everything (the whole point: the
+2026-07-15 prod bills investigation had to fall back to raw log downloads because
+civic had no telemetry).
+
+Both resources are created by `civic.bicep`. The connection string reaches each
+surface differently — **never commit it**:
+
+| Surface | Setting | Set by |
+|---|---|---|
+| civic backend (`civic-api-fexzo2`) | `APPLICATIONINSIGHTS_CONNECTION_STRING` app setting | `civic.bicep` (injected from the component) |
+| debate backend (`arena-api-2af326`) | `APPLICATIONINSIGHTS_CONNECTION_STRING` app setting | `deploy-civic.ps1` (`arena.bicep` references the component but is not routinely applied) |
+| civic frontend SWA | `VITE_APPINSIGHTS_CONNECTION_STRING` build secret | GitHub Actions (`deploy-civic.yml`), baked in at build time |
+
+`cloud_RoleName` distinguishes the sources (the backends auto-set it from
+`WEBSITE_SITE_NAME`; the browser SDK reports its own). Setting a backend app
+setting restarts that app once — **do not also `az webapp restart`** (double
+cold-start). The frontend only starts emitting after its next build/deploy, since
+the connection string is compiled in.
+
+Verify (allow a few minutes for ingestion):
+```pwsh
+az monitor app-insights query --app appi-arena -g rg-arena --analytics-query `
+  "union requests, pageViews | where timestamp > ago(30m) | summarize count() by itemType, cloud_RoleName"
+```
+Provisioned live 2026-07-16; IaC backfilled in the same change.
 
 ## Cross-app trust checklist
 

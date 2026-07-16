@@ -46,6 +46,12 @@ param debateApiBaseUrl string = 'https://arena-api-2af326.azurewebsites.net'
 @description('Debate web app base URL (used to build the share/redirect URL after a civic-initiated debate).')
 param debateWebBaseUrl string = 'https://debatearena.fun'
 
+@description('Shared Log Analytics workspace backing Application Insights. Modern (workspace-based) App Insights requires one.')
+param logAnalyticsName string = 'log-arena'
+
+@description('Shared Application Insights component (workspace-based). Consumed by BOTH backends and the civic frontend.')
+param appInsightsName string = 'appi-arena'
+
 // ---------------------------------------------------------------------------
 // Existing resources we hang off
 // ---------------------------------------------------------------------------
@@ -68,6 +74,47 @@ resource civicDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-06-01
   properties: {
     charset: 'UTF8'
     collation: 'en_US.utf8'
+  }
+}
+
+// ---------------------------------------------------------------------------
+// New: shared Application Insights (workspace-based) for BOTH backends + the
+// civic frontend. This is deliberately NOT a civic-only resource — it lives in
+// this template only because civic is the Bicep-native stack, giving the shared
+// component one reproducible home. The debate app and the frontend consume the
+// SAME component through their own connection-string plumbing set out-of-band:
+//   - debate backend (arena-api-2af326): APPLICATIONINSIGHTS_CONNECTION_STRING
+//     App Service app setting (arena.bicep references this component; also set
+//     live via `az` since arena.bicep is not routinely applied).
+//   - civic frontend SWA: VITE_APPINSIGHTS_CONNECTION_STRING GitHub Actions
+//     build secret (deploy-civic.yml), baked in at build time.
+// One shared component => one Logs/Live-Metrics query across all three surfaces,
+// which is the entire reason this exists (a civic-only sink would have again
+// forced raw-log spelunking during the 2026-07-15 prod bills investigation).
+// cloud_RoleName distinguishes the sources: the backends auto-set it from
+// WEBSITE_SITE_NAME; the browser SDK reports its own.
+// ---------------------------------------------------------------------------
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: logAnalyticsName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    // Workspace-based ingestion (classic AI is retired). Points at the LA workspace above.
+    WorkspaceResourceId: logAnalytics.id
+    IngestionMode: 'LogAnalytics'
   }
 }
 
@@ -107,6 +154,10 @@ resource civicWeb 'Microsoft.Web/sites@2023-12-01' = {
       // OPTIONS preflight and return 400 before the app's policy runs. One layer only.
       appSettings: [
         { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
+        // Application Insights: the code (AddApplicationInsightsTelemetry) no-ops
+        // until this is present. Bicep injects the component's connection string
+        // directly so no secret is hand-managed here.
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         // KEEP THIS. We tried removing it (PR #6) to make CI deploys auto-restart, but on THIS app
         // removing it makes the worker run from the wwwroot filesystem — which only ever held the
         // first manual deploy. The CI publish-profile zipdeploy does NOT repopulate that filesystem,
@@ -192,3 +243,7 @@ output civicAppPrincipalId string = civicWeb.identity.principalId
 output civicSwaName string = civicSwa.name
 output civicSwaHostname string = civicSwa.properties.defaultHostname
 output civicDatabaseName string = civicDb.name
+// Name only — the connection string is a secret, so deploy-civic.ps1 harvests it
+// via `az monitor app-insights component show` rather than surfacing it in the
+// deployment's output history.
+output appInsightsName string = appInsights.name
