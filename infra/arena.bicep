@@ -58,6 +58,9 @@ param anthropicApiKey string = ''
 @secure()
 param mfaEncryptionKey string = ''
 
+@description('Name of the shared Application Insights component (CREATED by civic.bicep). Referenced here so the debate app emits to the same telemetry sink as civic + the frontend.')
+param appInsightsName string = 'appi-arena'
+
 // ---------------------------------------------------------------------------
 // Existing resources we hang off
 // ---------------------------------------------------------------------------
@@ -68,6 +71,11 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' existing = {
 
 resource pgServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' existing = {
   name: postgresServerName
+}
+
+// Shared Application Insights — CREATED by civic.bicep, referenced here as existing.
+resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
+  name: appInsightsName
 }
 
 // Passwordless Entra-auth connection string (matches civic). The Arena backend
@@ -111,6 +119,11 @@ resource arenaWeb 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'Jwt__Secret', value: jwtSecret }
         { name: 'Anthropic__ApiKey', value: anthropicApiKey }
         { name: 'Mfa__EncryptionKey', value: mfaEncryptionKey }
+        // Application Insights (AddApplicationInsightsTelemetry no-ops without it). Points
+        // at the shared component created by civic.bicep. Also set live via `az` on
+        // 2026-07-16 because this template is a reconcile-first, not-routinely-applied
+        // starting point — see the header warning.
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         // NOTE: additional live settings (Auth__AdminEmails__*, Email__*/ACS, Cors__Origins__*,
         // BotHeartbeat__*, Ranking__*, News__*, Llm__Provider, SocialPublisher__*/Bluesky__*)
         // are set on the live app and MUST be reconciled into this list before applying — see

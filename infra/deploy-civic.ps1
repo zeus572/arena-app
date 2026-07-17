@@ -22,6 +22,7 @@ param(
 
     [string] $ResourceGroup    = "rg-arena",
     [string] $PgServerName     = "arena-pgserver",
+    [string] $DebateAppName    = "arena-api-2af326",
     [string] $TemplateFile     = "infra/civic.bicep",
     [string] $ParametersFile   = "infra/civic.parameters.json",
     [string] $DeploymentName   = "civic-$(Get-Date -Format yyyyMMdd-HHmmss)"
@@ -36,7 +37,7 @@ $result = az deployment group create `
     --template-file $TemplateFile `
     --parameters $ParametersFile `
     --parameters jwtSecret=$JwtSecret anthropicApiKey=$AnthropicApiKey `
-    --query "{appName:properties.outputs.civicAppName.value,host:properties.outputs.civicHostname.value,principal:properties.outputs.civicAppPrincipalId.value,swaName:properties.outputs.civicSwaName.value,swaHost:properties.outputs.civicSwaHostname.value,db:properties.outputs.civicDatabaseName.value}" `
+    --query "{appName:properties.outputs.civicAppName.value,host:properties.outputs.civicHostname.value,principal:properties.outputs.civicAppPrincipalId.value,swaName:properties.outputs.civicSwaName.value,swaHost:properties.outputs.civicSwaHostname.value,db:properties.outputs.civicDatabaseName.value,appInsights:properties.outputs.appInsightsName.value}" `
     -o json | ConvertFrom-Json
 
 if (-not $result) { throw "Deployment failed." }
@@ -47,6 +48,7 @@ $civicPrincipal = $result.principal
 $swaName       = $result.swaName
 $swaHost       = $result.swaHost
 $dbName        = $result.db
+$appInsights   = $result.appInsights
 
 Write-Host ""
 Write-Host "Provisioned:"
@@ -73,6 +75,20 @@ az webapp config appsettings set `
     --resource-group $ResourceGroup `
     --name $civicAppName `
     --settings "Cors__Origins__0=https://$swaHost" "Cors__Origins__1=https://$swaName.azurestaticapps.net" `
+    --output none
+
+Write-Host "==> Wiring shared Application Insights ($appInsights) ..."
+# The civic backend already got APPLICATIONINSIGHTS_CONNECTION_STRING from Bicep.
+# The debate backend + frontend consume the SAME component: set the debate app
+# setting here, and harvest the connection string to hand to GitHub (frontend).
+$aiConnString = az monitor app-insights component show `
+    --app $appInsights --resource-group $ResourceGroup `
+    --query connectionString -o tsv
+# `appsettings set` restarts the app once — do NOT also `az webapp restart`.
+az webapp config appsettings set `
+    --resource-group $ResourceGroup `
+    --name $DebateAppName `
+    --settings "APPLICATIONINSIGHTS_CONNECTION_STRING=$aiConnString" `
     --output none
 
 Write-Host "==> Harvesting publish profile for GitHub Actions ..."
@@ -102,7 +118,11 @@ Write-Host "SECRET    AZURE_STATIC_WEB_APPS_API_TOKEN_CIVIC ="
 Write-Host $swaToken
 Write-Host ""
 Write-Host "SECRET    VITE_CIVIC_API_URL = https://$civicHost/api"
-Write-Host "SECRET    VITE_ARENA_API_URL = https://arena-api-2af326.azurewebsites.net/api"
+Write-Host "SECRET    VITE_ARENA_API_URL = https://$DebateAppName.azurewebsites.net/api"
+Write-Host ""
+Write-Host "SECRET    VITE_APPINSIGHTS_CONNECTION_STRING ="
+Write-Host $aiConnString
+Write-Host "  (cookieless page-hit telemetry; baked into the civic frontend at build time)"
 Write-Host ""
 Write-Host "------------------------------------------------------------"
 Write-Host "Next steps:"
