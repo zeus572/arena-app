@@ -145,6 +145,20 @@ public class BillSynthesisService : BackgroundService
                     break;
                 }
 
+                if (ex is LlmException { Kind: LlmFailureKind.BadResponse })
+                {
+                    // The call succeeded but Claude wouldn't produce parseable JSON for THIS bill
+                    // (e.g. it hedged/refused on sparse or charged bill text). That's specific to
+                    // this bill — the API is healthy — so mark just this one Failed and keep going.
+                    // Do NOT requeue/un-count: that would pin this poison bill at the head of the
+                    // batch (ordered by newest action) and stall every bill behind it indefinitely.
+                    _log.LogWarning(ex, "BillSynthesisService: unparseable LLM response for Bill {Id}; marking Failed and continuing", queued.Id);
+                    tracked.SynthesisStatus = BillSynthesisStatus.Failed;
+                    tracked.LastError = ex.Message;
+                    await db.SaveChangesAsync(ct);
+                    continue;
+                }
+
                 _log.LogWarning(ex, "BillSynthesisService: synthesis failed for Bill {Id}", queued.Id);
                 tracked.SynthesisStatus = BillSynthesisStatus.Failed;
                 tracked.LastError = ex.Message;

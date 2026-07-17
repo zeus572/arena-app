@@ -81,11 +81,20 @@ public class ClaudeLlmClient : ILlmClient
             }
             catch (JsonException jex)
             {
+                // The call itself succeeded (HTTP 200) — the model just wouldn't emit the
+                // requested JSON, even after a stricter reminder. That's a per-request content
+                // failure (a prose preamble/refusal, or truncation), NOT an API outage, so it
+                // must be tagged BadResponse: batch callers fail just this item and keep going
+                // instead of halting and re-queuing a poison pill at the head of the batch.
+                // Log a snippet of what Claude actually said so triage doesn't need the DB.
+                _logger.LogWarning(
+                    "Claude returned non-JSON after retry; first {N} chars: {Snippet}",
+                    120, Snippet(rawRetry, 120));
                 throw new LlmException(
                     "Claude returned non-JSON after retry.",
                     rawResponse: rawRetry,
                     inner: jex,
-                    kind: LlmFailureKind.CallFailed);
+                    kind: LlmFailureKind.BadResponse);
             }
         }
     }
@@ -170,21 +179,76 @@ public class ClaudeLlmClient : ILlmClient
 
     private static T ParseJson<T>(string text)
     {
-        // Tolerate ```json ... ``` fences if the model adds them despite instructions.
-        var trimmed = text.Trim();
-        if (trimmed.StartsWith("```"))
-        {
-            var firstNewline = trimmed.IndexOf('\n');
-            if (firstNewline >= 0) trimmed = trimmed[(firstNewline + 1)..];
-            if (trimmed.EndsWith("```")) trimmed = trimmed[..^3];
-            trimmed = trimmed.Trim();
-        }
-
-        var parsed = JsonSerializer.Deserialize<T>(trimmed, JsonOpts);
+        var json = ExtractJson(text);
+        var parsed = JsonSerializer.Deserialize<T>(json, JsonOpts);
         if (parsed is null)
         {
             throw new JsonException("Deserialized value was null.");
         }
         return parsed;
+    }
+
+    /// <summary>
+    /// Pull the JSON value out of a model response that may wrap it in markdown fences
+    /// (```json … ```) or surrounding prose ("Here's the JSON: {…}. Hope that helps!").
+    /// The model is asked for bare JSON, but it occasionally adds a preamble anyway; rather
+    /// than fail the whole request we salvage the first balanced object/array. Genuine
+    /// no-JSON responses (a refusal starting with prose) leave nothing to slice, so parsing
+    /// still throws and the caller's retry / BadResponse path takes over.
+    /// </summary>
+    private static string ExtractJson(string text)
+    {
+        var s = text.Trim();
+
+        // 1) If the payload is fenced, take the fence body first.
+        var fence = s.IndexOf("```", StringComparison.Ordinal);
+        if (fence >= 0)
+        {
+            var bodyStart = s.IndexOf('\n', fence);
+            if (bodyStart >= 0)
+            {
+                var bodyEnd = s.IndexOf("```", bodyStart, StringComparison.Ordinal);
+                s = (bodyEnd > bodyStart ? s[(bodyStart + 1)..bodyEnd] : s[(bodyStart + 1)..]).Trim();
+            }
+        }
+
+        // 2) Slice out the first balanced { … } / [ … ] so leading prose ("I'll analyze…")
+        //    or a trailing sign-off doesn't derail deserialization. Returns the whole string
+        //    untouched if there's no brace to anchor on (Deserialize will then throw cleanly).
+        return SliceFirstJsonValue(s) ?? s;
+    }
+
+    private static string? SliceFirstJsonValue(string s)
+    {
+        var open = s.IndexOfAny(new[] { '{', '[' });
+        if (open < 0) return null;
+
+        var openChar = s[open];
+        var closeChar = openChar == '{' ? '}' : ']';
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+
+        for (var i = open; i < s.Length; i++)
+        {
+            var c = s[i];
+            if (inString)
+            {
+                if (escaped) escaped = false;
+                else if (c == '\\') escaped = true;
+                else if (c == '"') inString = false;
+            }
+            else if (c == '"') inString = true;
+            else if (c == openChar) depth++;
+            else if (c == closeChar && --depth == 0) return s[open..(i + 1)];
+        }
+
+        return null; // unbalanced — likely truncated at max_tokens
+    }
+
+    private static string Snippet(string s, int max)
+    {
+        var oneLine = s.Trim().ReplaceLineEndings(" ");
+        return oneLine.Length <= max ? oneLine : oneLine[..max] + "…";
     }
 }

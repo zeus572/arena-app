@@ -153,6 +153,18 @@ public class CivicContentGenerationService : BackgroundService
                     break;
                 }
 
+                if (ex is LlmException { Kind: LlmFailureKind.BadResponse })
+                {
+                    // Call succeeded but Claude wouldn't return parseable JSON for THIS story —
+                    // content-specific, not an outage. Fail just this item and continue so it
+                    // can't sit at the head of the queue and stall the batch behind it.
+                    _log.LogWarning(ex, "CivicContentGenerationService: unparseable LLM response for NewsItem {Id}; marking Failed and continuing", queued.Id);
+                    tracked.Status = NewsItemStatus.Failed;
+                    tracked.LastError = ex.Message;
+                    await db.SaveChangesAsync(ct);
+                    continue;
+                }
+
                 _log.LogWarning(ex, "Generation failed for NewsItem {Id}", queued.Id);
                 tracked.Status = NewsItemStatus.Failed;
                 tracked.LastError = ex.Message;

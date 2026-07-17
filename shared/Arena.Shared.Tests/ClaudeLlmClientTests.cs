@@ -74,8 +74,25 @@ public class ClaudeLlmClientTests
         var client = new ClaudeLlmClient(http, Options.Create(Opts()));
         var act = async () => await client.GenerateStructuredAsync<Demo>("sys", "user");
 
-        await act.Should().ThrowAsync<LlmException>();
+        var ex = await act.Should().ThrowAsync<LlmException>();
         calls.Should().Be(2, "the client should retry exactly once before giving up");
+        // The call SUCCEEDED (200) — the model just wouldn't emit JSON. That's a per-request
+        // content failure, not an API outage, so batch callers fail just this item (and don't
+        // halt the whole batch or un-count the attempt on a poison-pill input).
+        ex.Which.Kind.Should().Be(LlmFailureKind.BadResponse);
+    }
+
+    [Fact]
+    public async Task GenerateStructured_SalvagesJsonWrappedInProse()
+    {
+        // The model ignores "JSON only" and adds a preamble + sign-off around valid JSON.
+        var wrapped = "Sure! Here's the positioning:\n{\"headline\":\"wrapped\",\"rank\":7}\nHope that helps.";
+        var http = new HttpClient(StubHttpMessageHandler.FromBody(AnthropicBody(wrapped)));
+        var client = new ClaudeLlmClient(http, Options.Create(Opts()));
+
+        var result = await client.GenerateStructuredAsync<Demo>("sys", "user");
+        result.Headline.Should().Be("wrapped");
+        result.Rank.Should().Be(7);
     }
 
     [Fact]
