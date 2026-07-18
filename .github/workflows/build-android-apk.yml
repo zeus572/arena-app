@@ -1,0 +1,89 @@
+name: Build Civersify APK
+
+# Manually-triggered build of an INSTALLABLE Civersify Android APK — the kind you
+# sideload onto a real phone (a friend's Galaxy, your own device) to try the app.
+#
+# This is deliberately separate from the `android-build` job in ci.yml. That job
+# is a compile gate: it runs `npm run build` with NO API URLs, so its APK bakes in
+# http://localhost:5050/api — which on a phone means "the phone itself", and every
+# API call fails. Useful for catching build breaks, useless on a device.
+#
+# This workflow bakes in the PROD backend URLs (same secrets the Static Web App
+# deploy uses), so the resulting bundle talks to the real backends. The output is
+# a debug-SIGNED APK — that is what makes it sideloadable without Play Store /
+# release signing. See docs/Android_Install.md for install steps.
+on:
+  workflow_dispatch:
+    inputs:
+      civic_api_url:
+        description: 'Civic API base URL (blank = prod secret VITE_CIVIC_API_URL)'
+        required: false
+        default: ''
+      arena_api_url:
+        description: 'Arena/auth API base URL (blank = prod secret VITE_ARENA_API_URL)'
+        required: false
+        default: ''
+
+jobs:
+  build-apk:
+    name: Build prod-pointing debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-civic/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend-civic
+
+      # The web bundle is where the API URLs get baked in — this is the step that
+      # makes the APK point at prod instead of localhost. Inputs override the prod
+      # secret when supplied (e.g. to build against a staging backend).
+      - name: Build web bundle (prod URLs baked in)
+        working-directory: frontend-civic
+        env:
+          VITE_CIVIC_API_URL: ${{ github.event.inputs.civic_api_url != '' && github.event.inputs.civic_api_url || secrets.VITE_CIVIC_API_URL }}
+          VITE_ARENA_API_URL: ${{ github.event.inputs.arena_api_url != '' && github.event.inputs.arena_api_url || secrets.VITE_ARENA_API_URL }}
+          VITE_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.VITE_APPINSIGHTS_CONNECTION_STRING }}
+        run: |
+          if [ -z "$VITE_CIVIC_API_URL" ] || [ -z "$VITE_ARENA_API_URL" ]; then
+            echo "::error::VITE_CIVIC_API_URL / VITE_ARENA_API_URL are empty. Set the repo secrets (same ones deploy-civic.yml uses) or pass them as workflow inputs — otherwise the APK bakes in localhost and every API call fails on the phone."
+            exit 1
+          fi
+          echo "Building bundle → Civic API: $VITE_CIVIC_API_URL"
+          echo "Building bundle → Arena API: $VITE_ARENA_API_URL"
+          npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+        working-directory: frontend-civic
+
+      # No CAP_SERVER_URL / CAP_DEV_HTTP env here → a secure-by-default release sync:
+      # the WebView serves the baked bundle from https://localhost and talks HTTPS
+      # to prod. assembleDebug produces a *debug-signed* APK, which sideloads;
+      # assembleRelease would be unsigned and refuse to install.
+      - name: Assemble debug APK
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        working-directory: frontend-civic/android
+
+      - name: Rename APK for humans
+        run: cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Civersify.apk"
+        working-directory: frontend-civic/android
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: civersify-prod-apk
+          path: ${{ runner.temp }}/Civersify.apk
+          retention-days: 14
+          if-no-files-found: error
