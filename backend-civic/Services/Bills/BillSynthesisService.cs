@@ -175,6 +175,19 @@ public class BillSynthesisService : BackgroundService
         var (system, user) = BillPrompts.Synthesis(bill, _catalog);
         var result = await _llm.GenerateStructuredAsync<BillSynthesisResult>(system, user, LlmModelTier.Sonnet, ct: ct);
 
+        // A parse that yields nothing usable is a failure, not a synthesis. The client salvages
+        // JSON out of prose-wrapped responses, so a refusal that merely QUOTES a shape
+        // ("I can't judge this, but the format is {\"summary\":\"…\",\"positions\":[]}") can
+        // deserialize into an all-defaults object. Persisting that would mark the bill
+        // Synthesized with an empty compass — silent dead data that never retries — so treat it
+        // as BadResponse and let the caller fail just this bill and move on.
+        if (string.IsNullOrWhiteSpace(result.Summary) && result.Positions.Count == 0)
+        {
+            throw new LlmException(
+                "Parsed LLM response had no summary and no positions.",
+                kind: LlmFailureKind.BadResponse);
+        }
+
         // Replace any prior positions (defensive on re-synthesis).
         var existing = await db.BillAxisPositions.Where(p => p.BillId == bill.Id).ToListAsync(ct);
         if (existing.Count > 0) db.BillAxisPositions.RemoveRange(existing);

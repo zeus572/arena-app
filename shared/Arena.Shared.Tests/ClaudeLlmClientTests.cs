@@ -96,6 +96,24 @@ public class ClaudeLlmClientTests
     }
 
     [Fact]
+    public async Task GenerateStructured_RefusalQuotingAShape_SalvagesToAnAllDefaultsObject()
+    {
+        // Documents the LIMIT of prose-salvage: a refusal that merely QUOTES the expected shape
+        // still parses, yielding an all-defaults object instead of throwing. The client cannot
+        // tell "quoted example" from "real answer", so callers that PERSIST llm output must
+        // reject degenerate results themselves — see BillSynthesisService's empty-result guard,
+        // which turns exactly this case into BadResponse rather than an empty "Synthesized" bill.
+        var refusal = "I can't position this bill, but the format is {\"headline\":\"\",\"rank\":0}.";
+        var http = new HttpClient(StubHttpMessageHandler.FromBody(AnthropicBody(refusal)));
+        var client = new ClaudeLlmClient(http, Options.Create(Opts()));
+
+        var result = await client.GenerateStructuredAsync<Demo>("sys", "user");
+
+        result.Headline.Should().BeEmpty("the quoted shape carries no real content");
+        result.Rank.Should().Be(0);
+    }
+
+    [Fact]
     public async Task GenerateStructured_RetrySucceedsAfterInitialBadJson()
     {
         var calls = 0;
