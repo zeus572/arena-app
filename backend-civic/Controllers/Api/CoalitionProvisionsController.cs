@@ -143,10 +143,11 @@ public class CoalitionProvisionsController : ControllerBase
             var detail = await _loop.BirthFromBriefingAsync(req.BriefingId, _user.GetCurrentUserId(), ct);
             return detail is null ? NotFound(new { error = "Briefing not found." }) : Ok(detail);
         }
-        catch (LlmException ex) when (ex.Kind == LlmFailureKind.CallFailed)
+        catch (LlmException ex) when (ex.Kind is LlmFailureKind.CallFailed or LlmFailureKind.BadResponse)
         {
-            // The LLM was configured but the live call failed (e.g. out of credits). Don't birth a
-            // dead heuristic provision — surface a retryable error instead.
+            // The LLM was configured but couldn't produce a usable result — either the live call
+            // failed (e.g. out of credits) or the model returned unparseable content. Either way,
+            // don't birth a dead heuristic provision — surface a retryable error instead.
             return StatusCode(StatusCodes.Status503ServiceUnavailable,
                 new { error = "Generation service is temporarily unavailable. Try again shortly." });
         }

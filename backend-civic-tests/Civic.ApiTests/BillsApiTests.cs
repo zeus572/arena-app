@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Arena.Shared.Llm;
 using Civic.API.Data;
 using Civic.API.Models;
 using Civic.API.Models.DTOs;
@@ -32,7 +33,7 @@ public class BillsApiTests
             _fx.Factory.Services.GetRequiredService<StartupReadiness>());
     }
 
-    private BillSynthesisService BuildSynthesis(StubLlmClient llm, BillOptions? opts = null)
+    private BillSynthesisService BuildSynthesis(ILlmClient llm, BillOptions? opts = null)
     {
         var scopes = _fx.Factory.Services.GetRequiredService<IServiceScopeFactory>();
         return new BillSynthesisService(
@@ -129,6 +130,125 @@ public class BillsApiTests
         bill.AxisPositions.Should().Contain(p => p.AxisKey == "govt-role");
         bill.AxisPositions.Should().NotContain(p => p.AxisKey == "totally-made-up", "unknown axes are dropped");
         bill.AxisPositions.Single(p => p.AxisKey == "religion").Score.Should().Be(1.0, "scores clamp to [-1,1]");
+    }
+
+    [Fact]
+    public async Task Synthesize_UnparseableBill_MarksThatBillFailed_AndContinuesBatch()
+    {
+        // Regression: a bill whose LLM response won't parse (BadResponse) must not poison the
+        // whole batch. Before the fix it was tagged CallFailed → requeued + un-counted + break,
+        // pinning the bad bill at the head of the queue and stalling every bill behind it.
+        await _fx.ResetMutableAsync();
+        using (var scope = _fx.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+            // "poison" sorts to the head (newest action), so a halting bug would starve the rest.
+            db.Bills.Add(WithAction(NewBill("hr-1-118", "Poison Bill"), DateTime.UtcNow));
+            db.Bills.Add(WithAction(NewBill("hr-2-118", "Good Bill A"), DateTime.UtcNow.AddDays(-1)));
+            db.Bills.Add(WithAction(NewBill("hr-3-118", "Good Bill B"), DateTime.UtcNow.AddDays(-2)));
+            await db.SaveChangesAsync();
+        }
+
+        var goodJson = """
+        { "summary": "Neutral summary.", "positions": [ { "axisKey": "govt-role", "score": 0.2, "confidence": 0.8, "rationale": "r", "evidence": "" } ] }
+        """;
+        var llm = new PoisonBillLlmClient(poisonTitle: "Poison Bill", goodJson);
+
+        var svc = BuildSynthesis(llm, new BillOptions { SynthesisBatchSize = 10 });
+        var done = await svc.SynthesizeBatchAsync();
+
+        done.Should().Be(2, "the two good bills must still synthesize despite the poison bill");
+
+        using var verify = _fx.Factory.Services.CreateScope();
+        var vdb = verify.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var byExt = await vdb.Bills.ToDictionaryAsync(b => b.ExternalId!, b => b);
+
+        byExt["hr-1-118"].SynthesisStatus.Should().Be(BillSynthesisStatus.Failed, "the poison bill is failed, not requeued");
+        byExt["hr-1-118"].AttemptCount.Should().Be(1, "its attempt must NOT be un-counted (that made it immortal)");
+        byExt["hr-2-118"].SynthesisStatus.Should().Be(BillSynthesisStatus.Synthesized);
+        byExt["hr-3-118"].SynthesisStatus.Should().Be(BillSynthesisStatus.Synthesized);
+    }
+
+    [Fact]
+    public async Task Synthesize_DegenerateResult_FailsThatBill_RatherThanEmptySynthesized()
+    {
+        // The client salvages JSON out of prose, so a refusal that merely QUOTES the shape
+        // ("I can't judge this, but the format is {...}") deserializes into an all-defaults
+        // result. Persisting that would mark the bill Synthesized with an empty compass —
+        // silent dead data that never retries. The empty-result guard must reject it.
+        await _fx.ResetMutableAsync();
+        using (var scope = _fx.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
+            db.Bills.Add(WithAction(NewBill("hr-4-118", "Empty Result Bill"), DateTime.UtcNow));
+            db.Bills.Add(WithAction(NewBill("hr-5-118", "Good Bill C"), DateTime.UtcNow.AddDays(-1)));
+            await db.SaveChangesAsync();
+        }
+
+        var llm = new PerTitleJsonLlmClient(
+            matchTitle: "Empty Result Bill",
+            matchJson: """{ "summary": "", "positions": [] }""",
+            otherJson: """
+            { "summary": "Neutral summary.", "positions": [ { "axisKey": "govt-role", "score": 0.2, "confidence": 0.8, "rationale": "r", "evidence": "" } ] }
+            """);
+
+        var svc = BuildSynthesis(llm, new BillOptions { SynthesisBatchSize = 10 });
+        var done = await svc.SynthesizeBatchAsync();
+
+        done.Should().Be(1, "only the bill with real content counts as synthesized");
+
+        using var verify = _fx.Factory.Services.CreateScope();
+        var vdb = verify.ServiceProvider.GetRequiredService<CivicDbContext>();
+        var byExt = await vdb.Bills.Include(b => b.AxisPositions).ToDictionaryAsync(b => b.ExternalId!, b => b);
+
+        var empty = byExt["hr-4-118"];
+        empty.SynthesisStatus.Should().Be(BillSynthesisStatus.Failed,
+            "an empty parse is a failure, not a synthesis — otherwise it's dead data that never retries");
+        empty.AxisPositions.Should().BeEmpty();
+        empty.SynthesisSummary.Should().BeNullOrWhiteSpace("no partial write may survive the guard");
+        byExt["hr-5-118"].SynthesisStatus.Should().Be(BillSynthesisStatus.Synthesized, "the batch continues");
+    }
+
+    private static Bill WithAction(Bill b, DateTime latestAction)
+    {
+        b.LatestActionDate = latestAction;
+        return b;
+    }
+
+    /// <summary>Returns <paramref name="matchJson"/> for the bill whose user prompt contains
+    /// <paramref name="matchTitle"/>, else <paramref name="otherJson"/>. Models the client
+    /// SUCCEEDING at parsing (no throw) but yielding degenerate content.</summary>
+    private sealed class PerTitleJsonLlmClient(string matchTitle, string matchJson, string otherJson) : ILlmClient
+    {
+        public Task<T> GenerateStructuredAsync<T>(
+            string systemPrompt, string userPrompt, LlmModelTier tier = LlmModelTier.Sonnet,
+            int? maxTokens = null, CancellationToken ct = default)
+        {
+            var json = userPrompt.Contains(matchTitle, StringComparison.Ordinal) ? matchJson : otherJson;
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<T>(
+                json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            return Task.FromResult(parsed);
+        }
+    }
+
+    /// <summary>Throws <see cref="LlmFailureKind.BadResponse"/> for the one bill whose user
+    /// prompt contains <paramref name="poisonTitle"/>; returns canned JSON for everything else.</summary>
+    private sealed class PoisonBillLlmClient(string poisonTitle, string goodJson) : ILlmClient
+    {
+        public Task<T> GenerateStructuredAsync<T>(
+            string systemPrompt, string userPrompt, LlmModelTier tier = LlmModelTier.Sonnet,
+            int? maxTokens = null, CancellationToken ct = default)
+        {
+            if (userPrompt.Contains(poisonTitle, StringComparison.Ordinal))
+            {
+                throw new LlmException(
+                    "Claude returned non-JSON after retry.", kind: LlmFailureKind.BadResponse);
+            }
+
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<T>(
+                goodJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            return Task.FromResult(parsed);
+        }
     }
 
     // ---- Controller ----
