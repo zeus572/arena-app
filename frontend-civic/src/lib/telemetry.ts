@@ -15,19 +15,35 @@ let ai: ApplicationInsights | null = null;
 
 export function initTelemetry(): void {
   if (ai) return;
-  const connectionString = import.meta.env.VITE_APPINSIGHTS_CONNECTION_STRING;
+
+  // Strip a leading UTF-8 BOM and surrounding whitespace before handing the
+  // value to the SDK. A BOM makes the first key parse as "﻿InstrumentationKey",
+  // so the SDK finds no instrumentation key and throws — which, uncaught at
+  // module scope in main.tsx, prevented React from ever mounting (prod outage
+  // 2026-07-22). Secrets written via a PowerShell redirect pick up a BOM by
+  // default, so sanitize rather than trust the value.
+  const connectionString = import.meta.env.VITE_APPINSIGHTS_CONNECTION_STRING
+    ?.replace(/^﻿/, "")
+    .trim();
   if (!connectionString) return;
 
-  ai = new ApplicationInsights({
-    config: {
-      connectionString,
-      disableCookiesUsage: true, // cookieless: consent-clean basic hits
-      enableAutoRouteTracking: true, // count SPA route changes as page views
-      disableFetchTracking: false,
-    },
-  });
-  ai.loadAppInsights();
-  ai.trackPageView();
+  // Telemetry is strictly observational: it must never be able to take the app
+  // down. Any SDK failure is swallowed and the app renders untracked.
+  try {
+    ai = new ApplicationInsights({
+      config: {
+        connectionString,
+        disableCookiesUsage: true, // cookieless: consent-clean basic hits
+        enableAutoRouteTracking: true, // count SPA route changes as page views
+        disableFetchTracking: false,
+      },
+    });
+    ai.loadAppInsights();
+    ai.trackPageView();
+  } catch (err) {
+    ai = null;
+    console.warn("Telemetry disabled: App Insights failed to initialize.", err);
+  }
 }
 
 /** Optional custom event helper for key actions (sign-up, share, etc.). */
