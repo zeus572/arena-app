@@ -37,13 +37,27 @@ builder.Services.AddScoped<ICohortService, CohortService>();
 // (News:Sources / News:LocalSources) resolved through the shared provider
 // registry from Arena.Shared — one fetch implementation across the monorepo.
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection("Anthropic"));
+builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection("OpenAI"));
 builder.Services.Configure<NewsOptions>(builder.Configuration.GetSection("News"));
 
-builder.Services.AddHttpClient<ILlmClient, ClaudeLlmClient>(c =>
+// LLM access goes through a FallbackLlmClient: Claude is primary, GPT-5.6 is the
+// runtime backup for when Anthropic is rate-limited, out of credits, or times out.
+// The two providers are registered as concrete typed clients; ILlmClient resolves
+// to the fallback wrapper. With OpenAI unconfigured this degrades to Claude-only.
+builder.Services.AddHttpClient<ClaudeLlmClient>(c =>
 {
     c.BaseAddress = new Uri("https://api.anthropic.com/");
     c.Timeout = TimeSpan.FromSeconds(90);
 });
+builder.Services.AddHttpClient<GptLlmClient>(c =>
+{
+    c.BaseAddress = new Uri("https://api.openai.com/");
+    c.Timeout = TimeSpan.FromSeconds(90);
+});
+builder.Services.AddTransient<ILlmClient>(sp => new FallbackLlmClient(
+    primary: sp.GetRequiredService<ClaudeLlmClient>(),
+    backup: sp.GetRequiredService<GptLlmClient>(),
+    logger: sp.GetRequiredService<ILogger<FallbackLlmClient>>()));
 
 builder.Services.AddArenaNewsSources();
 
