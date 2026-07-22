@@ -54,7 +54,7 @@ builder.Services.AddHttpClient<GptLlmClient>(c =>
     c.BaseAddress = new Uri("https://api.openai.com/");
     c.Timeout = TimeSpan.FromSeconds(90);
 });
-builder.Services.AddScoped<ILlmClient>(sp => new FallbackLlmClient(
+builder.Services.AddTransient<ILlmClient>(sp => new FallbackLlmClient(
     primary: sp.GetRequiredService<ClaudeLlmClient>(),
     backup: sp.GetRequiredService<GptLlmClient>(),
     logger: sp.GetRequiredService<ILogger<FallbackLlmClient>>()));
