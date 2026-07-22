@@ -1,5 +1,6 @@
 using Arena.Shared.Llm;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Arena.Shared.Tests;
@@ -123,6 +124,37 @@ public class FallbackLlmClientTests
 
         var ex = await act.Should().ThrowAsync<LlmException>();
         ex.Which.Kind.Should().Be(LlmFailureKind.Unavailable);
+    }
+
+    [Fact]
+    public async Task Fallback_WhenBackupRecovers_EmitsFallbackAndRecoveryTelemetry()
+    {
+        var primary = FakeLlm.Throws(new LlmException("claude down", kind: LlmFailureKind.CallFailed));
+        var backup = FakeLlm.Returns(new Demo("backup", 2));
+        var log = new CapturingLogger<FallbackLlmClient>();
+        var client = new FallbackLlmClient(primary, backup, log);
+
+        await client.GenerateStructuredAsync<Demo>("s", "u");
+
+        // The primary-failure signal (queryable fallback rate) and the recovery signal.
+        log.WithDimension("PrimaryKind", LlmFailureKind.CallFailed)
+            .Select(e => e.Level).Should().Contain(new[] { LogLevel.Warning, LogLevel.Information });
+    }
+
+    [Fact]
+    public async Task Fallback_WhenBothFail_EmitsBothFailedTelemetryAtError()
+    {
+        var primary = FakeLlm.Throws(new LlmException("out of credits", kind: LlmFailureKind.CallFailed));
+        var backup = FakeLlm.Throws(new LlmException("gpt garbage", kind: LlmFailureKind.BadResponse));
+        var log = new CapturingLogger<FallbackLlmClient>();
+        var client = new FallbackLlmClient(primary, backup, log);
+
+        var act = async () => await client.GenerateStructuredAsync<Demo>("s", "u");
+
+        await act.Should().ThrowAsync<LlmException>();
+        var bothFailed = log.WithDimension("SurfacedKind", LlmFailureKind.CallFailed).Should().ContainSingle().Subject;
+        bothFailed.Level.Should().Be(LogLevel.Error);
+        bothFailed.State["BackupKind"].Should().Be(LlmFailureKind.BadResponse);
     }
 
     [Fact]

@@ -51,16 +51,33 @@ public class FallbackLlmClient : ILlmClient
         }
         catch (Exception primaryEx) when (ShouldFallBack(primaryEx, ct))
         {
+            // Structured so the fallback RATE is queryable in App Insights (count of
+            // LlmFallback events, split by PrimaryKind) — a rising primary-failure rate is the
+            // early warning that Anthropic is degraded even while callers keep succeeding on GPT.
             _logger.LogWarning(
-                primaryEx, "Primary LLM failed ({Kind}); falling back to backup provider.", KindOf(primaryEx));
+                primaryEx,
+                "LLM fallback: primary provider failed (primaryKind={PrimaryKind}); retrying on backup provider.",
+                KindOf(primaryEx));
             try
             {
-                return await _backup.GenerateStructuredAsync<T>(systemPrompt, userPrompt, tier, maxTokens, ct);
+                var result = await _backup.GenerateStructuredAsync<T>(systemPrompt, userPrompt, tier, maxTokens, ct);
+                // Backup carried the request — the app degraded gracefully. Emit the recovery as
+                // its own data point so "how often did GPT save us" is countable, distinct from
+                // both-failed (which surfaces below as the merged exception the caller sees).
+                _logger.LogInformation(
+                    "LLM fallback: backup provider served the request after primary failed (primaryKind={PrimaryKind}).",
+                    KindOf(primaryEx));
+                return result;
             }
             catch (Exception backupEx) when (backupEx is LlmException or HttpRequestException
                                              || (backupEx is OperationCanceledException && !ct.IsCancellationRequested))
             {
-                throw Merge(primaryEx, backupEx);
+                var merged = Merge(primaryEx, backupEx);
+                _logger.LogError(
+                    merged,
+                    "LLM fallback: BOTH providers failed (primaryKind={PrimaryKind} backupKind={BackupKind} surfacedKind={SurfacedKind}).",
+                    KindOf(primaryEx), KindOf(backupEx), merged.Kind);
+                throw merged;
             }
         }
     }

@@ -119,6 +119,50 @@ prompt. **OpenAI caches repeated prompt prefixes automatically** (~10% cache‑r
 no `cache_control` field), so the GPT backup path needs no cache plumbing — reused system
 prompts cache on their own.
 
+## Telemetry — which provider/model is used, and is it failing
+
+Every live provider call emits one structured `ILogger` event, and each fallback emits its
+own event. These flow to Application Insights (`appi-arena`) as `traces`, with the named
+placeholders landing in `customDimensions` — no extra SDK, they're on by default.
+
+**Per-call event** (from `StructuredJsonLlmClient`, one per Claude or GPT call):
+
+| Dimension | Values |
+| --- | --- |
+| `LlmProvider` | `Claude`, `GPT` |
+| `LlmModel` | resolved model id, e.g. `claude-sonnet-4-6`, `gpt-5.6-terra`, or `(none)` when unavailable |
+| `LlmTier` | `Sonnet`, `Haiku` |
+| `LlmOutcome` | `success`, `call_failed`, `bad_response`, `unavailable`, `timeout`, `canceled` |
+| `LlmRetried` | `true` if the single JSON retry fired |
+| `LlmLatencyMs` | wall-clock of the call |
+
+Successful calls log at **Information**; failures at **Warning** (with the exception).
+
+**Fallback events** (from `FallbackLlmClient`): a `Warning` when the primary fails and the
+backup is tried (`PrimaryKind`), an `Information` when the backup then serves the request,
+and an `Error` when **both** fail (`PrimaryKind`, `BackupKind`, `SurfacedKind`).
+
+Example KQL — provider/model usage and failure split over 24h:
+
+```kusto
+traces
+| where timestamp > ago(24h)
+| where customDimensions.LlmProvider in ("Claude", "GPT")
+| summarize count() by
+    provider = tostring(customDimensions.LlmProvider),
+    model    = tostring(customDimensions.LlmModel),
+    outcome  = tostring(customDimensions.LlmOutcome)
+| order by provider, outcome
+```
+
+Fallback rate (how often Claude failed over to GPT):
+
+```kusto
+traces
+| where timestamp > ago(24h) and message startswith "LLM fallback: primary provider failed"
+| summarize fallbacks = count() by primaryKind = tostring(customDimensions.PrimaryKind)
+```
+
 ## Sources
 
 - [GPT‑5.6 — OpenAI announcement](https://openai.com/index/gpt-5-6/)

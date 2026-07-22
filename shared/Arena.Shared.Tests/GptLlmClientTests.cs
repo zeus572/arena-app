@@ -1,6 +1,7 @@
 using System.Net;
 using Arena.Shared.Llm;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -124,6 +125,38 @@ public class GptLlmClientTests
         var ex = await act.Should().ThrowAsync<LlmException>();
         ex.Which.Kind.Should().Be(LlmFailureKind.Unavailable);
         handler.Requests.Should().BeEmpty("a disabled provider must not hit the network");
+    }
+
+    [Fact]
+    public async Task GenerateStructured_HappyPath_EmitsSuccessTelemetryWithProviderAndModel()
+    {
+        var http = new HttpClient(StubHttpMessageHandler.FromBody(OpenAiBody("{\"headline\":\"h\",\"rank\":1}")));
+        var log = new CapturingLogger<GptLlmClient>();
+        var client = new GptLlmClient(http, Options.Create(Opts()), log);
+
+        await client.GenerateStructuredAsync<Demo>("sys", "user");
+
+        var call = log.WithDimension("LlmOutcome", "success").Should().ContainSingle().Subject;
+        call.Level.Should().Be(LogLevel.Information);
+        call.State["LlmProvider"].Should().Be("GPT");
+        call.State["LlmModel"].Should().Be("gpt-5.6-terra");
+        call.State["LlmRetried"].Should().Be(false);
+    }
+
+    [Fact]
+    public async Task GenerateStructured_NonSuccessStatus_EmitsCallFailedTelemetryAtWarning()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            Task.FromResult((HttpStatusCode.TooManyRequests, "{\"error\":\"rate limited\"}", "application/json")));
+        var log = new CapturingLogger<GptLlmClient>();
+        var client = new GptLlmClient(new HttpClient(handler), Options.Create(Opts()), log);
+
+        var act = async () => await client.GenerateStructuredAsync<Demo>("sys", "user");
+
+        await act.Should().ThrowAsync<LlmException>();
+        var call = log.WithDimension("LlmOutcome", "call_failed").Should().ContainSingle().Subject;
+        call.Level.Should().Be(LogLevel.Warning);
+        call.State["LlmProvider"].Should().Be("GPT");
     }
 
     [Fact]
