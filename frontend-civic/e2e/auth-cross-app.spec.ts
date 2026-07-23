@@ -1,4 +1,5 @@
 import { test, expect, request as pwRequest } from "@playwright/test";
+import { acceptCookieConsent } from "./helpers";
 
 const ARENA_BASE = "http://localhost:5000";
 const INVITE_CODE = "ARENA7X";
@@ -32,6 +33,7 @@ test("magazine register flow signs the user in across both arenas", async ({
   const password = "civicE2E-PASS-1234";
   const displayName = `Civic E2E ${uniq}`;
 
+  await acceptCookieConsent(page);
   await page.goto("/");
 
   // Anonymous: header shows "Sign up" and "Sign in", home shows the public CTA.
@@ -45,7 +47,11 @@ test("magazine register flow signs the user in across both arenas", async ({
   await page.getByTestId("register-displayname").fill(displayName);
   await page.getByTestId("register-email").fill(email);
   await page.getByTestId("register-password").fill(password);
+  await page.getByTestId("register-confirm-password").fill(password);
   await page.getByTestId("register-invite").fill(INVITE_CODE);
+  await page.getByTestId("register-zip").fill("94105");
+  await page.getByTestId("register-dob").fill("1990-01-01");
+  await page.getByTestId("register-terms").check();
 
   await page.getByTestId("register-submit").click();
 
