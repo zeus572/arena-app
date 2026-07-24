@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
 import EmailVerificationGateModal from "@/auth/EmailVerificationGateModal";
 import DeepLinkListener from "@/lib/DeepLinkListener";
@@ -46,6 +46,10 @@ import MagazineLeagueJoin from "@/prototypes/magazine/pages/LeagueJoin";
 import MagazineLeagueRound from "@/prototypes/magazine/pages/LeagueRound";
 import MagazineAbout from "@/prototypes/magazine/pages/About";
 import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
+import AdminShell from "@/prototypes/magazine/pages/admin/AdminShell";
+import AdminEngagement from "@/prototypes/magazine/pages/admin/Engagement";
+import AdminBudget from "@/prototypes/magazine/pages/admin/Budget";
+import AdminTools from "@/prototypes/magazine/pages/admin/Tools";
 import MagazineCohort from "@/prototypes/magazine/pages/Cohort";
 import MagazineShortsFeed from "@/prototypes/magazine/pages/ShortsFeed";
 import MagazineWelcome from "@/prototypes/magazine/pages/Welcome";
@@ -116,6 +120,12 @@ function App() {
             <Route path="leagues/:id/rounds/:roundId" element={<MagazineLeagueRound />} />
             <Route path="about" element={<MagazineAbout />} />
             <Route path="zeitgeist" element={<MagazineZeitgeist />} />
+            <Route path="admin" element={<AdminShell />}>
+              <Route index element={<Navigate to="engagement" replace />} />
+              <Route path="engagement" element={<AdminEngagement />} />
+              <Route path="budget" element={<AdminBudget />} />
+              <Route path="tools" element={<AdminTools />} />
+            </Route>
             <Route path="cohort" element={<MagazineCohort />} />
             <Route path="privacy" element={<MagazinePrivacy />} />
             <Route path="terms" element={<MagazineTerms />} />

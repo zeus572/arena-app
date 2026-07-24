@@ -203,6 +203,18 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
         policy.Requirements.Add(new VerifiedEmailRequirement());
     });
+
+    // "Admin" policy: authenticated AND the token's email claim is on the
+    // Auth:AdminEmails allowlist. Mirrors the Arena backend's Admin policy so the
+    // read-only /api/admin/engagement dashboard endpoint is gated to operators only.
+    // (email claim is present because MapInboundClaims=false; see JwtBearer setup above.)
+    options.AddPolicy("Admin", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var email = context.User.FindFirst("email")?.Value;
+            var adminEmails = builder.Configuration.GetSection("Auth:AdminEmails").Get<string[]>() ?? [];
+            return email is not null && adminEmails.Contains(email, StringComparer.OrdinalIgnoreCase);
+        }));
 });
 builder.Services.AddSingleton<IAuthorizationHandler, VerifiedEmailHandler>();
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CivicAuthorizationResultHandler>();
