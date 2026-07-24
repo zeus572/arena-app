@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
+import { NewStoriesProvider } from "@/lib/newStories";
 import EmailVerificationGateModal from "@/auth/EmailVerificationGateModal";
 import DeepLinkListener from "@/lib/DeepLinkListener";
 import UpdateGate from "@/lib/UpdateGate";
@@ -66,6 +67,7 @@ function App() {
         <DeepLinkListener />
         <UpdateGate />
         <EmailVerificationGateModal />
+        <NewStoriesProvider>
         <Routes>
           {/* Immersive full-screen feed — intentionally OUTSIDE MagazineLayout so it
               gets the full viewport with no sticky header / bottom tabs. */}
@@ -132,6 +134,7 @@ function App() {
             <Route path="eula" element={<MagazineEula />} />
           </Route>
         </Routes>
+        </NewStoriesProvider>
         <CookieConsent />
       </AuthProvider>
     </BrowserRouter>
