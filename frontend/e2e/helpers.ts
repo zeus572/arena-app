@@ -1,7 +1,13 @@
 import { type Page, type APIRequestContext } from "@playwright/test";
+import { TERMS_VERSION } from "../src/lib/terms";
 
 const API_BASE = "http://localhost:5000/api";
 const DEV_BASE = "http://localhost:5000/dev";
+
+// A fixed, plausible adult date of birth for test accounts. The register
+// endpoint now enforces a COPPA under-13 age gate, so signups must supply a
+// DOB that clears the minimum age (and isn't in the future / absurdly old).
+const TEST_DATE_OF_BIRTH = "1990-01-01";
 
 /**
  * Register a fresh test user and return their access token + user info.
@@ -16,7 +22,14 @@ export async function registerTestUser(
   const displayName = `E2E User ${id}`;
 
   const res = await request.post(`${API_BASE}/auth/register`, {
-    data: { email, password, displayName, inviteCode: "ARENA7X" },
+    data: {
+      email,
+      password,
+      displayName,
+      inviteCode: "ARENA7X",
+      dateOfBirth: TEST_DATE_OF_BIRTH,
+      acceptedTermsVersion: TERMS_VERSION,
+    },
   });
 
   const body = await res.json();

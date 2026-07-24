@@ -1,5 +1,6 @@
 import { test, expect, request as pwRequest } from "@playwright/test";
 import { execSync } from "node:child_process";
+import { acceptCookieConsent } from "./helpers";
 
 const ARENA_BASE = "http://localhost:5000";
 const INVITE_CODE = "ARENA7X";
@@ -55,11 +56,16 @@ test("premium user sees and can click 'Debate this' to open a new debate", async
   const password = "premium-PASS-1234";
   const displayName = `Premium Civic ${uniq}`;
 
+  await acceptCookieConsent(page);
   await page.goto("/register");
   await page.getByTestId("register-displayname").fill(displayName);
   await page.getByTestId("register-email").fill(email);
   await page.getByTestId("register-password").fill(password);
+  await page.getByTestId("register-confirm-password").fill(password);
   await page.getByTestId("register-invite").fill(INVITE_CODE);
+  await page.getByTestId("register-zip").fill("94105");
+  await page.getByTestId("register-dob").fill("1990-01-01");
+  await page.getByTestId("register-terms").check();
   await page.getByTestId("register-submit").click();
   await expect(page).toHaveURL(/\/$/);
 

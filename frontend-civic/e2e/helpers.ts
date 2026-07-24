@@ -14,3 +14,16 @@ export async function seedAnonymousUser(page: Page): Promise<string> {
   }, id);
   return id;
 }
+
+/**
+ * Pre-accept the cookie/analytics consent so the first-visit CookieConsent
+ * banner — fixed to the bottom of the viewport with a high z-index — never
+ * renders. Otherwise it can overlay elements near the foot of a page (e.g. the
+ * register form's submit button) and intercept clicks. Must run before the
+ * first navigation. Keep the key in sync with lib/consent.ts.
+ */
+export async function acceptCookieConsent(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("civersify-cookie-consent", "accepted");
+  });
+}
