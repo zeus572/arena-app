@@ -10,7 +10,7 @@ using Civic.API.Services.Campaign;
 namespace Civic.API.Controllers.Api;
 
 [ApiController]
-[AllowAnonymous]
+[Authorize(Policy = "Admin")]
 [Route("api/admin")]
 public class AdminCandidatesController : ControllerBase
 {
