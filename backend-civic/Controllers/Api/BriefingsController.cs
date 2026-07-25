@@ -88,6 +88,25 @@ public class BriefingsController : ControllerBase
         });
     }
 
+    // GET /api/briefings/latest — cheap polling signal for "are there new stories?".
+    // Returns the newest visible briefing's timestamp + the total count, walled to the
+    // caller's locality so a local reader isn't pinged by out-of-locality briefings.
+    // Deliberately carries no page payload: clients poll this on an interval while their
+    // tab is active, then reload the feed only when the signal moves.
+    [HttpGet("latest")]
+    public async Task<ActionResult<BriefingLatestDto>> Latest()
+    {
+        var locality = await CurrentLocalityAsync();
+        var visible = _db.Briefings.Where(b => b.Locality == null || b.Locality == locality);
+
+        return Ok(new BriefingLatestDto
+        {
+            // Cast to DateTime? so an empty set yields null rather than throwing.
+            LatestCreatedAt = await visible.MaxAsync(b => (DateTime?)b.CreatedAt),
+            Total = await visible.CountAsync(),
+        });
+    }
+
     [HttpGet("{slug}")]
     public async Task<ActionResult<BriefingDto>> GetBySlug(string slug)
     {

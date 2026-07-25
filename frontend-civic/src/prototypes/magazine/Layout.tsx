@@ -5,6 +5,7 @@ import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
 import { MobileMenu } from "./components/MobileMenu";
 import { NavDropdown } from "./components/NavDropdown";
+import { NewStoriesBanner } from "./components/NewStoriesBanner";
 import { ButtonLink } from "./components/Button";
 import { NAV_COMPETE, NAV_EXPLORE, NAV_PRIMARY, NAV_TRAILING } from "./nav";
 import "./theme.css";
@@ -137,6 +138,7 @@ function AuthStrip() {
 export default function MagazineLayout() {
   return (
     <div className="theme-magazine min-h-screen pb-20 md:pb-0">
+      <NewStoriesBanner />
       <header
         className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur md:static md:bg-[var(--bg)]"
         data-testid="magazine-header"

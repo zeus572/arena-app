@@ -32,6 +32,20 @@ public class BriefingSummaryDto
     public string? SourcePublisher { get; set; }
 }
 
+/// <summary>
+/// A lightweight "is there anything new?" signal for the briefings feed. Returned by
+/// GET /api/briefings/latest so the client can poll cheaply (no page payload) to notice
+/// freshly published stories. Scoped to the caller's locality, exactly like the list.
+/// </summary>
+public class BriefingLatestDto
+{
+    /// <summary>Creation timestamp of the most recent visible briefing, or null if none.</summary>
+    public DateTime? LatestCreatedAt { get; set; }
+
+    /// <summary>Total number of briefings visible to the caller.</summary>
+    public int Total { get; set; }
+}
+
 /// <summary>A single page of briefing summaries plus the total count for paging UI.</summary>
 public class BriefingPageDto
 {

@@ -7,6 +7,7 @@ import { localityLabel } from "@/api/profile";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { listCampaigns, type CivicCampaignSummary } from "@/api/campaignManager";
 import { useAuth } from "@/auth/AuthContext";
+import { useNewStories } from "@/lib/newStories";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { WhenVisible } from "@/lib/WhenVisible";
 import { ButtonLink } from "../components/Button";
@@ -34,6 +35,7 @@ function formatStoryDate(iso: string): string {
 
 export default function MagazineHome() {
   const { user, isAuthenticated } = useAuth();
+  const { feedVersion } = useNewStories();
   const [cover, setCover] = useState<CivicBriefingSummary | null>(null);
   const [explainers, setExplainers] = useState<CivicBriefingSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -44,8 +46,18 @@ export default function MagazineHome() {
   const [loaded, setLoaded] = useState(false);
   const explainersRef = useRef<HTMLElement>(null);
   const didMountRef = useRef(false);
+  const feedVersionRef = useRef(feedVersion);
 
   useEffect(() => {
+    // A refresh signal (reader tapped "N new stories") means fresh briefings are at
+    // the top of page 1 — jump there rather than reloading whatever page they're on.
+    const refreshed = feedVersionRef.current !== feedVersion;
+    feedVersionRef.current = feedVersion;
+    if (refreshed && page !== 1) {
+      setPage(1); // re-runs this effect with page 1, which does the fetch
+      return;
+    }
+
     void getBriefings(page, PAGE_SIZE)
       .then((p) => {
         setTotal(p.total);
@@ -57,7 +69,7 @@ export default function MagazineHome() {
         }
       })
       .finally(() => setLoaded(true));
-  }, [page]);
+  }, [page, feedVersion]);
 
   // On page change (not the first load), bring the explainers section into view.
   useEffect(() => {
