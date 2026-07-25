@@ -26,7 +26,7 @@ export function NewStoriesBanner() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-16 z-30 flex justify-center px-4 md:top-24"
+      className="pointer-events-none fixed right-4 top-16 z-30 flex justify-end md:right-6 md:top-24"
       role="status"
       aria-live="polite"
       data-testid="new-stories-banner"
