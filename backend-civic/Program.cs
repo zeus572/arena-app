@@ -214,6 +214,9 @@ builder.Services.AddAuthentication(options =>
 
 // "VerifiedEmail" policy: authenticated AND email_verified=true. Gates account-bound
 // Civic write/participation actions so unverified (throwaway) accounts can't spam them.
+// The email_verified check is toggled by `Auth:RequireVerifiedEmail` (see VerifiedEmailHandler);
+// it is currently set to false in appsettings.json for the closed invite-only beta, so the
+// policy degrades to plain authentication until verification-email deliverability is fixed.
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("VerifiedEmail", policy =>
