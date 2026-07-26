@@ -12,6 +12,8 @@ using Civic.API.Services;
 using Civic.API.Services.Auth;
 using Civic.API.Services.Bills;
 using Civic.API.Services.Campaign;
+using Civic.API.Services.Daily;
+using Civic.API.Services.Daily.Generators;
 using Civic.API.Services.Generation;
 using Civic.API.Services.Leagues;
 
@@ -127,6 +129,22 @@ builder.Services.AddScoped<Civic.API.Services.Coalition.Judges.ICoalitionJudge, 
 builder.Services.AddScoped<Civic.API.Services.Coalition.Agents.IAgentProfileMapper, Civic.API.Services.Coalition.Agents.AgentProfileMapper>();
 builder.Services.AddScoped<Civic.API.Services.Coalition.Product.CoalitionLifecycleService>();
 builder.Services.AddHostedService<Civic.API.Services.Coalition.Product.CoalitionLifecycleHostedService>();
+
+// ---- Casual daily games (docs/civic_daily_games) ----
+// Six ~60-second puzzles that anonymous visitors can play with no account. Play is always
+// zero-LLM: generation is a once-daily background pass over already-ingested content, and
+// scoring is pure computation. XP rides the existing ReasoningLedger, so the daily cap,
+// diminishing returns, activity-day logging and cohort placement all come for free.
+builder.Services.Configure<DailyGamesOptions>(builder.Configuration.GetSection("DailyGames"));
+builder.Services.AddScoped<QuizPollStats>();
+builder.Services.AddScoped<DailyPuzzleService>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, ForkGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, CrowdCallGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, PricedInGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, PlaceItGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, TimeMachineGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, WhoseValueGenerator>();
+builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".

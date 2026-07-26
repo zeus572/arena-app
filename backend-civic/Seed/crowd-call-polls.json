@@ -1,0 +1,74 @@
+[
+  {
+    "key": "placeholder-branches",
+    "prompt": "Which branch of the federal government can declare a law unconstitutional?",
+    "answer": "The judicial branch",
+    "explanation": "Judicial review was established in Marbury v. Madison (1803).",
+    "trueRate": 0.62,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  },
+  {
+    "key": "placeholder-senate-size",
+    "prompt": "How many senators does each state send to the U.S. Senate?",
+    "answer": "Two, regardless of population",
+    "explanation": "Equal Senate representation was the core of the Connecticut Compromise.",
+    "trueRate": 0.74,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  },
+  {
+    "key": "placeholder-veto-override",
+    "prompt": "What share of each chamber is needed to override a presidential veto?",
+    "answer": "Two-thirds of both chambers",
+    "explanation": "Article I, Section 7 sets the two-thirds threshold in each chamber.",
+    "trueRate": 0.48,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  },
+  {
+    "key": "placeholder-term-length",
+    "prompt": "How long is a term in the U.S. House of Representatives?",
+    "answer": "Two years",
+    "explanation": "The entire House stands for election every two years.",
+    "trueRate": 0.55,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  },
+  {
+    "key": "placeholder-electoral-college",
+    "prompt": "Who formally elects the U.S. president?",
+    "answer": "The Electoral College",
+    "explanation": "Electors allocated by state cast the formal votes for president.",
+    "trueRate": 0.66,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  },
+  {
+    "key": "placeholder-amendment-ratify",
+    "prompt": "How many states must ratify a constitutional amendment for it to take effect?",
+    "answer": "Three-quarters of the states",
+    "explanation": "Article V requires ratification by three-fourths of the states.",
+    "trueRate": 0.41,
+    "sampleSize": 1000,
+    "attribution": "PLACEHOLDER (development only) — replace with a cited national poll",
+    "sourceUrl": null,
+    "fieldedOn": null,
+    "verified": false
+  }
+]

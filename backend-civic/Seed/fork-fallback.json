@@ -1,0 +1,170 @@
+[
+  {
+    "key": "housing-density",
+    "question": "A city needs 20,000 more homes. Where do they go?",
+    "tradeoff": "Building up changes neighborhoods that already exist; building out consumes open land and lengthens commutes.",
+    "optionA": {
+      "label": "Denser housing in existing neighborhoods",
+      "cost": "Streets and skylines people chose to live on change without their say."
+    },
+    "optionB": {
+      "label": "New development at the edge of town",
+      "cost": "Longer commutes, more road spending, and less open land."
+    },
+    "axisKey": "community"
+  },
+  {
+    "key": "permitting-speed",
+    "question": "How long should a major infrastructure project spend in environmental review?",
+    "tradeoff": "Shorter reviews build things sooner; longer reviews catch harms that are expensive to undo.",
+    "optionA": {
+      "label": "A hard two-year cap",
+      "cost": "Some real environmental harms get missed."
+    },
+    "optionB": {
+      "label": "However long the review takes",
+      "cost": "Projects people are waiting on stall for a decade or never get built."
+    },
+    "axisKey": "change-speed"
+  },
+  {
+    "key": "transit-fares",
+    "question": "Your city's buses are underfunded. What gives?",
+    "tradeoff": "Fares fall hardest on the people most dependent on the service; taxes spread the cost to people who never ride.",
+    "optionA": {
+      "label": "Raise fares",
+      "cost": "The riders least able to pay absorb the increase."
+    },
+    "optionB": {
+      "label": "Raise local taxes",
+      "cost": "People who never use the bus pay for it anyway."
+    },
+    "axisKey": "economic-fairness"
+  },
+  {
+    "key": "school-standards",
+    "question": "Who should decide what's taught in your local school?",
+    "tradeoff": "Local control reflects the community; state standards make a diploma mean the same thing everywhere.",
+    "optionA": {
+      "label": "The local school board",
+      "cost": "What a diploma means starts depending on your zip code."
+    },
+    "optionB": {
+      "label": "A statewide standard",
+      "cost": "Communities lose a say in how their own children are taught."
+    },
+    "axisKey": "authority"
+  },
+  {
+    "key": "emergency-powers",
+    "question": "During a declared emergency, how long can a governor act without the legislature?",
+    "tradeoff": "Speed saves lives early; unchecked duration turns an emergency into a standing power.",
+    "optionA": {
+      "label": "Until the emergency is over",
+      "cost": "One official holds extraordinary power for an open-ended period."
+    },
+    "optionB": {
+      "label": "Thirty days, then a vote",
+      "cost": "A slow legislature can stall a response that's still needed."
+    },
+    "axisKey": "liberty-safety"
+  },
+  {
+    "key": "drug-approval",
+    "question": "A promising treatment has strong early results and thin long-term data. Now what?",
+    "tradeoff": "Approving early helps people who are sick now; waiting protects people from harms nobody has seen yet.",
+    "optionA": {
+      "label": "Approve it now with monitoring",
+      "cost": "Some patients are exposed to side effects nobody has measured."
+    },
+    "optionB": {
+      "label": "Wait for the full trial",
+      "cost": "People who could have been helped go untreated for years."
+    },
+    "axisKey": "risk"
+  },
+  {
+    "key": "utility-upgrade",
+    "question": "A new large facility needs an expensive grid upgrade. Who pays for it?",
+    "tradeoff": "Charging the facility slows investment; spreading the cost raises everyone's bill.",
+    "optionA": {
+      "label": "The facility pays the full cost",
+      "cost": "Fewer facilities — and the jobs they bring — get built here."
+    },
+    "optionB": {
+      "label": "All ratepayers share it",
+      "cost": "Households pay more each month for infrastructure they didn't ask for."
+    },
+    "axisKey": "economic-fairness"
+  },
+  {
+    "key": "pension-funding",
+    "question": "The state pension fund is short. Which lever do you pull?",
+    "tradeoff": "Paying now costs services today; deferring hands a bigger bill to people who can't vote on it yet.",
+    "optionA": {
+      "label": "Fund it now, cut services",
+      "cost": "Programs people rely on today shrink."
+    },
+    "optionB": {
+      "label": "Defer and pay later",
+      "cost": "The next generation inherits a larger bill they had no say in."
+    },
+    "axisKey": "time-horizon"
+  },
+  {
+    "key": "expert-boards",
+    "question": "Who sets the safety threshold for a new industrial chemical?",
+    "tradeoff": "Technical panels know the science; elected officials answer to the people who live with the result.",
+    "optionA": {
+      "label": "A panel of technical experts",
+      "cost": "People affected by the rule can't vote the rule-makers out."
+    },
+    "optionB": {
+      "label": "Elected representatives",
+      "cost": "The threshold can move for reasons that have nothing to do with the evidence."
+    },
+    "axisKey": "expertise"
+  },
+  {
+    "key": "platform-moderation",
+    "question": "A platform hosts speech that's legal but widely considered harmful. What's the rule?",
+    "tradeoff": "Leaving it up exposes people to real harm; taking it down hands a private company editorial power.",
+    "optionA": {
+      "label": "Leave it up",
+      "cost": "People targeted by it carry the cost of everyone else's open forum."
+    },
+    "optionB": {
+      "label": "Take it down",
+      "cost": "A private company decides what the public can say to each other."
+    },
+    "axisKey": "speech"
+  },
+  {
+    "key": "disaster-rebuild",
+    "question": "A neighborhood floods for the third time in a decade. What does public money do?",
+    "tradeoff": "Rebuilding honors people's roots; relocating avoids paying for the same loss again.",
+    "optionA": {
+      "label": "Fund rebuilding in place",
+      "cost": "The same homes will likely flood again on the public's dime."
+    },
+    "optionB": {
+      "label": "Fund relocation instead",
+      "cost": "Families are pushed out of a place their community has lived for generations."
+    },
+    "axisKey": "time-horizon"
+  },
+  {
+    "key": "licensing-rules",
+    "question": "Should a new trade require a state license?",
+    "tradeoff": "Licenses raise the floor on quality; they also lock out people who can't afford the training.",
+    "optionA": {
+      "label": "Require a license",
+      "cost": "People who can't afford the hours or fees are shut out of the work."
+    },
+    "optionB": {
+      "label": "Let anyone offer the service",
+      "cost": "Customers carry the risk of finding out who's unqualified the hard way."
+    },
+    "axisKey": "govt-role"
+  }
+]

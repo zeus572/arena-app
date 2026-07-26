@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Civic.API.Models;
+using Civic.API.Models.Daily;
 using Arena.Shared.Social;
 
 namespace Civic.API.Data;
@@ -72,6 +73,12 @@ public class CivicDbContext : DbContext
     public DbSet<CoalitionCircleMember> CoalitionCircleMembers => Set<CoalitionCircleMember>();
     public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
     public DbSet<CoalitionAct> CoalitionActs => Set<CoalitionAct>();
+
+    // Casual daily games (docs/civic_daily_games). One generic pair of tables serves all
+    // six kinds — per-game shape lives in DailyPuzzle.PayloadJson, so a seventh game is an
+    // enum member and a payload contract, not a migration.
+    public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
+    public DbSet<DailyPuzzlePlay> DailyPuzzlePlays => Set<DailyPuzzlePlay>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -732,6 +739,42 @@ public class CivicDbContext : DbContext
             e.HasIndex(a => new { a.UserId, a.CreatedAt });
             e.HasIndex(a => new { a.ProvisionId, a.Type });
             e.Property(a => a.Type).HasConversion<string>().HasMaxLength(40);
+        });
+
+        modelBuilder.Entity<DailyPuzzle>(e =>
+        {
+            e.HasKey(p => p.Id);
+            // One puzzle per kind per day per locality — the generator relies on this to
+            // stay idempotent when two passes (or two instances) race.
+            //
+            // Split into two FILTERED indexes on purpose: Postgres treats NULLs as
+            // distinct in a unique index, so a single (Kind, PuzzleDate, Locality) index
+            // would happily accept two national puzzles for the same day — exactly the
+            // case that matters, since national is the default.
+            e.HasIndex(p => new { p.Kind, p.PuzzleDate })
+                .IsUnique()
+                .HasFilter("\"Locality\" IS NULL")
+                .HasDatabaseName("IX_DailyPuzzles_Kind_PuzzleDate_National");
+            e.HasIndex(p => new { p.Kind, p.PuzzleDate, p.Locality })
+                .IsUnique()
+                .HasFilter("\"Locality\" IS NOT NULL")
+                .HasDatabaseName("IX_DailyPuzzles_Kind_PuzzleDate_Locality");
+            e.HasIndex(p => new { p.Kind, p.Status, p.PuzzleDate });
+            e.Property(p => p.Kind).HasConversion<string>().HasMaxLength(30);
+            e.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<DailyPuzzlePlay>(e =>
+        {
+            e.HasKey(p => p.Id);
+            // One play per person per puzzle. This is also the idempotency guard for the
+            // XP award — see DailyPuzzleService.AwardAsync.
+            e.HasIndex(p => new { p.PuzzleId, p.UserId }).IsUnique();
+            e.HasIndex(p => new { p.UserId, p.CreatedAt });
+            e.HasOne(p => p.Puzzle)
+                .WithMany()
+                .HasForeignKey(p => p.PuzzleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

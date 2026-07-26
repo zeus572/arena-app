@@ -24,6 +24,8 @@ import MagazineForgotPassword from "@/prototypes/magazine/pages/ForgotPassword";
 import MagazineResetPassword from "@/prototypes/magazine/pages/ResetPassword";
 import MagazineVerifyEmail from "@/prototypes/magazine/pages/VerifyEmail";
 import MagazineQuizzes from "@/prototypes/magazine/pages/Quizzes";
+import MagazineDailyHub from "@/prototypes/magazine/pages/daily/DailyHub";
+import MagazineDailyGame from "@/prototypes/magazine/pages/daily/DailyGame";
 import MagazineConceptDetail from "@/prototypes/magazine/pages/ConceptDetail";
 import MagazineTeachers from "@/prototypes/magazine/pages/Teachers";
 import MagazineBillTimeline from "@/prototypes/magazine/pages/BillTimeline";
@@ -49,6 +51,7 @@ import MagazineAbout from "@/prototypes/magazine/pages/About";
 import MagazineZeitgeist from "@/prototypes/magazine/pages/Zeitgeist";
 import AdminShell from "@/prototypes/magazine/pages/admin/AdminShell";
 import AdminEngagement from "@/prototypes/magazine/pages/admin/Engagement";
+import AdminDaily from "@/prototypes/magazine/pages/admin/Daily";
 import AdminBudget from "@/prototypes/magazine/pages/admin/Budget";
 import AdminTools from "@/prototypes/magazine/pages/admin/Tools";
 import MagazineCohort from "@/prototypes/magazine/pages/Cohort";
@@ -99,6 +102,9 @@ function App() {
             <Route path="reset-password" element={<MagazineResetPassword />} />
             <Route path="verify-email" element={<MagazineVerifyEmail />} />
             <Route path="quizzes" element={<MagazineQuizzes />} />
+            {/* Casual daily games — the top of the funnel, playable with no account. */}
+            <Route path="daily" element={<MagazineDailyHub />} />
+            <Route path="daily/:kind" element={<MagazineDailyGame />} />
             <Route path="concepts/:slug" element={<MagazineConceptDetail />} />
             <Route path="teachers" element={<MagazineTeachers />} />
             <Route path="timelines/bill" element={<MagazineBillTimeline />} />
@@ -125,6 +131,7 @@ function App() {
             <Route path="admin" element={<AdminShell />}>
               <Route index element={<Navigate to="engagement" replace />} />
               <Route path="engagement" element={<AdminEngagement />} />
+              <Route path="daily" element={<AdminDaily />} />
               <Route path="budget" element={<AdminBudget />} />
               <Route path="tools" element={<AdminTools />} />
             </Route>
