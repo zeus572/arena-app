@@ -15,17 +15,19 @@ namespace Civic.API.Controllers.Api;
 public class QuizController : ControllerBase
 {
     /// <summary>Trailing window for the global poll's "got it right" moving average.</summary>
-    public const int PollWindowDays = 60;
+    public const int PollWindowDays = QuizPollStats.WindowDays;
     /// <summary>Default number of questions served per quiz session (kept dynamic by shuffling).</summary>
     private const int DefaultCount = 6;
 
     private readonly CivicDbContext _db;
     private readonly ICurrentUserService _user;
+    private readonly QuizPollStats _poll;
 
-    public QuizController(CivicDbContext db, ICurrentUserService user)
+    public QuizController(CivicDbContext db, ICurrentUserService user, QuizPollStats poll)
     {
         _db = db;
         _user = user;
+        _poll = poll;
     }
 
     /// <summary>
@@ -97,20 +99,10 @@ public class QuizController : ControllerBase
     }
 
     /// <summary>
-    /// 60-day moving-average poll tallies, keyed by question id. Pass a question id to scope the
-    /// query, or null for the whole bank.
+    /// Moving-average poll tallies, keyed by question id. Pass a question id to scope the
+    /// query, or null for the whole bank. Delegates to <see cref="QuizPollStats"/>, which the
+    /// Crowd Call daily game shares — the window must not be defined twice.
     /// </summary>
-    private async Task<Dictionary<Guid, (int Total, int Correct)>> PollStatsAsync(Guid? questionId)
-    {
-        var cutoff = DateTime.UtcNow.AddDays(-PollWindowDays);
-        var query = _db.QuizResponses.Where(r => r.CreatedAt >= cutoff);
-        if (questionId is not null) query = query.Where(r => r.QuestionId == questionId.Value);
-
-        var rows = await query
-            .GroupBy(r => r.QuestionId)
-            .Select(g => new { QuestionId = g.Key, Total = g.Count(), Correct = g.Count(r => r.IsCorrect) })
-            .ToListAsync();
-
-        return rows.ToDictionary(r => r.QuestionId, r => (r.Total, r.Correct));
-    }
+    private Task<Dictionary<Guid, (int Total, int Correct)>> PollStatsAsync(Guid? questionId) =>
+        _poll.ForQuestionsAsync(questionId is null ? null : new[] { questionId.Value });
 }

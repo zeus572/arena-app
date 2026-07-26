@@ -5,6 +5,7 @@ import { SignInPrompt } from "@/prototypes/magazine/components/SignInPrompt";
 
 const TABS = [
   { to: "engagement", label: "Engagement" },
+  { to: "daily", label: "Daily games" },
   { to: "budget", label: "Budget" },
   { to: "tools", label: "Tools" },
 ];

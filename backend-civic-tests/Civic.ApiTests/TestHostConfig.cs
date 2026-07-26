@@ -1,6 +1,7 @@
 using System.Linq;
 using Civic.API.Services.Campaign;
 using Civic.API.Services.Coalition.Product;
+using Civic.API.Services.Daily;
 using Civic.API.Services.Generation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +26,10 @@ internal static class TestHostConfig
             typeof(NewsIngestionService),
             typeof(CivicContentGenerationService),
             typeof(CoalitionLifecycleHostedService),
+            // The daily-games generator would race the tests that insert their own
+            // puzzles for a fixed date — the unique (Kind, PuzzleDate) index means
+            // whichever writes first wins, which is exactly the nondeterminism to avoid.
+            typeof(DailyPuzzleGenerationService),
         };
         foreach (var implType in byType)
         {

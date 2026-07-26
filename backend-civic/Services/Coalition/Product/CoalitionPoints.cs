@@ -40,6 +40,7 @@ public static class CoalitionPoints
         BriefingRead => 2,           // light: showing up to read the briefing
         CampaignReaction => 1,       // cheap; the daily cap is what really bounds it
         QuestReward => 0,            // per-quest reward; the caller passes the explicit amount
+        DailyPuzzle => 3,            // a 60-second casual game; the daily cap + decay bound the grind
         _ => 1,
     };
 

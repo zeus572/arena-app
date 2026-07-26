@@ -33,6 +33,8 @@ public enum CoalitionActType
     BriefingRead,             // read a daily briefing (the "read today's briefing" quest)
     // daily-quest completion bonus (reasoning currency, once per quest per day; Payload = quest id)
     QuestReward,              // awarded when a daily quest's underlying condition is met
+    // casual daily games (reasoning currency; Payload = "{kind}:{yyyy-MM-dd}" as the once-per-puzzle marker)
+    DailyPuzzle,              // completed one of the six daily games — see docs/civic_daily_games
 }
 
 /// <summary>A recorded act in the ledger: what was done, how it scored, and what it paid.</summary>
