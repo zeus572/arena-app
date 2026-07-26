@@ -1,4 +1,4 @@
-import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { UserCircle } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
@@ -136,6 +136,12 @@ function AuthStrip() {
 }
 
 export default function MagazineLayout() {
+  // The Bills Explore page is a wide broadsheet (designed at 1440px). Widen the
+  // whole shell — nav, content, and footer — for that one route so the chrome
+  // stays aligned with the body instead of the body breaking out past a 1024 nav.
+  const wide = useLocation().pathname === "/bills";
+  const shell = wide ? "max-w-[1440px]" : "max-w-5xl";
+
   return (
     <div className="theme-magazine min-h-screen pb-20 md:pb-0">
       <NewStoriesBanner />
@@ -143,7 +149,7 @@ export default function MagazineLayout() {
         className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur md:static md:bg-[var(--bg)]"
         data-testid="magazine-header"
       >
-        <div className="mx-auto max-w-5xl px-4 py-3 md:px-8 md:py-8">
+        <div className={`mx-auto ${shell} px-4 py-3 md:px-8 md:py-8`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1.5 md:hidden">
               <MobileMenu />
@@ -179,12 +185,12 @@ export default function MagazineLayout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-12">
+      <main className={`mx-auto ${shell} px-4 py-6 md:py-12 ${wide ? "md:px-10" : "md:px-8"}`}>
         <Outlet />
       </main>
 
       <footer className="hidden border-t border-[var(--border)] bg-[var(--bg)] py-10 md:block">
-        <div className="mx-auto max-w-5xl px-8 text-center">
+        <div className={`mx-auto ${shell} px-8 text-center`}>
           <p className="display text-2xl text-[var(--accent)]">Civersify</p>
           <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
             Civics for the world you actually live in

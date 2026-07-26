@@ -1,5 +1,14 @@
 import { civicApi } from "./client";
 
+/** A bill's position on one value axis (user-independent), as returned on list rows. */
+export type BillAxisScore = {
+  axisKey: string;
+  /** Where the bill pushes on this axis (-1..+1). */
+  score: number;
+  /** Confidence in the position (0..1). */
+  confidence: number;
+};
+
 export type BillSummary = {
   id: string;
   externalId: string;
@@ -15,6 +24,8 @@ export type BillSummary = {
   latestActionDate: string | null;
   teaser: string;
   axisCount: number;
+  /** Per-axis value positions the bill implicates. Empty for older payloads. */
+  axes: BillAxisScore[];
 };
 
 export type BillAxisAlignment = {

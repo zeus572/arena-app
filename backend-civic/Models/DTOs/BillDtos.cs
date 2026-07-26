@@ -24,6 +24,26 @@ public class BillSummaryDto
 
     /// <summary>Number of value axes this bill has been positioned on.</summary>
     public int AxisCount { get; set; }
+
+    /// <summary>
+    /// The bill's per-axis value positions (user-independent). Lets the Explore
+    /// page plot each bill's compass and compute alignment client-side for the
+    /// whole list without a per-bill detail fetch. Only axes the bill implicates
+    /// are present.
+    /// </summary>
+    public List<BillAxisScoreDto> Axes { get; set; } = new();
+}
+
+/// <summary>A single value-axis position on a list-row bill (user-independent).</summary>
+public class BillAxisScoreDto
+{
+    public string AxisKey { get; set; } = "";
+
+    /// <summary>Where the bill pushes on this axis (-1..+1).</summary>
+    public double Score { get; set; }
+
+    /// <summary>Confidence in the position (0..1).</summary>
+    public double Confidence { get; set; }
 }
 
 /// <summary>
