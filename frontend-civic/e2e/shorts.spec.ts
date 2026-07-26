@@ -117,16 +117,44 @@ function fulfillJson(page: Page, glob: string, json: unknown): Promise<void> {
   );
 }
 
-// Mock the three feed endpoints so the four card kinds render deterministically,
-// independent of whatever the backend happens to be seeded with. The globs are
-// scoped to the API origin (:5050) on purpose — a loose "**/api/briefings*" would
-// also swallow Vite's own /src/api/briefings.ts module request in dev and break
-// the app bundle.
+// One unplayed daily game, so the scattered daily card is part of the deterministic set.
+// Fork is the kind that plays inline in the feed.
+const DAILY_SLATE = {
+  date: "2026-07-26",
+  anonymous: false,
+  cadence: { last7Days: [false, false, false, false, false, false, true], activeDays: 1 },
+  puzzles: [
+    {
+      id: "fork-shorts-1",
+      kind: "Fork",
+      puzzleDate: "2026-07-26",
+      edition: 12,
+      payloadVersion: 1,
+      locality: null,
+      play: null,
+      payload: {
+        question: "Who should pay for the grid upgrades a new data center needs?",
+        tradeoff: "Charging the facility slows buildout; spreading it raises everyone's bill.",
+        optionA: { label: "The facility pays", cost: "Fewer data centers get built here." },
+        optionB: { label: "All ratepayers share", cost: "Your utility bill goes up." },
+        axisKey: "economic-fairness",
+        subQuestionKey: "cost-allocation",
+        provisionSlug: "data-center-grid-fee",
+      },
+    },
+  ],
+};
+
+// Mock the feed endpoints so the card kinds render deterministically, independent of
+// whatever the backend happens to be seeded with. The globs are scoped to the API origin
+// (:5050) on purpose — a loose "**/api/briefings*" would also swallow Vite's own
+// /src/api/briefings.ts module request in dev and break the app bundle.
 const API = "http://localhost:5050/api";
 async function mockFeed(page: Page): Promise<void> {
   await fulfillJson(page, `${API}/coalition/provisions`, [PROVISION]);
   await fulfillJson(page, `${API}/budget-facts`, [BUDGET_FACT]);
   await fulfillJson(page, `${API}/briefings*`, BRIEFINGS);
+  await fulfillJson(page, `${API}/daily`, DAILY_SLATE);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -154,6 +182,7 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
       "short-coalition-open",
       "short-news-open",
       "short-thinkdeeper-open",
+      "short-daily-open",
     ].sort(),
   );
 
@@ -223,6 +252,81 @@ test("shorts: budget fact body doesn't overflow onto the react bar", async ({
 
   // Body's bottom edge must sit at/above the react bar's top (tolerate 1px rounding).
   expect(overlap, `budget card body overlaps the react bar by ${overlap}px`).toBeLessThanOrEqual(1);
+});
+
+test("shorts: a daily game is scattered into the feed and Fork plays inline", async ({
+  page,
+}) => {
+  await fulfillJson(page, `${API}/daily/fork/plays`, {
+    puzzleId: "fork-shorts-1",
+    kind: "Fork",
+    edition: 12,
+    completed: true,
+    score: 0,
+    attemptsUsed: 1,
+    rounds: [],
+    reveal: {},
+    crowd: {
+      national: { label: null, total: 412, suppressed: false, aPercent: 39, bPercent: 61 },
+      locality: null,
+      ageBand: null,
+    },
+    shareGrid: "Fork #12\nciversify.com/daily",
+    pointsAwarded: 3,
+  });
+
+  const card = page.getByTestId("short-daily-fork");
+  await expect(card).toBeVisible();
+  // Both options state what they cost — the neutrality guard, visible in the feed too.
+  await expect(page.getByTestId("short-daily-option-A")).toContainText("Costs you:");
+
+  await page.getByTestId("short-daily-option-A").click();
+
+  // Tapping resolves in-card: the split appears without leaving the feed.
+  await expect(card).toContainText("39%");
+  await expect(card).toContainText("61%");
+  await expect(page.getByTestId("short-daily-option-A")).toBeDisabled();
+});
+
+test("shorts: a thin daily sample is suppressed rather than shown as a bogus split", async ({
+  page,
+}) => {
+  await fulfillJson(page, `${API}/daily/fork/plays`, {
+    puzzleId: "fork-shorts-1",
+    kind: "Fork",
+    edition: 12,
+    completed: true,
+    score: 0,
+    attemptsUsed: 1,
+    rounds: [],
+    reveal: {},
+    crowd: {
+      national: { label: null, total: 2, suppressed: true, aPercent: 0, bPercent: 0 },
+      locality: null,
+      ageBand: null,
+    },
+    shareGrid: "Fork #12\nciversify.com/daily",
+    pointsAwarded: 3,
+  });
+
+  await page.getByTestId("short-daily-option-B").click();
+
+  await expect(page.getByTestId("short-daily-thin")).toContainText("Only 2 plays");
+});
+
+test("shorts: a failed daily tap surfaces an error instead of silently doing nothing", async ({
+  page,
+}) => {
+  await page.route(`${API}/daily/fork/plays`, (route) =>
+    route.request().method() === "OPTIONS"
+      ? route.fulfill({ status: 204, headers: CORS })
+      : route.fulfill({ status: 500, headers: CORS, json: {} }),
+  );
+
+  await page.getByTestId("short-daily-option-A").click();
+
+  await expect(page.getByTestId("short-daily-error")).toBeVisible();
+  await expect(page.getByTestId("short-daily-option-A")).toBeEnabled();
 });
 
 test("shorts: cards and header reserve iOS safe-area insets", async ({

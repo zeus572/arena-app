@@ -3,6 +3,7 @@ import { CoalitionShortCard } from "./CoalitionShortCard";
 import { ThinkDeeperShortCard } from "./ThinkDeeperShortCard";
 import { NewsShortCard } from "./NewsShortCard";
 import { BudgetFactShortCard } from "./BudgetFactShortCard";
+import { DailyShortCard } from "./DailyShortCard";
 
 /** Renders one feed item by kind. Each sub-card fills the snap viewport. */
 export function ShortCard({ item }: { item: ShortItem }) {
@@ -15,5 +16,7 @@ export function ShortCard({ item }: { item: ShortItem }) {
       return <NewsShortCard briefing={item.briefing} />;
     case "budget":
       return <BudgetFactShortCard fact={item.fact} />;
+    case "daily":
+      return <DailyShortCard puzzle={item.puzzle} />;
   }
 }

@@ -4,9 +4,10 @@ import { X } from "lucide-react";
 import { listProvisions, type ProvisionSummary } from "@/api/coalition";
 import { getBriefings, type BriefingPage } from "@/api/briefings";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
+import { getDailySlate, type DailyPuzzle } from "@/api/daily";
 import {
   buildFeed,
-  initialMixerState,
+  createMixerState,
   type MixerState,
   type ShortItem,
   type ShortsPools,
@@ -22,10 +23,11 @@ const emptyBriefings: BriefingPage = { items: [], total: 0, page: 1, pageSize: 0
 
 /**
  * The casual, mobile-first "Shorts" feed: a full-screen, vertically snap-scrolling mix of
- * short civic content that leads with interesting facts (budget + news) and weaves in
- * reflective prompts (think-deeper, coalition provisions). Candidate campaign posts are
- * intentionally excluded — they only matter to Campaign Managers. The feed keeps going by
- * paging through news briefings; each page's facts are mixed in client-side via buildFeed.
+ * short civic content that leads with interesting facts (budget + news), weaves in
+ * reflective prompts (think-deeper, coalition provisions), and scatters today's unplayed
+ * daily games through at randomized intervals. Candidate campaign posts are intentionally
+ * excluded — they only matter to Campaign Managers. The feed keeps going by paging through
+ * news briefings; each page's facts are mixed in client-side via buildFeed.
  * Lives outside MagazineLayout for a full-bleed viewport.
  */
 export default function ShortsFeed() {
@@ -34,8 +36,14 @@ export default function ShortsFeed() {
   const [status, setStatus] = useState<"loading" | "ready" | "empty">("loading");
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const poolsRef = useRef<ShortsPools>({ coalition: [], thinkDeeper: [], news: [], budget: [] });
-  const mixerRef = useRef<MixerState>({ ...initialMixerState });
+  const poolsRef = useRef<ShortsPools>({
+    coalition: [],
+    thinkDeeper: [],
+    news: [],
+    budget: [],
+    daily: [],
+  });
+  const mixerRef = useRef<MixerState>(createMixerState());
   const nextPageRef = useRef(1);
   const hasMoreRef = useRef(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -65,13 +73,18 @@ export default function ShortsFeed() {
     let cancelled = false;
     setStatus("loading");
     void (async () => {
-      const [coalition, budget] = await Promise.all([
+      const [coalition, budget, daily] = await Promise.all([
         listProvisions().catch(() => [] as ProvisionSummary[]),
         fetchBudgetFacts().catch(() => [] as BudgetFact[]),
+        // Only games still open to this reader — a card that just says "already played"
+        // is dead weight in a feed.
+        getDailySlate()
+          .then((s) => s.puzzles.filter((p) => !p.play?.completed))
+          .catch(() => [] as DailyPuzzle[]),
       ]);
       if (cancelled) return;
-      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget };
-      mixerRef.current = { ...initialMixerState };
+      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget, daily };
+      mixerRef.current = createMixerState();
       nextPageRef.current = 1;
       hasMoreRef.current = true;
 
