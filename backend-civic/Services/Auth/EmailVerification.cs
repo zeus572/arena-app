@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.Extensions.Configuration;
 
 namespace Civic.API.Services.Auth;
 
@@ -19,10 +20,22 @@ public sealed class VerifiedEmailRequirement : IAuthorizationRequirement
 
 public sealed class VerifiedEmailHandler : AuthorizationHandler<VerifiedEmailRequirement>
 {
+    private readonly IConfiguration _config;
+
+    public VerifiedEmailHandler(IConfiguration config) => _config = config;
+
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context, VerifiedEmailRequirement requirement)
     {
-        if (context.User.FindFirst("email_verified")?.Value == "true")
+        // Closed invite-only beta (2026-07): the email-verification gate is temporarily
+        // relaxed while verification-email deliverability is fixed, so signed-in users can
+        // participate without verifying. `Auth:RequireVerifiedEmail` is set to false in
+        // appsettings.json; delete that override (or set it true) to re-enable the gate.
+        // Read per-request so flipping the setting takes effect without a code change, and
+        // so the gate stays fully covered by EmailVerificationGateTests (which force it on).
+        var gateOn = _config.GetValue("Auth:RequireVerifiedEmail", true);
+
+        if (!gateOn || context.User.FindFirst("email_verified")?.Value == "true")
             context.Succeed(requirement);
 
         return Task.CompletedTask;
