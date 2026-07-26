@@ -67,6 +67,9 @@ public class BillsController : ControllerBase
                 b.SynthesisSummary,
                 b.Summary,
                 AxisCount = b.AxisPositions.Count,
+                Axes = b.AxisPositions
+                    .Select(p => new { p.AxisKey, p.Score, p.Confidence })
+                    .ToList(),
             })
             .ToListAsync();
 
@@ -86,6 +89,14 @@ public class BillsController : ControllerBase
             LatestActionDate = b.LatestActionDate,
             Teaser = BillMappings.Teaser(b.SynthesisSummary, b.Summary),
             AxisCount = b.AxisCount,
+            Axes = b.Axes
+                .Select(p => new BillAxisScoreDto
+                {
+                    AxisKey = p.AxisKey,
+                    Score = p.Score,
+                    Confidence = p.Confidence,
+                })
+                .ToList(),
         }).ToList();
 
         return Ok(dtos);
