@@ -255,6 +255,16 @@ public class AuthController : ControllerBase
         if (result == DispatchResult.RateLimited)
             return StatusCode(429, new { error = "Too many requests. Please try again later." });
 
+        // Never claim success we didn't get: a Failed send (provider rejected the
+        // request) or a Suppressed address both used to return "sent", which hid a
+        // total outage behind a 200 for 12 days. Suppressed is terminal for this
+        // address, so say so rather than inviting a pointless retry.
+        if (result == DispatchResult.Suppressed)
+            return StatusCode(422, new { error = "We can't deliver mail to this address. Please contact support." });
+
+        if (result == DispatchResult.Failed)
+            return StatusCode(502, new { error = "We couldn't send the verification email just now. Please try again shortly." });
+
         return Ok(new { status = "verification email sent" });
     }
 
