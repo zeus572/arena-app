@@ -121,21 +121,6 @@ jobs:
     needs: deploy-backend
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for the app to warm up
-        # Cold start after a deploy routinely exceeds 2 minutes on this plan, so poll
-        # rather than sleeping a fixed guess.
-        run: |
-          for i in $(seq 1 40); do
-            if curl -fsS --max-time 20 https://arena-api-2af326.azurewebsites.net/health > /dev/null; then
-              echo "healthy after ${i} attempt(s)"
-              exit 0
-            fi
-            echo "not ready yet (attempt ${i}) — retrying in 15s"
-            sleep 15
-          done
-          echo "::error::App never became healthy; skipping the send check would hide a real failure."
-          exit 1
-
       - name: Send a real email through the deployed app
         env:
           SMOKE_SECRET: ${{ secrets.EMAIL_SMOKE_SECRET }}
@@ -145,10 +130,29 @@ jobs:
             exit 1
           fi
 
+          # Poll the smoke endpoint itself rather than /health. /health is deliberately
+          # EXEMPT from the startup readiness gate in Program.cs, so it returns 200 while
+          # every other route still 503s "initializing" — a /health-only wait passes
+          # instantly and then the send fails, which is exactly how this job failed on
+          # its first run. Retrying the real call is also a truer readiness signal.
           BODY=$(mktemp)
-          CODE=$(curl -sS -o "$BODY" -w '%{http_code}' --max-time 60 \
-            -X POST https://arena-api-2af326.azurewebsites.net/api/admin/email-smoke \
-            -H "X-Smoke-Secret: $SMOKE_SECRET")
+          for i in $(seq 1 40); do
+            CODE=$(curl -sS -o "$BODY" -w '%{http_code}' --max-time 60 \
+              -X POST https://arena-api-2af326.azurewebsites.net/api/admin/email-smoke \
+              -H "X-Smoke-Secret: $SMOKE_SECRET" || echo "000")
+
+            if [ "$CODE" = "503" ] && grep -q '"initializing"' "$BODY"; then
+              echo "app still starting up (attempt ${i}) — retrying in 15s"
+              sleep 15
+              continue
+            fi
+            if [ "$CODE" = "000" ]; then
+              echo "no response yet (attempt ${i}) — retrying in 15s"
+              sleep 15
+              continue
+            fi
+            break
+          done
 
           echo "HTTP $CODE"
           cat "$BODY"; echo
