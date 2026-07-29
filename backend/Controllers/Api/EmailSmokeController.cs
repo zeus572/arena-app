@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Arena.API.Services.Email;
@@ -45,7 +43,7 @@ public class EmailSmokeController : ControllerBase
         if (string.IsNullOrWhiteSpace(_options.SmokeSecret) || string.IsNullOrWhiteSpace(_options.SmokeRecipient))
             return StatusCode(503, new { error = "Email smoke test is not configured." });
 
-        if (!ConstantTimeEquals(secret, _options.SmokeSecret))
+        if (!SharedSecret.Matches(secret, _options.SmokeSecret))
             return Unauthorized(new { error = "Invalid smoke secret." });
 
         // A fixed marker in the subject makes these trivially filterable in the
@@ -84,14 +82,5 @@ public class EmailSmokeController : ControllerBase
             sender = _options.SenderAddress,
             sentAt = stamp,
         });
-    }
-
-    private static bool ConstantTimeEquals(string? provided, string expected)
-    {
-        if (string.IsNullOrEmpty(provided)) return false;
-        var a = Encoding.UTF8.GetBytes(provided);
-        var b = Encoding.UTF8.GetBytes(expected);
-        return CryptographicOperations.FixedTimeEquals(
-            SHA256.HashData(a), SHA256.HashData(b));
     }
 }
