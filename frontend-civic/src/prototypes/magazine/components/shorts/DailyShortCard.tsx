@@ -12,6 +12,7 @@ import {
   type PlaceItPayload,
   type PricedInPayload,
   type TimeMachinePayload,
+  type WhichIsTruePayload,
   type WhoseValuePayload,
 } from "@/api/daily";
 import { ShortCardShell } from "./ShortCardShell";
@@ -150,6 +151,8 @@ function previewFor(puzzle: DailyPuzzle): string | null {
       return (puzzle.payload as TimeMachinePayload).items[0]?.headline ?? null;
     case "WhoseValue":
       return (puzzle.payload as WhoseValuePayload).rounds[0]?.argument ?? null;
+    case "WhichIsTrue":
+      return (puzzle.payload as WhichIsTruePayload).rounds[0]?.prompt ?? null;
     default:
       return null;
   }
@@ -162,6 +165,7 @@ const previewLead: Partial<Record<DailyPuzzle["kind"], string>> = {
   PlaceIt: "Where does this bill sit?",
   TimeMachine: "When did this run?",
   WhoseValue: "What value is this appealing to?",
+  WhichIsTrue: "Two real numbers — which one is it?",
 };
 
 function TeaserShortCard({ puzzle }: { puzzle: DailyPuzzle }) {

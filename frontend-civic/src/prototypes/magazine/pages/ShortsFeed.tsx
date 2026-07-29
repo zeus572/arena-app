@@ -5,6 +5,7 @@ import { listProvisions, type ProvisionSummary } from "@/api/coalition";
 import { getBriefings, type BriefingPage } from "@/api/briefings";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { getDailySlate, type DailyPuzzle } from "@/api/daily";
+import { listBills, type BillSummary } from "@/api/bills";
 import {
   buildFeed,
   createMixerState,
@@ -15,15 +16,20 @@ import {
 import { ShortCard } from "../components/shorts/ShortCard";
 import "../theme.css";
 
-// News briefings are the paginated fact spine that keeps the feed going. Budget facts and
-// coalition provisions are finite and loaded once up front.
+// News briefings are the paginated fact spine that keeps the feed going. Budget facts,
+// bills and coalition provisions are finite and loaded once up front.
 const BRIEFINGS_PAGE_SIZE = 20;
+
+// Enough bills to weave through a long session without pulling the whole corpus into a
+// feed the reader will scroll past — the Bills pages are where browsing the rest happens.
+const BILLS_LIMIT = 30;
 
 const emptyBriefings: BriefingPage = { items: [], total: 0, page: 1, pageSize: 0 };
 
 /**
  * The casual, mobile-first "Shorts" feed: a full-screen, vertically snap-scrolling mix of
- * short civic content that leads with interesting facts (budget + news), weaves in
+ * short civic content that leads with interesting facts (budget + news + bills before
+ * Congress), weaves in
  * reflective prompts (think-deeper, coalition provisions), and scatters today's unplayed
  * daily games through at randomized intervals. Candidate campaign posts are intentionally
  * excluded — they only matter to Campaign Managers. The feed keeps going by paging through
@@ -41,6 +47,7 @@ export default function ShortsFeed() {
     thinkDeeper: [],
     news: [],
     budget: [],
+    bills: [],
     daily: [],
   });
   const mixerRef = useRef<MixerState>(createMixerState());
@@ -73,9 +80,10 @@ export default function ShortsFeed() {
     let cancelled = false;
     setStatus("loading");
     void (async () => {
-      const [coalition, budget, daily] = await Promise.all([
+      const [coalition, budget, bills, daily] = await Promise.all([
         listProvisions().catch(() => [] as ProvisionSummary[]),
         fetchBudgetFacts().catch(() => [] as BudgetFact[]),
+        listBills().then((b) => b.slice(0, BILLS_LIMIT)).catch(() => [] as BillSummary[]),
         // Only games still open to this reader — a card that just says "already played"
         // is dead weight in a feed.
         getDailySlate()
@@ -83,7 +91,7 @@ export default function ShortsFeed() {
           .catch(() => [] as DailyPuzzle[]),
       ]);
       if (cancelled) return;
-      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget, daily };
+      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget, bills, daily };
       mixerRef.current = createMixerState();
       nextPageRef.current = 1;
       hasMoreRef.current = true;

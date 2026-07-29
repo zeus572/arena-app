@@ -14,6 +14,7 @@ import { PricedInGame } from "../../components/daily/games/PricedInGame";
 import { PlaceItGame } from "../../components/daily/games/PlaceItGame";
 import { TimeMachineGame } from "../../components/daily/games/TimeMachineGame";
 import { WhoseValueGame } from "../../components/daily/games/WhoseValueGame";
+import { WhichIsTrueGame } from "../../components/daily/games/WhichIsTrueGame";
 
 /** Player shell: loads today's puzzle for a kind and dispatches to that game's body. */
 export default function DailyGame() {
@@ -80,6 +81,7 @@ export default function DailyGame() {
       {puzzle.kind === "PlaceIt" && <PlaceItGame {...props} />}
       {puzzle.kind === "TimeMachine" && <TimeMachineGame {...props} />}
       {puzzle.kind === "WhoseValue" && <WhoseValueGame {...props} />}
+      {puzzle.kind === "WhichIsTrue" && <WhichIsTrueGame {...props} />}
 
       {result?.shareGrid && <ShareGrid grid={result.shareGrid} />}
 

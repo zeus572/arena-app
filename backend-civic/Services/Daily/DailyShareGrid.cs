@@ -30,6 +30,7 @@ public static class DailyShareGrid
         DailyGameKind.PlaceIt => $"Place It #{edition}",
         DailyGameKind.TimeMachine => $"Time Machine #{edition}",
         DailyGameKind.WhoseValue => $"Whose Value #{edition}",
+        DailyGameKind.WhichIsTrue => $"Which Is True #{edition}",
         _ => $"Civersify #{edition}",
     };
 
@@ -96,6 +97,16 @@ public static class DailyShareGrid
         {
             "Odd one out",
             correct ? "🟩" : "🟥",
+        });
+
+    /// <summary>
+    /// Score plus one square per round. The topics are NOT listed — "3 budget, 2 Congress"
+    /// would tell someone who hasn't played which half of the card to think hard about.
+    /// </summary>
+    public static string WhichIsTrue(int edition, int correct, int total, IEnumerable<RoundResult> rounds) =>
+        Wrap($"{Title(DailyGameKind.WhichIsTrue, edition)} — {correct}/{total}", new[]
+        {
+            string.Concat(rounds.Select(r => Square(r.Band))),
         });
 
     public static string WhoseValue(int edition, int correct, int total, string? sharpestAxisName, IEnumerable<RoundResult> rounds)

@@ -105,6 +105,33 @@ public class DailyContentTests
     }
 
     [Fact]
+    public void Redaction_WhichIsTrue_StripsTheAnswerAndAllProvenance()
+    {
+        var payload = new WhichIsTruePayload(new List<WhichIsTrueRound>
+        {
+            new("state-sales:TN", WhichIsTrueTopic.StateAndLocalTax,
+                "What is the sales tax rate in Tennessee?", "9.55%", "5.50%",
+                "B", "why", "5.50% is Maine's.",
+                "Tax Foundation, 2025", "https://taxfoundation.org/x", "2025-07-01", Guid.NewGuid()),
+        });
+
+        var redacted = DailyRedaction.Redact(DailyGameKind.WhichIsTrue, DailyJson.Serialize(payload));
+
+        var round = redacted["rounds"]!.AsArray()[0]!.AsObject();
+        foreach (var secret in new[]
+                 { "key", "correct", "explanation", "decoyTruth", "source", "sourceUrl", "asOf", "billId" })
+        {
+            round.ContainsKey(secret).Should().BeFalse($"{secret} is an answer key with only two options on the card");
+        }
+
+        // What the player actually needs survives.
+        round["prompt"]!.GetValue<string>().Should().Contain("Tennessee");
+        round["optionA"]!.GetValue<string>().Should().Be("9.55%");
+        round["optionB"]!.GetValue<string>().Should().Be("5.50%");
+        round["topic"]!.GetValue<string>().Should().Be(WhichIsTrueTopic.StateAndLocalTax);
+    }
+
+    [Fact]
     public void Redaction_Fork_HasNothingToHide()
     {
         DailyRedaction.PathsFor(DailyGameKind.Fork).Should().BeEmpty();

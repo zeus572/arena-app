@@ -182,6 +182,7 @@ public class DailyPuzzleService
                 DailyGameKind.CrowdCall => ScoreCrowdCall(puzzle, body),
                 DailyGameKind.TimeMachine => ScoreTimeMachine(puzzle, body),
                 DailyGameKind.WhoseValue => ScoreWhoseValue(puzzle, body),
+                DailyGameKind.WhichIsTrue => ScoreWhichIsTrue(puzzle, body),
                 _ => throw new InvalidOperationException($"No scorer for {kind}."),
             };
         }
@@ -480,6 +481,46 @@ public class DailyPuzzleService
                 sharpestAxisName = sharpest,
             }, DailyJson.Options),
             ShareGrid = DailyShareGrid.WhoseValue(puzzle.Edition, correct, payload.Rounds.Count, sharpest, rounds),
+        };
+    }
+
+    private static DailyResultDto ScoreWhichIsTrue(DailyPuzzle puzzle, JsonNode? body)
+    {
+        var payload = DailyJson.Deserialize<WhichIsTruePayload>(puzzle.PayloadJson);
+        var response = DailyJson.Deserialize<WhichIsTrueResponse>(body?.ToJsonString() ?? "{}");
+
+        if (response.Picks.Any(p => p is not ("A" or "B")))
+            throw new InvalidOperationException("Each pick must be \"A\" or \"B\".");
+
+        var (total, rounds) = DailyScoring.ScoreWhichIsTrue(payload, response);
+        var correct = rounds.Count(r => r.Score == 100);
+
+        return new DailyResultDto
+        {
+            PuzzleId = puzzle.Id,
+            Kind = puzzle.Kind.ToString(),
+            Edition = puzzle.Edition,
+            Completed = true,
+            Score = total,
+            AttemptsUsed = 1,
+            Rounds = rounds.Select(ToRoundDto).ToList(),
+            // The whole point of the reveal is the SECOND number: both are real, and saying
+            // what the loser actually is turns a wrong guess into a fact worth keeping.
+            Reveal = JsonSerializer.SerializeToNode(new
+            {
+                rounds = payload.Rounds.Select(r => new
+                {
+                    correct = r.Correct,
+                    r.Explanation,
+                    r.DecoyTruth,
+                    r.Source,
+                    r.SourceUrl,
+                    r.AsOf,
+                    r.BillId,
+                }),
+                correctCount = correct,
+            }, DailyJson.Options),
+            ShareGrid = DailyShareGrid.WhichIsTrue(puzzle.Edition, correct, payload.Rounds.Count, rounds),
         };
     }
 
