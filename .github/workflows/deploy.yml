@@ -120,38 +120,46 @@ jobs:
   smoke-email:
     needs: deploy-backend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Send a real email through the deployed app
         env:
           SMOKE_SECRET: ${{ secrets.EMAIL_SMOKE_SECRET }}
+          SMOKE_URL: https://arena-api-2af326.azurewebsites.net/api/admin/email-smoke
         run: |
           if [ -z "$SMOKE_SECRET" ]; then
             echo "::error::EMAIL_SMOKE_SECRET is not set — the post-deploy send check cannot run."
             exit 1
           fi
 
-          # Poll the smoke endpoint itself rather than /health. /health is deliberately
-          # EXEMPT from the startup readiness gate in Program.cs, so it returns 200 while
-          # every other route still 503s "initializing" — a /health-only wait passes
-          # instantly and then the send fails, which is exactly how this job failed on
-          # its first run. Retrying the real call is also a truer readiness signal.
+          # Poll the smoke endpoint itself, NOT /health: /health is deliberately exempt
+          # from the startup readiness gate in Program.cs, so it returns 200 while every
+          # other route still 503s "initializing". Retrying the real call is both the
+          # correct readiness signal and the thing we actually want to assert.
+          #
+          # On failure curl's -w '%{http_code}' ALREADY emits 000, so never append your
+          # own fallback — "|| echo 000" produced "000000", which matched no branch and
+          # broke out of the loop after one attempt.
           BODY=$(mktemp)
-          for i in $(seq 1 40); do
-            CODE=$(curl -sS -o "$BODY" -w '%{http_code}' --max-time 60 \
-              -X POST https://arena-api-2af326.azurewebsites.net/api/admin/email-smoke \
-              -H "X-Smoke-Secret: $SMOKE_SECRET" || echo "000")
+          CODE=000
+          for i in $(seq 1 30); do
+            CODE=$(curl -sS -o "$BODY" -w '%{http_code}' --max-time 20 \
+              -X POST "$SMOKE_URL" -H "X-Smoke-Secret: $SMOKE_SECRET") || CODE=000
 
-            if [ "$CODE" = "503" ] && grep -q '"initializing"' "$BODY"; then
-              echo "app still starting up (attempt ${i}) — retrying in 15s"
-              sleep 15
-              continue
-            fi
-            if [ "$CODE" = "000" ]; then
-              echo "no response yet (attempt ${i}) — retrying in 15s"
-              sleep 15
-              continue
-            fi
-            break
+            case "$CODE" in
+              200)
+                break ;;
+              000|502|503|504)
+                # Cold start: connection refused/timed out, gateway error, or the
+                # readiness gate holding traffic. All are "not up yet", so retry.
+                echo "app not ready (HTTP $CODE, attempt ${i}/30) — retrying in 10s"
+                sleep 10 ;;
+              *)
+                # Anything decisive (401 bad secret, 400, 500) — stop and report now
+                # rather than burning the full retry budget on a real failure.
+                echo "decisive response (HTTP $CODE) — not retrying"
+                break ;;
+            esac
           done
 
           echo "HTTP $CODE"
