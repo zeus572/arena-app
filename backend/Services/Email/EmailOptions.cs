@@ -16,7 +16,12 @@ public class EmailOptions
     /// <summary>Verified ACS sender, e.g. "DoNotReply@your-domain.com".</summary>
     public string SenderAddress { get; set; } = "DoNotReply@localhost";
 
-    /// <summary>Display name shown as the From name.</summary>
+    /// <summary>Display name shown as the From name. NOT sent per-message — ACS
+    /// takes the display name from the sender-username resource, and rejects a
+    /// "Display Name &lt;address&gt;" senderAddress with a 400. Kept here so the
+    /// intended name is versioned alongside the rest of the email config; apply
+    /// it with <c>az communication email domain sender-username update
+    /// --display-name</c>.</summary>
     public string SenderName { get; set; } = "Political Arena";
 
     /// <summary>Legal-entity identity shown in the email footer (CAN-SPAM). Set
@@ -50,6 +55,15 @@ public class EmailOptions
     /// <summary>Allow-listed frontend base URLs keyed by app ("arena", "civic").
     /// Verification/reset links are built only from these — never a client value.</summary>
     public Dictionary<string, string> AppUrls { get; set; } = new();
+
+    /// <summary>Shared secret for the post-deploy send smoke test
+    /// (<c>POST /api/admin/email-smoke</c>). Blank disables the endpoint entirely.
+    /// Set as a prod app setting + matching GitHub secret; never commit it.</summary>
+    public string SmokeSecret { get; set; } = "";
+
+    /// <summary>Mailbox the smoke test sends to. Server-side only — the endpoint
+    /// never accepts a client-supplied recipient, so it can't be used as a relay.</summary>
+    public string SmokeRecipient { get; set; } = "";
 
     public RateLimitOptions RateLimit { get; set; } = new();
 

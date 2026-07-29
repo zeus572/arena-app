@@ -44,20 +44,7 @@ public class AcsEmailSender : IEmailSender
         string textBody,
         CancellationToken ct = default)
     {
-        var content = new EmailContent(subject)
-        {
-            PlainText = textBody,
-            Html = htmlBody,
-        };
-        // ACS applies the friendly From name when the sender is formatted as
-        // "Display Name <address>". Fall back to the bare address if no name is set.
-        var sender = string.IsNullOrWhiteSpace(_options.SenderName)
-            ? _options.SenderAddress
-            : $"{_options.SenderName} <{_options.SenderAddress}>";
-        var message = new EmailMessage(
-            senderAddress: sender,
-            recipientAddress: toAddress,
-            content: content);
+        var message = BuildMessage(_options, toAddress, subject, htmlBody, textBody);
 
         try
         {
@@ -71,5 +58,40 @@ public class AcsEmailSender : IEmailSender
             _logger.LogError(ex, "ACS rejected email to {To} (status {Status})", toAddress, ex.Status);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Builds the ACS message. Pure and public so the sender-address contract is
+    /// unit-testable without a live ACS client.
+    /// </summary>
+    /// <remarks>
+    /// <c>senderAddress</c> MUST be the BARE address. ACS rejects the RFC 5322
+    /// "Display Name &lt;address&gt;" form with a 400 — "Request body validation
+    /// error. See property 'senderAddress'". Building it as
+    /// <c>$"{SenderName} &lt;{SenderAddress}&gt;"</c> silently broke ALL account
+    /// email from 2026-07-14 to 2026-07-28; do not reintroduce it.
+    /// The friendly From name belongs on the ACS sender-username resource:
+    /// <code>
+    /// az communication email domain sender-username update \
+    ///   --email-service-name &lt;svc&gt; --domain-name &lt;domain&gt; \
+    ///   --sender-username &lt;name&gt; --display-name "&lt;SenderName&gt;"
+    /// </code>
+    /// </remarks>
+    public static EmailMessage BuildMessage(
+        EmailOptions options,
+        string toAddress,
+        string subject,
+        string htmlBody,
+        string textBody)
+    {
+        var content = new EmailContent(subject)
+        {
+            PlainText = textBody,
+            Html = htmlBody,
+        };
+        return new EmailMessage(
+            senderAddress: options.SenderAddress,
+            recipientAddress: toAddress,
+            content: content);
     }
 }
