@@ -145,6 +145,46 @@ public record WhoseValuePayload(List<WhoseValueRound> Rounds);
 
 public record WhoseValueResponse(List<string> Picks);
 
+// ------------------------------------------------------- Which Is True (07)
+
+/// <summary>Which content family a round was cut from. Shown to the player as a kicker.</summary>
+public static class WhichIsTrueTopic
+{
+    public const string FederalBudget = "Federal budget";
+    public const string StateAndLocalTax = "State & local tax";
+    public const string Congress = "Congress";
+}
+
+/// <summary>
+/// One round: a question and two options, exactly one of which answers it.
+///
+/// The invariant that makes this game honest — enforced by the generator and asserted in
+/// <c>DailyContentTests</c> — is that BOTH options are real. The decoy is always another
+/// true figure from the same family (a different state, a different filing status, a
+/// different bill), never a fabricated number. <see cref="DecoyTruth"/> is what the loser
+/// actually is, and the reveal always says so.
+/// </summary>
+public record WhichIsTrueRound(
+    /// <summary>Stable dedup key ("state-sales:OH"). Bookkeeping — the client never needs it.</summary>
+    string Key,
+    string Topic,
+    string Prompt,
+    string OptionA,
+    string OptionB,
+    /// <summary>"A" | "B".</summary>
+    string Correct,
+    string Explanation,
+    /// <summary>What the option the player didn't want really is.</summary>
+    string DecoyTruth,
+    string Source,
+    string? SourceUrl,
+    string? AsOf,
+    Guid? BillId);
+
+public record WhichIsTruePayload(List<WhichIsTrueRound> Rounds);
+
+public record WhichIsTrueResponse(List<string> Picks);
+
 // ------------------------------------------------------------- Redaction
 
 /// <summary>
@@ -193,6 +233,22 @@ public static class DailyRedaction
         {
             "rounds[].correctAxisKey",
             "rounds[].billTitle",
+            "rounds[].billId",
+        },
+
+        // Which Is True redacts its provenance too, which the other games don't. With only
+        // two options on the card, a citation IS the answer key: "ssa.gov/oact/cola" or
+        // "H.R. 1234 (118th Congress)" hands over the figure the question is asking for.
+        // Source, url and as-of all come back in the reveal, where they belong.
+        [DailyGameKind.WhichIsTrue] = new[]
+        {
+            "rounds[].key",
+            "rounds[].correct",
+            "rounds[].explanation",
+            "rounds[].decoyTruth",
+            "rounds[].source",
+            "rounds[].sourceUrl",
+            "rounds[].asOf",
             "rounds[].billId",
         },
     };

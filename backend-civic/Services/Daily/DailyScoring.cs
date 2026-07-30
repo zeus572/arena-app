@@ -209,6 +209,30 @@ public static class DailyScoring
         return (total, rounds);
     }
 
+    // --------------------------------------------------------- Which Is True
+
+    /// <summary>
+    /// Straight accuracy. Deliberately NOT curved for the 50% floor a two-option
+    /// question gives you: the end-card reports the raw count, and "3/5 on coin flips"
+    /// is exactly the humbling read the game is for.
+    /// </summary>
+    public static (int Total, List<RoundResult> Rounds) ScoreWhichIsTrue(
+        WhichIsTruePayload payload, WhichIsTrueResponse response)
+    {
+        var rounds = new List<RoundResult>();
+        for (var i = 0; i < payload.Rounds.Count; i++)
+        {
+            var pick = i < response.Picks.Count ? response.Picks[i] : null;
+            var correct = pick == payload.Rounds[i].Correct;
+            rounds.Add(new RoundResult(correct ? 100 : 0, correct ? Bands.Hit : Bands.Miss));
+        }
+
+        var total = payload.Rounds.Count == 0
+            ? 0
+            : (int)Math.Round(100.0 * rounds.Count(r => r.Score == 100) / payload.Rounds.Count);
+        return (total, rounds);
+    }
+
     private static int Mean(List<RoundResult> rounds) =>
         rounds.Count == 0 ? 0 : (int)Math.Round(rounds.Average(r => r.Score));
 }

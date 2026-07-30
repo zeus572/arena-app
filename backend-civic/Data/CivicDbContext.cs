@@ -74,9 +74,10 @@ public class CivicDbContext : DbContext
     public DbSet<CoalitionActivityDay> CoalitionActivityDays => Set<CoalitionActivityDay>();
     public DbSet<CoalitionAct> CoalitionActs => Set<CoalitionAct>();
 
-    // Casual daily games (docs/civic_daily_games). One generic pair of tables serves all
-    // six kinds — per-game shape lives in DailyPuzzle.PayloadJson, so a seventh game is an
-    // enum member and a payload contract, not a migration.
+    // Casual daily games (docs/civic_daily_games). One generic pair of tables serves every
+    // kind — per-game shape lives in DailyPuzzle.PayloadJson, so another game is an enum
+    // member and a payload contract, not a migration. (Which Is True, the seventh, shipped
+    // without one.)
     public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
     public DbSet<DailyPuzzlePlay> DailyPuzzlePlays => Set<DailyPuzzlePlay>();
 

@@ -1,7 +1,7 @@
 # Daily Games — Overview & Shared Platform
 
-**Status:** spec — not yet implemented
-**Date:** 2026-07-25
+**Status:** implemented (01–07)
+**Date:** 2026-07-25 (07 added 2026-07-29)
 
 ## Why
 
@@ -12,7 +12,7 @@ top-of-funnel. The gamification docs already name this problem — with a mixed-
 public audience and no classroom layer, "gamification must carry return motivation
 alone" (`civic_arena_gamification/00_OVERVIEW.md`).
 
-Daily Games are the shallow end: six ~60-second, civics-themed puzzles that an
+Daily Games are the shallow end: a set of ~60-second, civics-themed puzzles that an
 anonymous first-time visitor can play without an account, that refresh with the news,
 and that produce a shareable result. They exist to widen the top of the funnel and to
 give `Cohort.tsx` — currently a leaderboard with no verb attached to it — something to
@@ -22,7 +22,7 @@ score.
 recognizably a clone) and a process-ordering game (static content, doesn't refresh
 with the news).
 
-## The six games
+## The games
 
 | # | Game | One-liner | Content source | LLM at generation? |
 |---|---|---|---|---|
@@ -32,9 +32,13 @@ with the news).
 | 04 | **Place It** | Guess where a real bill sits on 3 compass axes | `BillAxisPosition` | No |
 | 05 | **Time Machine** | Sort real headlines by era / spot this week's | `NewsItem` + archival bank | No |
 | 06 | **Whose Value** | Name the value an argument appeals to | `BillAxisPosition.Rationale` | No |
+| 07 | **Which Is True** | Two real figures, one question — pick the one that answers it | `StateProfiles` + `magnitudes.json` + `Bill` metadata | No |
 
 Each has its own spec file in this directory. **Read this document first** — it defines
-the shared table, controller, XP hook, streak, and share format that all six use.
+the shared table, controller, XP hook, streak, and share format that all of them use.
+
+Games 01–06 shipped together; **07 was added afterwards and needed no migration**, which
+is the generic payload design working as intended.
 
 ## Design constraints these inherit
 
@@ -60,13 +64,16 @@ From `civic_arena_gamification/01_PHILOSOPHY_AND_WIN_CONDITION.md` and
 
 ## Shared data model
 
-**One migration covers all six games.** Both tables are generic; per-game shape lives
-in a JSON payload, so adding game #7 is an enum member and a payload contract — no
-schema change.
+**One migration covers every game.** Both tables are generic; per-game shape lives in a
+JSON payload, so adding a game is an enum member and a payload contract — no schema
+change. Game #7 (Which Is True) shipped on exactly that path.
+
+Enum members are persisted by ordinal, so new kinds are **appended** — reordering would
+silently re-label every historical puzzle.
 
 ```csharp
 // backend-civic/Models/Daily/DailyPuzzle.cs
-public enum DailyGameKind { Fork, CrowdCall, PricedIn, PlaceIt, TimeMachine, WhoseValue }
+public enum DailyGameKind { Fork, CrowdCall, PricedIn, PlaceIt, TimeMachine, WhoseValue, WhichIsTrue }
 
 public enum DailyPuzzleStatus { Draft, Approved, Live, Retired }
 
@@ -169,7 +176,7 @@ window logic — `QuizController.PollWindowDays` must stay the single source of 
 
 ## XP: one enum member, no new economy
 
-Per the seam that already exists in `ReasoningLedger`, all six games award XP through a
+Per the seam that already exists in `ReasoningLedger`, every game awards XP through a
 single new act type:
 
 ```csharp
@@ -183,7 +190,7 @@ DailyPuzzle => 3,   // reasoning currency, same tier as ReactionWithReason/Claim
 That is the entire economy change. Everything else is inherited:
 
 - `CoalitionPoints.ApplyDiminishing` caps the day at 150 and decays each further act by
-  0.8×, so playing all six games cannot out-earn real coalition work. This is what
+  0.8×, so playing the whole slate cannot out-earn real coalition work. This is what
   enforces the anti-volume-dominance rule — **do not add a per-game bonus large enough
   to defeat it.** A small accuracy bonus (`bonus: score >= 80 ? 2 : 0`) is the ceiling.
 - `ReasoningLedger.LogActivityAsync` writes `CoalitionActivityDay` automatically, so
@@ -234,7 +241,7 @@ text and link.
 
 Pages under `frontend-civic/src/prototypes/magazine/pages/daily/`:
 
-- `DailyHub.tsx` → `/daily` — today's six cards, play state, weekly ring.
+- `DailyHub.tsx` → `/daily` — today's cards, play state, weekly ring.
 - `DailyGame.tsx` → `/daily/:kind` — the player shell; per-game bodies dispatch off `kind`.
 
 Routes register inside `MagazineLayout` in `App.tsx`, alongside the existing magazine
@@ -268,7 +275,7 @@ New `/admin/daily` page under the existing `AdminShell`, gated by the current `A
 email-allowlist policy. Lists the generated buffer with Approve / Reject / Edit.
 
 - **Auto-approve** (pure selection from already-reviewed rows): Crowd Call, Priced In,
-  Place It, Whose Value.
+  Place It, Whose Value, Which Is True.
 - **Require review**: Fork and Time Machine — both can produce a puzzle that reads as
   partisan or as a trick, and both are the most publicly shareable.
 
@@ -287,6 +294,8 @@ balance report:
 - Priced In: distribution of items whose true answer is "smaller than you think" vs
   "bigger than you think" — a bank that is all *smaller* reads as advocacy.
 - Time Machine: source and era balance.
+- Which Is True: share of rounds whose answer sits on side A — a bank that drifts off 50%
+  is teaching a tell instead of a fact. (Unit-tested, not just audited.)
 
 ## Build order
 
@@ -300,7 +309,9 @@ balance report:
 5. **Priced In** (spec 03) — highest content cost (~150 authored magnitudes).
 6. **Time Machine** (spec 05) and **Whose Value** (spec 06).
 
-Steps 2–6 are each additive: one generator, one scorer, one payload contract, one
+7. **Which Is True** (spec 07) — added after the first six shipped.
+
+Steps 2–7 are each additive: one generator, one scorer, one payload contract, one
 frontend body. No further schema changes.
 
 ## Verification
@@ -334,7 +345,7 @@ Platform acceptance:
   writes no ledger row on play.
 - `GET /api/daily` with an `X-User-Id` header awards XP once; a second `POST` for the
   same puzzle returns `409` and does not double-award.
-- Playing all six games in one day cannot exceed `DailyReasoningCap`; assert the sixth
+- Playing the whole slate in one day cannot exceed `DailyReasoningCap`; assert a later
   award is smaller than the first (diminishing returns applied).
 - `CoalitionActivityDay` gains exactly one row for the day.
 - The caller appears on `/api/cohort` having played only daily games.

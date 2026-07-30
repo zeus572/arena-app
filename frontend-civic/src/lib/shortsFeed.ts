@@ -2,19 +2,21 @@ import type { ProvisionSummary } from "@/api/coalition";
 import type { BudgetFact } from "@/api/budgetFacts";
 import type { CivicBriefingSummary } from "@/api/types";
 import type { DailyPuzzle } from "@/api/daily";
+import type { BillSummary } from "@/api/bills";
 
 /**
  * One card in the Shorts feed. The feed leads with interesting civic facts (budget +
- * news) and weaves in reflective content (think-deeper prompts, coalition provisions)
- * plus today's unplayed daily games. Candidate campaign posts are intentionally NOT part
- * of Shorts — they're only relevant to Campaign Managers and live in the campaign
- * surfaces instead.
+ * news + bills before Congress) and weaves in reflective content (think-deeper prompts,
+ * coalition provisions) plus today's unplayed daily games. Candidate campaign posts are
+ * intentionally NOT part of Shorts — they're only relevant to Campaign Managers and live
+ * in the campaign surfaces instead.
  */
 export type ShortItem =
   | { kind: "coalition"; key: string; provision: ProvisionSummary }
   | { kind: "thinkDeeper"; key: string; briefing: CivicBriefingSummary }
   | { kind: "news"; key: string; briefing: CivicBriefingSummary }
   | { kind: "budget"; key: string; fact: BudgetFact }
+  | { kind: "bill"; key: string; bill: BillSummary }
   | { kind: "daily"; key: string; puzzle: DailyPuzzle };
 
 /** The finite content pools the feed is mixed from. */
@@ -24,6 +26,8 @@ export type ShortsPools = {
   /** News-sourced briefings (carry an upstream publisher) — surfaced as fact cards. */
   news: CivicBriefingSummary[];
   budget: BudgetFact[];
+  /** Synthesized bills currently before Congress. Finite, loaded once. */
+  bills: BillSummary[];
   /** Today's daily games the caller hasn't finished yet. Scattered, not rotated. */
   daily: DailyPuzzle[];
 };
@@ -35,8 +39,9 @@ export type MixerState = {
   thinkDeeperAt: number;
   budgetAt: number;
   newsAt: number;
+  billAt: number;
   dailyAt: number;
-  /** Facts emitted (budget/news), driving the alternation between them. */
+  /** Facts emitted (budget/news/bill), driving the rotation between them. */
   factCount: number;
   /** Fillers emitted (think-deeper/coalition), driving their alternation. */
   fillerCount: number;
@@ -53,6 +58,7 @@ export const initialMixerState: MixerState = {
   thinkDeeperAt: 0,
   budgetAt: 0,
   newsAt: 0,
+  billAt: 0,
   dailyAt: 0,
   factCount: 0,
   fillerCount: 0,
@@ -89,13 +95,20 @@ function nextRandom(state: MixerState): number {
 /** Facts are the spine; a reflective/coalition card is woven in after every N facts. */
 const FACTS_PER_FILLER = 3;
 
-/** Facts alternate budget/news; fillers alternate think-deeper/coalition. */
-const FACT_ROTATION = ["budget", "news"] as const;
+/**
+ * Facts rotate budget → news → bill; fillers alternate think-deeper/coalition.
+ *
+ * Bills sit in the fact spine rather than among the reflective fillers on purpose: "here
+ * is a real bill in Congress right now and where it pushes" is the same kind of beat as a
+ * budget contradiction, not a prompt to sit with. A drained pool is skipped, so a reader
+ * with no synthesized bills sees exactly the old budget/news alternation.
+ */
+const FACT_ROTATION = ["budget", "news", "bill"] as const;
 const FILLER_ROTATION = ["thinkDeeper", "coalition"] as const;
 
 /**
- * Pull the next fact (budget then news, alternating), advancing `state`. Skips a drained
- * pool rather than leaving a gap; returns null when both fact pools are spent.
+ * Pull the next fact (budget → news → bill), advancing `state`. Skips a drained pool
+ * rather than leaving a gap; returns null when every fact pool is spent.
  * Mutates `state` in place.
  */
 function nextFact(pools: ShortsPools, state: MixerState): ShortItem | null {
@@ -110,6 +123,11 @@ function nextFact(pools: ShortsPools, state: MixerState): ShortItem | null {
       const briefing = pools.news[state.newsAt++];
       state.factCount++;
       return { kind: "news", key: `nw-${briefing.id}`, briefing };
+    }
+    if (slot === "bill" && state.billAt < pools.bills.length) {
+      const bill = pools.bills[state.billAt++];
+      state.factCount++;
+      return { kind: "bill", key: `bl-${bill.id}`, bill };
     }
   }
   return null;
@@ -160,8 +178,8 @@ function nextDaily(pools: ShortsPools, state: MixerState): ShortItem | null {
 }
 
 /**
- * Build a facts-first batch of the Shorts feed. Interesting facts (budget + news, alternating)
- * are the spine; a reflective filler (think-deeper / coalition) is woven in after every
+ * Build a facts-first batch of the Shorts feed. Interesting facts (budget + news + bills,
+ * rotating) are the spine; a reflective filler (think-deeper / coalition) is woven in after every
  * {@link FACTS_PER_FILLER} facts, and today's unplayed daily games are scattered through at
  * randomized intervals. Pure apart from advancing `state`, which the caller carries forward
  * across paginated appends so the rotation never repeats an item.

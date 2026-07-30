@@ -170,6 +170,43 @@ public class DailyApiTests
         },
     };
 
+    private static object WhichIsTruePayload() => new
+    {
+        rounds = new[]
+        {
+            new
+            {
+                key = "state-sales:TN",
+                topic = "State & local tax",
+                prompt = "What is the average combined state and local sales tax rate in Tennessee?",
+                optionA = "5.50%",
+                optionB = "9.55%",
+                correct = "B",
+                explanation = "Tennessee averages 9.55% once local add-ons are included.",
+                decoyTruth = "5.50% is Maine's.",
+                source = "Tax Foundation, 2025",
+                sourceUrl = "https://taxfoundation.org/x",
+                asOf = "2025-07-01",
+                billId = (Guid?)null,
+            },
+            new
+            {
+                key = "bracket:Single:0.220",
+                topic = "Federal budget",
+                prompt = "At what taxable income does the 22% federal bracket begin for a single filer in 2025?",
+                optionA = "$48,475",
+                optionB = "$197,300",
+                correct = "A",
+                explanation = "Only income above $48,475 is taxed at 22%.",
+                decoyTruth = "$197,300 is where the 32% bracket begins.",
+                source = "IRS Rev. Proc. 2024-40",
+                sourceUrl = "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf",
+                asOf = "2025-01-01",
+                billId = (Guid?)null,
+            },
+        },
+    };
+
     // -------------------------------------------------- platform guarantees
 
     [Fact]
@@ -411,6 +448,12 @@ public class DailyApiTests
     [InlineData(DailyGameKind.TimeMachine, "time-machine", "trueOrder")]
     [InlineData(DailyGameKind.TimeMachine, "time-machine", "dates")]
     [InlineData(DailyGameKind.WhoseValue, "whose-value", "correctAxisKey")]
+    // Which Is True hides its provenance too — with two options, a citation is the answer.
+    [InlineData(DailyGameKind.WhichIsTrue, "which-is-true", "correct")]
+    [InlineData(DailyGameKind.WhichIsTrue, "which-is-true", "explanation")]
+    [InlineData(DailyGameKind.WhichIsTrue, "which-is-true", "decoyTruth")]
+    [InlineData(DailyGameKind.WhichIsTrue, "which-is-true", "sourceUrl")]
+    [InlineData(DailyGameKind.WhichIsTrue, "which-is-true", "asOf")]
     public async Task Get_NeverLeaksAnAnswerKeyField(DailyGameKind kind, string slug, string secretField)
     {
         await _fx.ResetMutableAsync();
@@ -420,6 +463,7 @@ public class DailyApiTests
             DailyGameKind.PricedIn => PricedInPayload(),
             DailyGameKind.PlaceIt => PlaceItPayload(),
             DailyGameKind.TimeMachine => TimeMachinePayload(),
+            DailyGameKind.WhichIsTrue => WhichIsTruePayload(),
             _ => WhoseValuePayload(),
         });
 
@@ -640,6 +684,40 @@ public class DailyApiTests
         result!.Score.Should().Be(100);
         result.Reveal!["rounds"]![0]!["correctAxisKey"]!.GetValue<string>().Should().Be("authority");
         result.Reveal["sharpestAxisName"]!.GetValue<string>().Should().Be("Authority");
+    }
+
+    [Fact]
+    public async Task WhichIsTrue_ScoresAndTellsThePlayerWhatTheOtherNumberWas()
+    {
+        await _fx.ResetMutableAsync();
+        await SeedPuzzleAsync(DailyGameKind.WhichIsTrue, WhichIsTruePayload());
+
+        var result = await (await ClientFor(Guid.NewGuid().ToString())
+            .PostAsJsonAsync("/api/daily/which-is-true/plays", new { picks = new[] { "B", "B" } }))
+            .Content.ReadFromJsonAsync<DailyResultDto>();
+
+        // One of two right.
+        result!.Score.Should().Be(50);
+        result.Rounds.Select(r => r.Band).Should().Equal("hit", "miss");
+
+        // The reveal has to carry the second figure — that's the whole payoff of the game.
+        result.Reveal!["rounds"]![0]!["decoyTruth"]!.GetValue<string>().Should().Contain("Maine");
+        result.Reveal["rounds"]![1]!["source"]!.GetValue<string>().Should().Contain("IRS");
+        result.ShareGrid.Should().Contain("Which Is True #1").And.Contain("1/2");
+        // ...and the grid must not carry either number.
+        result.ShareGrid.Should().NotContain("9.55").And.NotContain("48,475");
+    }
+
+    [Fact]
+    public async Task WhichIsTrue_RejectsAPickThatIsNeitherOption()
+    {
+        await _fx.ResetMutableAsync();
+        await SeedPuzzleAsync(DailyGameKind.WhichIsTrue, WhichIsTruePayload());
+
+        var response = await ClientFor(Guid.NewGuid().ToString())
+            .PostAsJsonAsync("/api/daily/which-is-true/plays", new { picks = new[] { "C", "A" } });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // --------------------------------------------------------- review queue

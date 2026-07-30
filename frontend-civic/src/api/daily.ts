@@ -1,7 +1,7 @@
 import { civicApi } from "./client";
 
 /**
- * The six casual daily games. See docs/civic_daily_games/.
+ * The casual daily games. See docs/civic_daily_games/.
  *
  * The server strips every answer-key field before serving a puzzle, so the payload
  * types here are deliberately the REDACTED shapes — the truth only ever arrives in a
@@ -14,7 +14,8 @@ export type DailyGameKind =
   | "PricedIn"
   | "PlaceIt"
   | "TimeMachine"
-  | "WhoseValue";
+  | "WhoseValue"
+  | "WhichIsTrue";
 
 /** URL segment for a kind — the API accepts kebab-case. */
 export const kindSlug: Record<DailyGameKind, string> = {
@@ -24,6 +25,7 @@ export const kindSlug: Record<DailyGameKind, string> = {
   PlaceIt: "place-it",
   TimeMachine: "time-machine",
   WhoseValue: "whose-value",
+  WhichIsTrue: "which-is-true",
 };
 
 export const slugToKind: Record<string, DailyGameKind> = Object.fromEntries(
@@ -37,6 +39,7 @@ export const gameTitle: Record<DailyGameKind, string> = {
   PlaceIt: "Place It",
   TimeMachine: "Time Machine",
   WhoseValue: "Whose Value",
+  WhichIsTrue: "Which Is True",
 };
 
 export const gameTagline: Record<DailyGameKind, string> = {
@@ -46,6 +49,7 @@ export const gameTagline: Record<DailyGameKind, string> = {
   PlaceIt: "Where does this bill sit on your compass?",
   TimeMachine: "Real headlines, wrong order.",
   WhoseValue: "Name the value behind the argument.",
+  WhichIsTrue: "Two real numbers. Only one answers the question.",
 };
 
 // ---------------------------------------------------------- payload shapes
@@ -111,13 +115,29 @@ export type WhoseValuePayload = {
   }[];
 };
 
+/**
+ * Every answer-adjacent field is stripped server-side: `correct`, `explanation`,
+ * `decoyTruth`, and — unlike the other games — the provenance too. With only two options
+ * on the card, a citation is an answer key. It all comes back in the reveal.
+ */
+export type WhichIsTruePayload = {
+  rounds: {
+    /** "Federal budget" | "State & local tax" | "Congress" */
+    topic: string;
+    prompt: string;
+    optionA: string;
+    optionB: string;
+  }[];
+};
+
 export type DailyPayload =
   | ForkPayload
   | CrowdCallPayload
   | PricedInPayload
   | PlaceItPayload
   | TimeMachinePayload
-  | WhoseValuePayload;
+  | WhoseValuePayload
+  | WhichIsTruePayload;
 
 // ------------------------------------------------------------------- DTOs
 

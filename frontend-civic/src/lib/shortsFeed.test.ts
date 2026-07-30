@@ -12,19 +12,21 @@ const fact = (id: string) => ({ id }) as ShortsPools["budget"][number];
 const briefing = (id: string) => ({ id }) as ShortsPools["news"][number];
 const provision = (id: string) => ({ id }) as ShortsPools["coalition"][number];
 const daily = (id: string) => ({ id }) as ShortsPools["daily"][number];
+const bill = (id: string) => ({ id }) as ShortsPools["bills"][number];
 
 function pools(over: Partial<ShortsPools> = {}): ShortsPools {
-  return { coalition: [], thinkDeeper: [], news: [], budget: [], daily: [], ...over };
+  return { coalition: [], thinkDeeper: [], news: [], budget: [], bills: [], daily: [], ...over };
 }
 
 const facts = (n: number) => Array.from({ length: n }, (_, i) => fact(`b${i}`));
 const dailies = (n: number) => Array.from({ length: n }, (_, i) => daily(`d${i}`));
 
 describe("shorts mixer — facts lead, no campaign posts", () => {
-  it("makes facts the spine (budget/news alternating) and weaves a filler after every 3 facts", () => {
+  it("makes facts the spine (budget/news/bill rotating) and weaves a filler after every 3 facts", () => {
     const p = pools({
       budget: [fact("b1"), fact("b2"), fact("b3"), fact("b4")],
       news: [briefing("n1"), briefing("n2")],
+      bills: [bill("l1"), bill("l2")],
       thinkDeeper: [briefing("t1")],
       coalition: [provision("c1")],
     });
@@ -35,12 +37,30 @@ describe("shorts mixer — facts lead, no campaign posts", () => {
     expect(kinds).toEqual([
       "budget",
       "news",
-      "budget",
+      "bill",
       "thinkDeeper", // filler woven in after the 3rd fact
+      "budget",
       "news",
-      "budget",
-      "budget",
+      "bill",
       "coalition", // filler after the next 3 facts
+      "budget",
+      "budget", // news and bills are spent; the rotation skips the drained pools
+    ]);
+  });
+
+  it("skips drained fact pools, so a reader with no bills sees the old budget/news feed", () => {
+    const p = pools({
+      budget: [fact("b1"), fact("b2")],
+      news: [briefing("n1"), briefing("n2")],
+    });
+    const kinds = buildFeed(p, { ...initialMixerState }).map((x) => x.kind);
+    expect(kinds).toEqual(["budget", "news", "budget", "news"]);
+  });
+
+  it("gives bill cards a stable, kind-prefixed key", () => {
+    const p = pools({ bills: [bill("l1")] });
+    expect(buildFeed(p, { ...initialMixerState })).toEqual([
+      { kind: "bill", key: "bl-l1", bill: { id: "l1" } },
     ]);
   });
 
@@ -71,10 +91,12 @@ describe("shorts mixer — facts lead, no campaign posts", () => {
       thinkDeeper: [briefing("t1")],
       coalition: [provision("c1")],
     });
+    p.bills = [bill("l1")];
     const byKind = Object.fromEntries(buildFeed(p, { ...initialMixerState }).map((x) => [x.kind, x.key]));
     expect(byKind).toMatchObject({
       budget: "bf-b1",
       news: "nw-n1",
+      bill: "bl-l1",
       thinkDeeper: "td-t1",
       coalition: "co-c1",
     });

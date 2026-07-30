@@ -3,8 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace Civic.API.Models.Daily;
 
 /// <summary>
-/// The six casual daily games (docs/civic_daily_games). Adding a seventh is an enum
-/// member plus a generator + scorer — the storage shape is deliberately generic.
+/// The casual daily games (docs/civic_daily_games). Adding another is an enum member
+/// plus a generator + scorer — the storage shape is deliberately generic.
+///
+/// Members are persisted by ordinal, so new kinds are APPENDED. Reordering would
+/// silently re-label every historical puzzle.
 /// </summary>
 public enum DailyGameKind
 {
@@ -20,6 +23,8 @@ public enum DailyGameKind
     TimeMachine,
     /// <summary>Name the value an argument appeals to.</summary>
     WhoseValue,
+    /// <summary>Two real figures, one question. Which one is true?</summary>
+    WhichIsTrue,
 }
 
 /// <summary>

@@ -54,6 +54,53 @@ const BUDGET_FACT = {
     "The federal gas tax is designed as a user fee for road infrastructure, but its flat-cents-per-gallon structure makes it proportionally far more burdensome for low-income West Virginians than for high-income residents of wealthier states, even when those states pay more at the pump in absolute dollars.",
 };
 
+// One bill, with a teaser cut short exactly the way the list endpoint cuts every real
+// one (BillMappings.Teaser caps at 240 chars and appends U+2026). The detail row carries
+// the untruncated synthesis that "See more" swaps in.
+const BILL_ID = "bill-1";
+
+const BILL_FULL_TEXT =
+  "Reauthorizes the Federal Aviation Administration for five years, funding air-traffic " +
+  "modernization, hiring and training more controllers, strengthening consumer refund and " +
+  "disability-access rules, and boosting safety oversight. A largely bipartisan bill whose " +
+  "fights were about pilot-training hours and adding long-haul slots at Reagan National.";
+
+const BILL = {
+  id: BILL_ID,
+  externalId: "hr-3935-118",
+  title: "FAA Reauthorization Act of 2024",
+  shortTitle: "FAA Reauthorization Act of 2024",
+  identifier: "HR 3935 · 118th Congress",
+  sponsor: "Rep. Sam Graves",
+  party: "R",
+  status: "Introduced",
+  jurisdiction: "Federal",
+  jurisdictionRegion: null,
+  introducedDate: "2023-06-09T00:00:00Z",
+  latestActionDate: "2024-05-16T00:00:00Z",
+  teaser: BILL_FULL_TEXT.slice(0, 240).trimEnd() + "…",
+  axisCount: 3,
+  axes: [
+    { axisKey: "time-horizon", score: 0.62, confidence: 0.8 },
+    { axisKey: "change-speed", score: 0.55, confidence: 0.7 },
+    { axisKey: "risk", score: 0.31, confidence: 0.6 },
+  ],
+};
+
+const BILL_DETAIL = {
+  ...BILL,
+  congress: 118,
+  billType: "HR",
+  number: 3935,
+  summary: "Source blurb that should lose to the synthesis.",
+  synthesisSummary: BILL_FULL_TEXT,
+  fullTextUrl: null,
+  sourceUrl: "https://www.congress.gov/bill/118th-congress/house-bill/3935",
+  hasUserCompass: false,
+  overallAlignmentPercent: null,
+  axes: [],
+};
+
 // One news briefing (has sourcePublisher) and one think-deeper briefing (has a
 // question, no publisher) — buildFeed partitions them into the two card kinds.
 const BRIEFINGS = {
@@ -151,6 +198,11 @@ const DAILY_SLATE = {
 // /src/api/briefings.ts module request in dev and break the app bundle.
 const API = "http://localhost:5050/api";
 async function mockFeed(page: Page): Promise<void> {
+  // Detail first: `${API}/bills` alone would also match the detail URL's prefix, and
+  // Playwright matches routes most-recently-registered-first, so registering the
+  // narrower one first keeps the list glob from swallowing it.
+  await fulfillJson(page, `${API}/bills/${BILL_ID}`, BILL_DETAIL);
+  await fulfillJson(page, `${API}/bills`, [BILL]);
   await fulfillJson(page, `${API}/coalition/provisions`, [PROVISION]);
   await fulfillJson(page, `${API}/budget-facts`, [BUDGET_FACT]);
   await fulfillJson(page, `${API}/briefings*`, BRIEFINGS);
@@ -183,6 +235,7 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
       "short-news-open",
       "short-thinkdeeper-open",
       "short-daily-open",
+      "short-bill-open",
     ].sort(),
   );
 
@@ -352,4 +405,61 @@ test("shorts: cards and header reserve iOS safe-area insets", async ({
     .getByTestId("shorts-header")
     .evaluate((e) => e.getAttribute("style") ?? "");
   expect(headerStyle).toContain("safe-area-inset-top");
+});
+
+test("shorts: a truncated bill teaser expands in place via See more", async ({ page }) => {
+  // Every bill in the real corpus comes back from the list endpoint cut at 240 chars, so
+  // the card was asking "would you want this to pass?" about a sentence that stopped
+  // mid-clause. The control has to reveal the rest without leaving the feed.
+  const body = page.getByTestId("short-bill-teaser-body");
+  const toggle = page.getByTestId("short-bill-teaser-toggle");
+
+  await expect(body).toContainText("Reauthorizes the Federal Aviation Administration");
+  await expect(body).not.toContainText("Reagan National");
+  await expect(toggle).toHaveText("See more");
+
+  await toggle.click();
+
+  await expect(body).toContainText("Reagan National");
+  await expect(toggle).toHaveText("See less");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  // ...and it collapses back, so a long bill can't strand the react bar off-screen.
+  await toggle.click();
+  await expect(body).not.toContainText("Reagan National");
+  await expect(toggle).toHaveText("See more");
+});
+
+test("shorts: a complete bill teaser gets no See more control", async ({ page }) => {
+  // A control that fetches the same text back is worse than no control.
+  await page.route(`${API}/bills`, (route) =>
+    route.request().method() === "OPTIONS"
+      ? route.fulfill({ status: 204, headers: CORS })
+      : route.fulfill({
+          headers: CORS,
+          json: [{ ...BILL, teaser: "A short, complete summary of the bill." }],
+        }),
+  );
+  await page.reload();
+  await expect(page.getByTestId("shorts-scroll")).toBeVisible();
+
+  await expect(page.getByTestId("short-bill-teaser-body")).toHaveText(
+    "A short, complete summary of the bill.",
+  );
+  await expect(page.getByTestId("short-bill-teaser-toggle")).toHaveCount(0);
+});
+
+test("shorts: a failed See more says so instead of silently doing nothing", async ({
+  page,
+}) => {
+  await page.route(`${API}/bills/${BILL_ID}`, (route) =>
+    route.request().method() === "OPTIONS"
+      ? route.fulfill({ status: 204, headers: CORS })
+      : route.fulfill({ status: 500, headers: CORS, json: {} }),
+  );
+
+  await page.getByTestId("short-bill-teaser-toggle").click();
+
+  await expect(page.getByTestId("short-bill-teaser-error")).toBeVisible();
+  await expect(page.getByTestId("short-bill-teaser-toggle")).toBeEnabled();
 });

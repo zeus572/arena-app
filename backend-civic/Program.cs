@@ -144,6 +144,7 @@ builder.Services.AddScoped<IDailyPuzzleGenerator, PricedInGenerator>();
 builder.Services.AddScoped<IDailyPuzzleGenerator, PlaceItGenerator>();
 builder.Services.AddScoped<IDailyPuzzleGenerator, TimeMachineGenerator>();
 builder.Services.AddScoped<IDailyPuzzleGenerator, WhoseValueGenerator>();
+builder.Services.AddScoped<IDailyPuzzleGenerator, WhichIsTrueGenerator>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
