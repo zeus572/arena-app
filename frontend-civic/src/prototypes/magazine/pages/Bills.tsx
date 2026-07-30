@@ -218,19 +218,31 @@ export default function MagazineBills() {
           />
         </div>
 
-        <div className="flex flex-none overflow-x-auto border border-[var(--border)] bg-[var(--bg-elev)]">
-          <StageSegment label="All" active={stageFilter.size === 0} onClick={() => setStageFilter(new Set())} />
-          {STAGES.map((s, i) => (
-            <StageSegment key={s.label} label={s.label} active={stageFilter.has(i)} onClick={() => toggleStage(i)} />
-          ))}
+        {/* The six stage segments are ~910px of nowrap text — wider than any phone and
+            wider than the filter row at most desktop widths. `flex-none` sized this box to
+            that content and refused to shrink, so its own `overflow-x-auto` never engaged
+            and the whole PAGE scrolled sideways instead. `basis-full` + `min-w-0` gives it
+            its own line bounded by the container, which is what makes the internal swipe
+            work. */}
+        <div className="min-w-0 basis-full overflow-x-auto" data-testid="bills-stage-filter">
+          {/* The border lives on the inner `w-fit` row, not the scroller, so it hugs the
+              segments instead of trailing an empty bordered strip across a wide screen. */}
+          <div className="flex w-fit border border-[var(--border)] bg-[var(--bg-elev)]">
+            <StageSegment label="All" active={stageFilter.size === 0} onClick={() => setStageFilter(new Set())} />
+            {STAGES.map((s, i) => (
+              <StageSegment key={s.label} label={s.label} active={stageFilter.has(i)} onClick={() => toggleStage(i)} />
+            ))}
+          </div>
         </div>
 
-        <label className="flex flex-none items-center gap-2 border border-[var(--border)] bg-[var(--bg-elev)] px-3.5 py-[11px] text-xs font-bold uppercase tracking-[0.08em] text-[var(--fg)]">
-          <span className="text-[var(--muted)]">Sort</span>
+        {/* Same failure in miniature: a select is as wide as its longest option, and
+            "Best aligned (needs compass)" pushed this a few px past the viewport. */}
+        <label className="flex min-w-0 max-w-full flex-none items-center gap-2 border border-[var(--border)] bg-[var(--bg-elev)] px-3.5 py-[11px] text-xs font-bold uppercase tracking-[0.08em] text-[var(--fg)]">
+          <span className="flex-none text-[var(--muted)]">Sort</span>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="bg-transparent font-bold uppercase tracking-[0.08em] text-[var(--fg)] outline-none"
+            className="min-w-0 flex-1 bg-transparent font-bold uppercase tracking-[0.08em] text-[var(--fg)] outline-none"
             data-testid="bills-sort"
           >
             {SORT_OPTIONS.map((o) => (
@@ -338,6 +350,10 @@ function StageSegment({ label, active, onClick }: { label: string; active: boole
     <button
       type="button"
       onClick={onClick}
+      // These are toggles whose selected state was conveyed by background colour alone,
+      // which says nothing to a screen reader (and gives a test nothing to assert on).
+      aria-pressed={active}
+      data-testid={`bills-stage-${label.toLowerCase().replace(/\s+/g, "-")}`}
       className="whitespace-nowrap border-r border-[var(--border)] px-[15px] py-[11px] text-xs font-bold uppercase tracking-[0.08em] last:border-r-0"
       style={{
         background: active ? "var(--accent)" : "transparent",
