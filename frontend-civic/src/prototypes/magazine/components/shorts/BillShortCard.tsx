@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
-import type { BillSummary } from "@/api/bills";
+import { getBill, type BillSummary } from "@/api/bills";
+import { fullBillText, isTeaserTruncated } from "@/lib/billText";
 import { AXES, stageIndex, stageLabel } from "../../pages/bills/model";
 import { EphemeralReaction } from "./EphemeralReaction";
+import { ExpandableText } from "./ExpandableText";
 import { ShortCardShell } from "./ShortCardShell";
 
 /**
@@ -33,7 +35,20 @@ export function BillShortCard({ bill }: { bill: BillSummary }) {
           {bill.party ? ` (${bill.party})` : ""} · {stageLabel(stage)}
         </p>
 
-        <p className="mt-4 text-base leading-relaxed text-[var(--fg-soft)]">{bill.teaser}</p>
+        {/* The list endpoint caps teasers at 240 characters, which in this corpus is every
+            bill — so the card would otherwise ask "would you want this to pass?" about a
+            sentence that stops mid-clause. Fetched on tap rather than fattening every row
+            of a list endpoint the Bills pages also use. */}
+        <ExpandableText
+          className="mt-4"
+          preview={bill.teaser}
+          loadFull={
+            isTeaserTruncated(bill.teaser)
+              ? async () => fullBillText(await getBill(bill.id))
+              : undefined
+          }
+          testId="short-bill-teaser"
+        />
 
         {axes.length > 0 && (
           <div className="mt-5" data-testid="short-bill-axes">
