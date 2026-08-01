@@ -87,7 +87,8 @@ Set `Anthropic:ApiKey` in appsettings or environment variable to enable AI debat
 
 Boolean flag (**default `true`**) that gates every live Claude call in both apps
 (Arena `ClaudeLlmService` + `BotHeartbeatService` + `TopicModerationService`, and
-the shared `ClaudeLlmClient` used by Civic). When `false`, the code behaves exactly
+the shared `ClaudeLlmClient` used by Civic *and* by Arena's daily engagement
+report). When `false`, the code behaves exactly
 as if no key were configured — background generators skip, on-demand callers fall
 back to heuristics — **without deleting the key from secrets**. Use it to pause API
 spend on a dev box while keeping the (one-time-shown, unrecoverable) key intact.
@@ -110,6 +111,15 @@ Restart the backend after toggling (config is read at startup).
 > are machine-local and load only in the Development environment). Committing
 > `"Anthropic": { "Enabled": false }` — or adding `Anthropic__Enabled=false` to the
 > Azure App Service settings — is the *only* way to accidentally turn prod off.
+
+## Daily Engagement Report
+
+One operator email per day — "what happened yesterday" (signups, engagement per activity
+across Arena + Civic) followed by cumulative totals. Runs in the Arena backend
+(`Services/Reporting/`), pulls Civic's numbers from its shared-secret
+`GET /api/admin/daily-stats`, and sends through the existing ACS path. Off unless
+`DailyReport:Enabled` is set. Full setup, config table, and operator endpoints:
+`docs/Daily_Engagement_Report.md`.
 
 ## Ranking Formula
 

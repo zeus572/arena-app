@@ -34,6 +34,8 @@ builder.Services.AddScoped<IExplanationService, RuleBasedExplanationService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
 builder.Services.AddScoped<IZeitgeistService, ZeitgeistService>();
 builder.Services.AddScoped<ICohortService, CohortService>();
+// Serves Civic's day slice to the Arena backend's daily engagement report.
+builder.Services.AddScoped<DailyStatsBuilder>();
 
 // News ingestion + civic content generation. Sources are typed descriptors
 // (News:Sources / News:LocalSources) resolved through the shared provider

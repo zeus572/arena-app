@@ -7,6 +7,8 @@ using Arena.API.Data;
 using Arena.API.Services;
 using Arena.API.Services.Email;
 using Arena.API.Services.FactProviders;
+using Arena.API.Services.Reporting;
+using Arena.Shared.Llm;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +53,27 @@ else
 builder.Services.AddScoped<EmailPolicyService>();
 builder.Services.AddScoped<AccountTokenService>();
 builder.Services.AddScoped<EmailDispatchService>();
+
+// Daily engagement report: one operator email per UTC day covering BOTH apps. Arena hosts it
+// because the ACS mail path lives here; Civic contributes its numbers over its shared-secret
+// daily-stats endpoint (DailyReport:CivicBaseUrl). Off unless DailyReport:Enabled is set.
+builder.Services.Configure<DailyReportOptions>(builder.Configuration.GetSection(DailyReportOptions.SectionName));
+builder.Services.AddScoped<ArenaDailyStatsService>();
+builder.Services.AddScoped<DailyReportComposer>();
+builder.Services.AddScoped<DailyReportSender>();
+builder.Services.AddHttpClient<CivicStatsClient>(c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHostedService<DailyEngagementReportService>();
+
+// The shared structured-JSON Claude client (Arena.Shared.Llm) — used for the report's
+// "what happened today" opener. Distinct from ILlmService above, which generates debate
+// turns; this one owns the Anthropic:Enabled kill switch and the JSON retry policy.
+builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection("Anthropic"));
+builder.Services.AddHttpClient<ClaudeLlmClient>(c =>
+{
+    c.BaseAddress = new Uri("https://api.anthropic.com/");
+    c.Timeout = TimeSpan.FromSeconds(90);
+});
+builder.Services.AddTransient<ILlmClient>(sp => sp.GetRequiredService<ClaudeLlmClient>());
 
 // Authentication
 builder.Services.AddAuthentication(options =>

@@ -8,6 +8,15 @@ public enum AccountTokenPurpose
 {
     EmailVerify = 0,
     PasswordReset = 1,
+
+    /// <summary>
+    /// Not an account token — no <see cref="AccountToken"/> row ever carries this. It exists
+    /// only to label the operator's daily engagement email in <see cref="EmailSendLog"/>, which
+    /// reuses this enum as its purpose column. Stored as an int, so adding it needs no
+    /// migration. Excluded from the account-email rate limit, which is about protecting users'
+    /// inboxes, not the operator's.
+    /// </summary>
+    DailyReport = 2,
 }
 
 /// <summary>
