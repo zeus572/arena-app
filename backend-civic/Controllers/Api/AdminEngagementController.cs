@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Civic.API.Data;
 using Civic.API.Models.DTOs;
+using Civic.API.Services;
 
 namespace Civic.API.Controllers.Api;
 
@@ -27,25 +28,6 @@ public class AdminEngagementController : ControllerBase
     private const int ShortWindowDays = 7;
     private const int LongWindowDays = 30;
 
-    // Area labels (also the display grouping / order).
-    private const string Onboarding = "Onboarding";
-    private const string Exercises = "Exercises";
-    private const string Coalitions = "Coalitions";
-    private const string Candidates = "AI candidates";
-    private const string Social = "Shorts & posts";
-    private const string Groups = "Leagues & circles";
-    private const string Petitions = "Petitions";
-
-    private static readonly string[] AreaOrder =
-        { Onboarding, Exercises, Coalitions, Candidates, Social, Groups, Petitions };
-
-    /// <summary>Uniform (user, timestamp) projection so every feature can share one aggregator.</summary>
-    private sealed class UserEvent
-    {
-        public string UserId { get; set; } = "";
-        public DateTime At { get; set; }
-    }
-
     private sealed class UserAgg
     {
         public string UserId { get; set; } = "";
@@ -69,67 +51,18 @@ public class AdminEngagementController : ControllerBase
             var rows = await q.Where(e => e.UserId != "")
                 .Select(e => new { e.UserId, e.At })
                 .ToListAsync();
-            var anon = rows.Count(r => r.UserId == "anonymous");
-            var users = rows.Where(r => r.UserId != "anonymous")
+            var anon = rows.Count(r => r.UserId == EngagementCatalog.AnonymousUserId);
+            var users = rows.Where(r => r.UserId != EngagementCatalog.AnonymousUserId)
                 .GroupBy(r => r.UserId)
                 .Select(g => new UserAgg { UserId = g.Key, Last = g.Max(x => x.At), Count = g.Count() })
                 .ToList();
             return (users, anon);
         }
 
-        // ---- One deferred query per feature. Projections filter agents and null owners at
-        // the source. Executed SEQUENTIALLY below — a DbContext is not thread-safe. ----
-        var defs = new (string key, string label, string area, Func<IQueryable<UserEvent>> build)[]
-        {
-            ("profile",       "Profile / compass built", Onboarding,
-                () => _db.UserProfiles.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("compass_answer","Compass questions answered", Onboarding,
-                () => _db.CivicAnswers.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("quiz",          "Knowledge quiz answered", Onboarding,
-                () => _db.QuizResponses.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-
-            ("budget",        "Budget exercise run", Exercises,
-                () => _db.BudgetSessions.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("values_receipt","Values receipt generated", Exercises,
-                () => _db.ValuesReceipts.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-
-            ("coalition_position", "Coalition stance taken", Coalitions,
-                () => _db.ProvisionPositions.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("coalition_accept",   "Provision co-signed", Coalitions,
-                () => _db.AcceptanceRecords.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("coalition_amend",    "Amendment proposed", Coalitions,
-                () => _db.Amendments.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("coalition_join",     "Coalition loop joined", Coalitions,
-                () => _db.CoalitionParticipants.Where(x => !x.IsAgent).Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("reasoning_act",      "Reasoning-XP act (any)", Coalitions,
-                () => _db.CoalitionActs.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-
-            ("candidate_follow", "AI candidate followed", Candidates,
-                () => _db.CandidateFollows.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("candidate_mute",   "AI candidate muted", Candidates,
-                () => _db.CandidateMutes.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("campaign_run",     "Campaign Manager run", Candidates,
-                () => _db.CivicCampaigns.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-
-            ("post_authored", "Campaign/short post authored", Social,
-                () => _db.CampaignPosts.Where(x => x.OwnerUserId != null).Select(x => new UserEvent { UserId = x.OwnerUserId!, At = x.CreatedAt })),
-            ("post_reaction", "Post/short reacted to", Social,
-                () => _db.PostReactions.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-
-            ("league_owned",  "League created", Groups,
-                () => _db.Leagues.Select(x => new UserEvent { UserId = x.OwnerUserId, At = x.CreatedAt })),
-            ("league_member", "League joined", Groups,
-                () => _db.LeagueMembers.Select(x => new UserEvent { UserId = x.UserId, At = x.JoinedAt })),
-            ("league_entry",  "League round entry", Groups,
-                () => _db.LeagueRoundEntries.Select(x => new UserEvent { UserId = x.UserId, At = x.CreatedAt })),
-            ("cohort_member", "Cohort placement", Groups,
-                () => _db.CohortMembers.Where(x => !x.IsAgent).Select(x => new UserEvent { UserId = x.UserId, At = x.JoinedAt })),
-            ("circle_member", "Circle placement", Groups,
-                () => _db.CoalitionCircleMembers.Select(x => new UserEvent { UserId = x.UserId, At = x.JoinedAt })),
-
-            ("petition_created", "Petition created", Petitions,
-                () => _db.Petitions.Select(x => new UserEvent { UserId = x.CreatedBy, At = x.CreatedAt })),
-        };
+        // One deferred query per feature, from the shared catalog — the same definitions the
+        // daily-stats endpoint reads, so a newly tracked feature shows up in both at once.
+        // Executed SEQUENTIALLY below: a DbContext is not thread-safe.
+        var defs = EngagementCatalog.For(_db);
 
         // ---- Fold results into features + roll up to areas / states / breadth. ----
         var features = new List<FeatureStatDto>();
@@ -143,14 +76,14 @@ public class AdminEngagementController : ControllerBase
 
         foreach (var d in defs)
         {
-            var (rows, anon) = await Load(d.build());
+            var (rows, anon) = await Load(d.Build());
             anonEvents += anon;
 
             features.Add(new FeatureStatDto
             {
-                Key = d.key,
-                Label = d.label,
-                Area = d.area,
+                Key = d.Key,
+                Label = d.Label,
+                Area = d.Area,
                 Users = rows.Count,
                 Events = rows.Sum(r => r.Count),
                 ActiveShort = rows.Count(r => r.Last >= shortCut),
@@ -158,13 +91,13 @@ public class AdminEngagementController : ControllerBase
                 LastAt = rows.Count > 0 ? DateTime.SpecifyKind(rows.Max(r => r.Last), DateTimeKind.Utc) : null,
             });
 
-            var aUsers = areaUsers.TryGetValue(d.area, out var au) ? au : (areaUsers[d.area] = new());
-            var aActive = areaActiveLong.TryGetValue(d.area, out var aa) ? aa : (areaActiveLong[d.area] = new());
+            var aUsers = areaUsers.TryGetValue(d.Area, out var au) ? au : (areaUsers[d.Area] = new());
+            var aActive = areaActiveLong.TryGetValue(d.Area, out var aa) ? aa : (areaActiveLong[d.Area] = new());
             foreach (var r in rows)
             {
                 aUsers.Add(r.UserId);
                 engaged.Add(r.UserId);
-                (userAreas.TryGetValue(r.UserId, out var ua) ? ua : (userAreas[r.UserId] = new())).Add(d.area);
+                (userAreas.TryGetValue(r.UserId, out var ua) ? ua : (userAreas[r.UserId] = new())).Add(d.Area);
                 if (r.Last >= shortCut) activeShort.Add(r.UserId);
                 if (r.Last >= longCut) { activeLong.Add(r.UserId); aActive.Add(r.UserId); }
             }
@@ -172,12 +105,12 @@ public class AdminEngagementController : ControllerBase
 
         // Order features by area, then by descending reach.
         features = features
-            .OrderBy(f => Array.IndexOf(AreaOrder, f.Area))
+            .OrderBy(f => Array.IndexOf(EngagementCatalog.AreaOrder, f.Area))
             .ThenByDescending(f => f.Users)
             .ThenBy(f => f.Label)
             .ToList();
 
-        var areas = AreaOrder
+        var areas = EngagementCatalog.AreaOrder
             .Where(areaUsers.ContainsKey)
             .Select(a => new AreaStatDto
             {
@@ -189,7 +122,7 @@ public class AdminEngagementController : ControllerBase
 
         // ---- Locality: map users -> state via UserProfiles (null locality => "national"). ----
         var profileRows = await _db.UserProfiles
-            .Where(p => p.UserId != "" && p.UserId != "anonymous")
+            .Where(p => p.UserId != "" && p.UserId != EngagementCatalog.AnonymousUserId)
             .Select(p => new { p.UserId, p.LocalityState })
             .ToListAsync();
 

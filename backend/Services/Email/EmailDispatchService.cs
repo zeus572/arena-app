@@ -92,7 +92,12 @@ public class EmailDispatchService
         var window = TimeSpan.FromMinutes(_options.RateLimit.WindowMinutes);
         var since = DateTime.UtcNow - window;
 
-        var perAddress = await _db.EmailSendLogs.CountAsync(l => l.Email == email && l.SentAt >= since, ct);
+        // Count only account email. EmailSendLogs also carries the operator's daily report,
+        // which must not eat into a user's verify/reset allowance (nor be throttled by it).
+        var perAddress = await _db.EmailSendLogs.CountAsync(
+            l => l.Email == email && l.SentAt >= since &&
+                 (l.Purpose == AccountTokenPurpose.EmailVerify || l.Purpose == AccountTokenPurpose.PasswordReset),
+            ct);
         if (perAddress >= _options.RateLimit.PerAddressPerHour) return false;
 
         if (!string.IsNullOrWhiteSpace(ip))
