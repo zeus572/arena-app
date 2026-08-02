@@ -3,6 +3,7 @@ import { UserCircle } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DEBATE_ARENA_URL } from "@/lib/links";
 import { BottomTabs } from "./components/BottomTabs";
+import { FooterQuote } from "./components/FooterQuote";
 import { MobileMenu } from "./components/MobileMenu";
 import { NavDropdown } from "./components/NavDropdown";
 import { NewStoriesBanner } from "./components/NewStoriesBanner";
@@ -189,19 +190,29 @@ export default function MagazineLayout() {
         <Outlet />
       </main>
 
-      <footer className="hidden border-t border-[var(--border)] bg-[var(--bg)] py-10 md:block">
+      {/* The footer element itself now renders at every width, where it used to be
+          `hidden md:block`. Only the quote is shown on mobile: it's the placement most
+          worth having on a phone (short pages like the daily games end well above the
+          fold, so the footer is genuinely in view there), and it's one quiet line rather
+          than a second navigation competing with BottomTabs. The wordmark and link row
+          stay desktop-only — those destinations are in the mobile menu drawer. The
+          wrapper's `pb-20` still clears the fixed tab bar below. */}
+      <footer className="border-t border-[var(--border)] bg-[var(--bg)] py-6 md:py-10">
         <div className={`mx-auto ${shell} px-8 text-center`}>
-          <p className="display text-2xl text-[var(--accent)]">Civersify</p>
-          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+          <p className="display hidden text-2xl text-[var(--accent)] md:block">Civersify</p>
+          <p className="mt-2 hidden text-xs uppercase tracking-[0.2em] text-[var(--muted)] md:block">
             Civics for the world you actually live in
           </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <div className="hidden flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)] md:mt-4 md:flex">
             <Link to="/about" className="hover:text-[var(--accent)]">About</Link>
             <Link to="/coalition" className="hover:text-[var(--accent)]">Coalitions</Link>
             <Link to="/zeitgeist" className="hover:text-[var(--accent)]">Zeitgeist</Link>
             <Link to="/privacy" className="hover:text-[var(--accent)]">Privacy</Link>
             <Link to="/terms" className="hover:text-[var(--accent)]">Terms</Link>
             <Link to="/eula" className="hover:text-[var(--accent)]">EULA</Link>
+          </div>
+          <div className="md:mt-8 md:border-t md:border-[var(--border)] md:pt-6">
+            <FooterQuote />
           </div>
         </div>
       </footer>

@@ -5,6 +5,7 @@ import { NewsShortCard } from "./NewsShortCard";
 import { BudgetFactShortCard } from "./BudgetFactShortCard";
 import { DailyShortCard } from "./DailyShortCard";
 import { BillShortCard } from "./BillShortCard";
+import { QuoteShortCard } from "./QuoteShortCard";
 
 /** Renders one feed item by kind. Each sub-card fills the snap viewport. */
 export function ShortCard({ item }: { item: ShortItem }) {
@@ -19,6 +20,8 @@ export function ShortCard({ item }: { item: ShortItem }) {
       return <BudgetFactShortCard fact={item.fact} />;
     case "bill":
       return <BillShortCard bill={item.bill} />;
+    case "quote":
+      return <QuoteShortCard quote={item.quote} />;
     case "daily":
       return <DailyShortCard puzzle={item.puzzle} />;
   }
