@@ -6,6 +6,7 @@ import { getBriefings, type BriefingPage } from "@/api/briefings";
 import { fetchBudgetFacts, type BudgetFact } from "@/api/budgetFacts";
 import { getDailySlate, type DailyPuzzle } from "@/api/daily";
 import { listBills, type BillSummary } from "@/api/bills";
+import { sessionQuotes } from "@/lib/quotes";
 import {
   buildFeed,
   createMixerState,
@@ -24,13 +25,20 @@ const BRIEFINGS_PAGE_SIZE = 20;
 // feed the reader will scroll past — the Bills pages are where browsing the rest happens.
 const BILLS_LIMIT = 30;
 
+// Quotes come from a bundled library of ~120, so the pool has to be capped here rather
+// than by the source running out: buildFeed's tail flush drains every filler pool, and an
+// uncapped one would end the feed with a wall of quote cards. A dozen is roughly one per
+// three facts across a long session, and a fresh dozen each visit.
+const QUOTES_LIMIT = 12;
+
 const emptyBriefings: BriefingPage = { items: [], total: 0, page: 1, pageSize: 0 };
 
 /**
  * The casual, mobile-first "Shorts" feed: a full-screen, vertically snap-scrolling mix of
  * short civic content that leads with interesting facts (budget + news + bills before
  * Congress), weaves in
- * reflective prompts (think-deeper, coalition provisions), and scatters today's unplayed
+ * reflective prompts (think-deeper, coalition provisions, quotes from public figures), and
+ * scatters today's unplayed
  * daily games through at randomized intervals. Candidate campaign posts are intentionally
  * excluded — they only matter to Campaign Managers. The feed keeps going by paging through
  * news briefings; each page's facts are mixed in client-side via buildFeed.
@@ -48,6 +56,7 @@ export default function ShortsFeed() {
     news: [],
     budget: [],
     bills: [],
+    quote: [],
     daily: [],
   });
   const mixerRef = useRef<MixerState>(createMixerState());
@@ -91,7 +100,10 @@ export default function ShortsFeed() {
           .catch(() => [] as DailyPuzzle[]),
       ]);
       if (cancelled) return;
-      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget, bills, daily };
+      // Quotes need no fetch — the library is bundled, so this pool is never empty and
+      // the feed always has at least one kind of card to show.
+      const quote = sessionQuotes(QUOTES_LIMIT);
+      poolsRef.current = { coalition, thinkDeeper: [], news: [], budget, bills, quote, daily };
       mixerRef.current = createMixerState();
       nextPageRef.current = 1;
       hasMoreRef.current = true;

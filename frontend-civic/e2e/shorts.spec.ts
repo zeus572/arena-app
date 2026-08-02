@@ -216,10 +216,13 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId("shorts-scroll")).toBeVisible();
 });
 
-test("shorts: every card's CTA stays inside its slide on a short viewport", async ({
+test("shorts: every card's bottom control stays inside its slide on a short viewport", async ({
   page,
 }) => {
-  // All four card kinds should be present given the mocked pools.
+  // Every card kind that has a "go deeper" CTA should be present given the mocked
+  // pools. Quote cards are deliberately absent from this list: a quotation has no
+  // truer destination than itself, so that card ends at its react bar. Keeping this
+  // an exact set means accidentally dropping a real CTA still fails here.
   const kinds = await page.evaluate(() =>
     Array.from(
       document.querySelectorAll<HTMLElement>('[data-testid^="short-"]'),
@@ -240,7 +243,10 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
   );
 
   // For each card: snap its slide to the top, exhaust any in-card scroll (the
-  // safety valve), then require the CTA to sit fully within the slide's box.
+  // safety valve), then require its LAST control to sit fully within the slide's
+  // box. That's the CTA where there is one, and the react bar on a card that ends
+  // in one — either way it's the thing the squeeze used to push under the home
+  // indicator, so every kind stays covered.
   const results = await page.evaluate(() => {
     const scroll = document.querySelector('[data-testid="shorts-scroll"]')!;
     const slides = Array.from(scroll.children).filter((s) =>
@@ -250,7 +256,9 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
       const kind = slide
         .querySelector('[data-testid^="short-"]')!
         .getAttribute("data-testid");
-      const cta = slide.querySelector<HTMLElement>('a[data-testid$="-open"]')!;
+      const cta =
+        slide.querySelector<HTMLElement>('a[data-testid$="-open"]') ??
+        slide.querySelector<HTMLElement>('[data-testid$="-react"]')!;
       slide.scrollIntoView({ block: "start" });
       // Exhaust any scrollable ancestor inside the slide (the shell safety valve).
       const shell = slide.firstElementChild as HTMLElement;
@@ -259,16 +267,20 @@ test("shorts: every card's CTA stays inside its slide on a short viewport", asyn
       const cr = cta.getBoundingClientRect();
       return {
         kind,
+        control: cta.getAttribute("data-testid"),
         withinSlide: cr.bottom <= sr.bottom + 1 && cr.top >= sr.top - 1,
         belowFoldPx: Math.round(cr.bottom - sr.bottom),
       };
     });
   });
 
+  // A card kind that renders neither a CTA nor a react bar would silently skip the
+  // check above, so require every slide to have produced a measurement.
+  expect(results.length).toBeGreaterThan(0);
   for (const r of results) {
     expect(
       r.withinSlide,
-      `${r.kind} CTA is ${r.belowFoldPx}px below the slide fold`,
+      `${r.kind} ${r.control} is ${r.belowFoldPx}px below the slide fold`,
     ).toBe(true);
   }
 });

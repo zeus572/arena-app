@@ -3,13 +3,14 @@ import type { BudgetFact } from "@/api/budgetFacts";
 import type { CivicBriefingSummary } from "@/api/types";
 import type { DailyPuzzle } from "@/api/daily";
 import type { BillSummary } from "@/api/bills";
+import type { CivicQuote } from "@/lib/quotes";
 
 /**
  * One card in the Shorts feed. The feed leads with interesting civic facts (budget +
  * news + bills before Congress) and weaves in reflective content (think-deeper prompts,
- * coalition provisions) plus today's unplayed daily games. Candidate campaign posts are
- * intentionally NOT part of Shorts — they're only relevant to Campaign Managers and live
- * in the campaign surfaces instead.
+ * quotes from public figures, coalition provisions) plus today's unplayed daily games.
+ * Candidate campaign posts are intentionally NOT part of Shorts — they're only relevant
+ * to Campaign Managers and live in the campaign surfaces instead.
  */
 export type ShortItem =
   | { kind: "coalition"; key: string; provision: ProvisionSummary }
@@ -17,6 +18,7 @@ export type ShortItem =
   | { kind: "news"; key: string; briefing: CivicBriefingSummary }
   | { kind: "budget"; key: string; fact: BudgetFact }
   | { kind: "bill"; key: string; bill: BillSummary }
+  | { kind: "quote"; key: string; quote: CivicQuote }
   | { kind: "daily"; key: string; puzzle: DailyPuzzle };
 
 /** The finite content pools the feed is mixed from. */
@@ -28,6 +30,13 @@ export type ShortsPools = {
   budget: BudgetFact[];
   /** Synthesized bills currently before Congress. Finite, loaded once. */
   bills: BillSummary[];
+  /**
+   * Quotes from public figures, drawn from the bundled library. The caller passes a
+   * bounded slice rather than the whole library: the tail flush in {@link buildFeed}
+   * drains every filler pool, and an unbounded quote pool would end the feed with a
+   * hundred quote cards in a row.
+   */
+  quote: CivicQuote[];
   /** Today's daily games the caller hasn't finished yet. Scattered, not rotated. */
   daily: DailyPuzzle[];
 };
@@ -40,10 +49,11 @@ export type MixerState = {
   budgetAt: number;
   newsAt: number;
   billAt: number;
+  quoteAt: number;
   dailyAt: number;
   /** Facts emitted (budget/news/bill), driving the rotation between them. */
   factCount: number;
-  /** Fillers emitted (think-deeper/coalition), driving their alternation. */
+  /** Fillers emitted (think-deeper/coalition/quote), driving their rotation. */
   fillerCount: number;
   /** Non-daily cards emitted since the last daily game card. */
   sinceDaily: number;
@@ -59,6 +69,7 @@ export const initialMixerState: MixerState = {
   budgetAt: 0,
   newsAt: 0,
   billAt: 0,
+  quoteAt: 0,
   dailyAt: 0,
   factCount: 0,
   fillerCount: 0,
@@ -96,15 +107,20 @@ function nextRandom(state: MixerState): number {
 const FACTS_PER_FILLER = 3;
 
 /**
- * Facts rotate budget → news → bill; fillers alternate think-deeper/coalition.
+ * Facts rotate budget → news → bill; fillers rotate think-deeper → coalition → quote.
  *
  * Bills sit in the fact spine rather than among the reflective fillers on purpose: "here
  * is a real bill in Congress right now and where it pushes" is the same kind of beat as a
  * budget contradiction, not a prompt to sit with. A drained pool is skipped, so a reader
  * with no synthesized bills sees exactly the old budget/news alternation.
+ *
+ * Quotes are fillers, not facts, for the mirror-image reason: a line from Brandeis or
+ * Eisenhower is something to sit with, not a data point about this week. Placing them in
+ * the fact spine would also mean the feed's factual claims were partly other people's
+ * opinions, which is exactly the confusion this product exists to undo.
  */
 const FACT_ROTATION = ["budget", "news", "bill"] as const;
-const FILLER_ROTATION = ["thinkDeeper", "coalition"] as const;
+const FILLER_ROTATION = ["thinkDeeper", "coalition", "quote"] as const;
 
 /**
  * Pull the next fact (budget → news → bill), advancing `state`. Skips a drained pool
@@ -134,8 +150,8 @@ function nextFact(pools: ShortsPools, state: MixerState): ShortItem | null {
 }
 
 /**
- * Pull the next reflective filler (think-deeper then coalition, alternating), advancing
- * `state`. Returns null when both filler pools are spent. Mutates `state` in place.
+ * Pull the next reflective filler (think-deeper → coalition → quote, rotating), advancing
+ * `state`. Returns null when every filler pool is spent. Mutates `state` in place.
  */
 function nextFiller(pools: ShortsPools, state: MixerState): ShortItem | null {
   for (let probe = 0; probe < FILLER_ROTATION.length; probe++) {
@@ -149,6 +165,11 @@ function nextFiller(pools: ShortsPools, state: MixerState): ShortItem | null {
       const provision = pools.coalition[state.coalitionAt++];
       state.fillerCount++;
       return { kind: "coalition", key: `co-${provision.id}`, provision };
+    }
+    if (slot === "quote" && state.quoteAt < pools.quote.length) {
+      const quote = pools.quote[state.quoteAt++];
+      state.fillerCount++;
+      return { kind: "quote", key: `qt-${quote.id}`, quote };
     }
   }
   return null;
@@ -179,7 +200,8 @@ function nextDaily(pools: ShortsPools, state: MixerState): ShortItem | null {
 
 /**
  * Build a facts-first batch of the Shorts feed. Interesting facts (budget + news + bills,
- * rotating) are the spine; a reflective filler (think-deeper / coalition) is woven in after every
+ * rotating) are the spine; a reflective filler (think-deeper / coalition / quote) is woven in
+ * after every
  * {@link FACTS_PER_FILLER} facts, and today's unplayed daily games are scattered through at
  * randomized intervals. Pure apart from advancing `state`, which the caller carries forward
  * across paginated appends so the rotation never repeats an item.

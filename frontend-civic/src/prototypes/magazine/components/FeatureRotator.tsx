@@ -4,6 +4,7 @@ import type { BudgetFact } from "@/api/budgetFacts";
 import type { CivicCampaignSummary } from "@/api/campaignManager";
 import { getQuizQuestions, type QuizQuestion } from "@/api/quiz";
 import { getTaxStates } from "@/api/taxModel";
+import { rotatingQuote } from "@/lib/quotes";
 import type { StateProfile } from "@/taxModel/engine";
 import { STATE_PROFILES } from "@/taxModel/engine/stateProfiles";
 import { CountdownTimer } from "./CountdownTimer";
@@ -11,6 +12,7 @@ import { CampaignFeatureCard } from "./featureCards/CampaignFeatureCard";
 import { BudgetFactFeatureCard } from "./featureCards/BudgetFactFeatureCard";
 import { StateTaxFactCard } from "./featureCards/StateTaxFactCard";
 import { QuizFeatureCard } from "./featureCards/QuizFeatureCard";
+import { QuoteFeatureCard } from "./featureCards/QuoteFeatureCard";
 
 // How long each card stays before the conveyor advances by one.
 const ROTATE_MS = 7000;
@@ -31,9 +33,10 @@ type Props = {
 
 /**
  * The feature tile at the top of the magazine home, a rotating conveyor. The pool
- * leads with the election countdown, then Campaign Manager, then folds in "Did you
- * know?" budget facts, an in-box civics quiz, and a random-state tax fact as their
- * data loads.
+ * leads with the election countdown, then Campaign Manager, then a quotable from a
+ * public figure (bundled, so it's always present), then folds in "Did you know?"
+ * budget facts, an in-box civics quiz, and a random-state tax fact as their data
+ * loads.
  *
  * Once every source has settled, the tile picks a RANDOM card to open on (rather
  * than always the countdown) so the home feels fresh on each visit; it then
@@ -101,6 +104,13 @@ export function FeatureRotator({ budgetFacts, budgetFactsLoaded, featuredCampaig
       {
         key: "campaign",
         render: () => <CampaignFeatureCard featuredCampaign={featuredCampaign} />,
+      },
+      {
+        key: "quote",
+        // The quote library is bundled, not fetched, so this card is always in the
+        // pool and adds no load flag to the random-start gate below. `seed` walks the
+        // library, so each pass of the conveyor brings a quote you haven't seen.
+        render: (seed) => <QuoteFeatureCard quote={rotatingQuote(seed)} />,
       },
     ];
     if (budgetFacts.length > 0) {

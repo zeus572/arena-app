@@ -13,9 +13,19 @@ const briefing = (id: string) => ({ id }) as ShortsPools["news"][number];
 const provision = (id: string) => ({ id }) as ShortsPools["coalition"][number];
 const daily = (id: string) => ({ id }) as ShortsPools["daily"][number];
 const bill = (id: string) => ({ id }) as ShortsPools["bills"][number];
+const quote = (id: string) => ({ id }) as ShortsPools["quote"][number];
 
 function pools(over: Partial<ShortsPools> = {}): ShortsPools {
-  return { coalition: [], thinkDeeper: [], news: [], budget: [], bills: [], daily: [], ...over };
+  return {
+    coalition: [],
+    thinkDeeper: [],
+    news: [],
+    budget: [],
+    bills: [],
+    quote: [],
+    daily: [],
+    ...over,
+  };
 }
 
 const facts = (n: number) => Array.from({ length: n }, (_, i) => fact(`b${i}`));
@@ -90,6 +100,7 @@ describe("shorts mixer — facts lead, no campaign posts", () => {
       news: [briefing("n1")],
       thinkDeeper: [briefing("t1")],
       coalition: [provision("c1")],
+      quote: [quote("q1")],
     });
     p.bills = [bill("l1")];
     const byKind = Object.fromEntries(buildFeed(p, { ...initialMixerState }).map((x) => [x.kind, x.key]));
@@ -99,6 +110,7 @@ describe("shorts mixer — facts lead, no campaign posts", () => {
       bill: "bl-l1",
       thinkDeeper: "td-t1",
       coalition: "co-c1",
+      quote: "qt-q1",
     });
   });
 
@@ -129,6 +141,63 @@ describe("shorts mixer — facts lead, no campaign posts", () => {
     const second = buildFeed(p, state).map((x) => x.key);
     expect(first).toEqual(["bf-b1", "bf-b2"]);
     expect(second).toEqual(["bf-b3"]);
+  });
+
+  it("rotates quotes through the filler slot alongside think-deeper and coalition", () => {
+    const p = pools({
+      budget: facts(9),
+      thinkDeeper: [briefing("t1")],
+      coalition: [provision("c1")],
+      quote: [quote("q1")],
+    });
+    const kinds = buildFeed(p, { ...initialMixerState }).map((x) => x.kind);
+    expect(kinds).toEqual([
+      "budget",
+      "budget",
+      "budget",
+      "thinkDeeper",
+      "budget",
+      "budget",
+      "budget",
+      "coalition",
+      "budget",
+      "budget",
+      "budget",
+      "quote",
+    ]);
+  });
+
+  it("treats quotes as reflective fillers, never as facts in the spine", () => {
+    // A quote is someone's opinion. Letting it into the fact rotation would blur the
+    // line between "here is what is true" and "here is what someone said".
+    const p = pools({ quote: [quote("q1"), quote("q2")], news: [briefing("n1")] });
+    const kinds = buildFeed(p, { ...initialMixerState }).map((x) => x.kind);
+    // The single fact leads; quotes only arrive on the tail flush, not interleaved as facts.
+    expect(kinds).toEqual(["news", "quote", "quote"]);
+  });
+
+  it("still fills when quotes are the only reflective content available", () => {
+    const p = pools({ budget: facts(3), quote: [quote("q1")] });
+    const kinds = buildFeed(p, { ...initialMixerState }).map((x) => x.kind);
+    expect(kinds).toEqual(["budget", "budget", "budget", "quote"]);
+  });
+
+  it("leaves the existing rotation untouched when the quote pool is empty", () => {
+    // Guards every sequence above: adding a third filler kind must be inert for a
+    // reader whose quote pool didn't load.
+    const p = pools({ budget: facts(6), thinkDeeper: [briefing("t1")], coalition: [provision("c1")] });
+    const kinds = buildFeed(p, { ...initialMixerState }).map((x) => x.kind);
+    expect(kinds).not.toContain("quote");
+    expect(kinds).toEqual([
+      "budget",
+      "budget",
+      "budget",
+      "thinkDeeper",
+      "budget",
+      "budget",
+      "budget",
+      "coalition",
+    ]);
   });
 
   it("emits nothing daily-shaped when there are no daily games", () => {
