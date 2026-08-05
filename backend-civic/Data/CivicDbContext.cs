@@ -99,6 +99,10 @@ public class CivicDbContext : DbContext
     public DbSet<Development> Developments => Set<Development>();
     public DbSet<ReviewFlag> ReviewFlags => Set<ReviewFlag>();
     public DbSet<PublishGateResult> PublishGateResults => Set<PublishGateResult>();
+    public DbSet<Interaction> Interactions => Set<Interaction>();
+    public DbSet<RoomInteractionPlay> RoomInteractionPlays => Set<RoomInteractionPlay>();
+    public DbSet<Prediction> Predictions => Set<Prediction>();
+    public DbSet<UserPrediction> UserPredictions => Set<UserPrediction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -770,6 +774,79 @@ public class CivicDbContext : DbContext
             .Property(c => c.KnowledgeKind).HasConversion<string>().HasMaxLength(30);
 
         ConfigureRoomEditorial(modelBuilder);
+        ConfigureRoomInteractions(modelBuilder);
+    }
+
+    /// <summary>
+    /// Room interactions and calibrated predictions (PRD 06).
+    /// </summary>
+    private static void ConfigureRoomInteractions(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Interaction>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.HasIndex(i => i.Slug).IsUnique();
+            e.HasIndex(i => new { i.RoomId, i.Ordinal });
+            e.Property(i => i.PayloadJson).HasColumnType("jsonb");
+            e.Property(i => i.Kind).HasConversion<string>().HasMaxLength(30);
+            e.Property(i => i.ScoringMode).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.Sensitivity).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.Status).HasConversion<string>().HasMaxLength(30);
+
+            e.OwnsMany(i => i.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+
+            e.HasOne(i => i.Room)
+                .WithMany()
+                .HasForeignKey(i => i.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoomInteractionPlay>(e =>
+        {
+            e.HasKey(p => p.Id);
+            // Phase is part of the key because the two-phase interactions legitimately
+            // store two rows per person -- that is the mechanic, not a duplicate. The
+            // Post row doubles as the XP idempotency guard.
+            e.HasIndex(p => new { p.InteractionId, p.UserId, p.Phase }).IsUnique();
+            e.Property(p => p.Phase).HasConversion<string>().HasMaxLength(10);
+            e.Property(p => p.ResponseJson).HasColumnType("jsonb");
+
+            e.HasOne(p => p.Interaction)
+                .WithMany()
+                .HasForeignKey(p => p.InteractionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Prediction>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.Slug).IsUnique();
+            e.HasIndex(p => new { p.Outcome, p.ResolvesByAt });
+            e.Property(p => p.Outcome).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.Status).HasConversion<string>().HasMaxLength(30);
+
+            e.HasOne(p => p.Room)
+                .WithMany()
+                .HasForeignKey(p => p.RoomId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<UserPrediction>(e =>
+        {
+            e.HasKey(u => u.Id);
+            // One forecast per person per question, updatable until close.
+            e.HasIndex(u => new { u.PredictionId, u.UserId }).IsUnique();
+            e.HasIndex(u => new { u.UserId, u.CreatedAt });
+
+            e.HasOne(u => u.Prediction)
+                .WithMany()
+                .HasForeignKey(u => u.PredictionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     /// <summary>

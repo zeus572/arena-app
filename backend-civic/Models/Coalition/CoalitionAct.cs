@@ -35,6 +35,10 @@ public enum CoalitionActType
     QuestReward,              // awarded when a daily quest's underlying condition is met
     // casual daily games (reasoning currency; Payload = "{kind}:{yyyy-MM-dd}" as the once-per-puzzle marker)
     DailyPuzzle,              // completed one of the six daily games — see docs/civic_daily_games
+    // Topic Rooms (docs/Rooms Expansion). Reasoning currency; the 150/day cap
+    // plus the 0.8x within-day decay bound the grind without new machinery.
+    RoomInteraction,          // completed a room interaction
+    CalibratedForecast,       // submitted a probability on an open prediction
 }
 
 /// <summary>A recorded act in the ledger: what was done, how it scored, and what it paid.</summary>
