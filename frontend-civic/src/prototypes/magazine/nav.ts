@@ -16,6 +16,9 @@ export type NavGroup = { heading: string; links: NavLinkItem[] };
 
 export const NAV_PRIMARY: NavLinkItem[] = [
   { to: "/", label: "Home", end: true },
+  // Rooms are durable destinations, not a tool: they belong in the always-visible
+  // nav rather than behind the Explore dropdown.
+  { to: "/rooms", label: "Rooms" },
   // The daily games are the funnel entrance — they need to be one tap from anywhere,
   // so they sit in PRIMARY rather than behind the "Explore" dropdown.
   { to: "/daily", label: "Daily" },
