@@ -34,6 +34,18 @@ public class UserProfile
     [MaxLength(20)]
     public string? AgeRange { get; set; }
 
+    /// <summary>
+    /// The Topic Rooms reading density (design 1c). Lives here, not on UserRoomState,
+    /// because the handoff is explicit that density is remembered per USER, not per room.
+    /// </summary>
+    public Rooms.RoomDensity RoomDensity { get; set; } = Rooms.RoomDensity.Read;
+
+    /// <summary>
+    /// Consecutive visits where the reader chose Board. At two, Board becomes their default —
+    /// the dial never auto-switches mid-session, it only changes what they land on next time.
+    /// </summary>
+    public int RoomDensityConsecutiveBoard { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

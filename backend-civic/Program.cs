@@ -150,6 +150,8 @@ builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 // ---- Topic Rooms knowledge graph (docs/Rooms Expansion) ----
 builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectLinkService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomRevisionService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomQueryService>();
 
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".

@@ -87,6 +87,12 @@ public class CivicDbContext : DbContext
     public DbSet<SourceRef> SourceRefs => Set<SourceRef>();
     public DbSet<Claim> Claims => Set<Claim>();
     public DbSet<ClaimStatusHistory> ClaimStatusHistories => Set<ClaimStatusHistory>();
+    public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<ThemeRoom> ThemeRooms => Set<ThemeRoom>();
+    public DbSet<StoryRoom> StoryRooms => Set<StoryRoom>();
+    public DbSet<RoomRevision> RoomRevisions => Set<RoomRevision>();
+    public DbSet<ChangeLogEntry> ChangeLogEntries => Set<ChangeLogEntry>();
+    public DbSet<UserRoomState> UserRoomStates => Set<UserRoomState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -572,6 +578,109 @@ public class CivicDbContext : DbContext
         ConfigureCoalition(modelBuilder);
         ConfigureSocial(modelBuilder);
         ConfigureRoomGraph(modelBuilder);
+        ConfigureRooms(modelBuilder);
+    }
+
+    /// <summary>
+    /// Theme and Story Rooms, their revision history, and per-reader state (PRD 01, PRD 02).
+    ///
+    /// Rooms are table-per-hierarchy — one physical table with a "Kind" discriminator. It is
+    /// the only inheritance in this context and it earns the exception: revisions, changelog,
+    /// following and section progress are identical for both kinds, so one table lets
+    /// RoomRevision.RoomId and UserRoomState.RoomId be real foreign keys to one target
+    /// instead of a polymorphic pair on the hottest write path in the feature.
+    /// </summary>
+    private static void ConfigureRooms(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Room>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasDiscriminator<string>("Kind")
+                .HasValue<ThemeRoom>("Theme")
+                .HasValue<StoryRoom>("Story");
+
+            e.HasIndex(r => r.Slug).IsUnique();
+            e.HasIndex(r => new { r.Status, r.LastMeaningfulUpdateAt });
+            e.HasIndex(r => new { r.Status, r.Locality });
+
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(30);
+            e.Property(r => r.Sensitivity).HasConversion<string>().HasMaxLength(20);
+
+            // Both the admin controller and the correction propagator write rooms.
+            // RoomRevisionService retries once on conflict rather than taking a lock.
+            e.UseXminAsConcurrencyToken();
+
+            e.OwnsMany(r => r.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ThemeRoom>(e =>
+        {
+            e.Property(r => r.MonitoringCadence).HasConversion<string>().HasMaxLength(20);
+            e.OwnsMany(r => r.EssentialFacts, f => f.ToJson());
+            e.OwnsMany(r => r.TerminologyNotes, n => n.ToJson());
+        });
+
+        modelBuilder.Entity<StoryRoom>(e =>
+        {
+            e.Property(r => r.StoryType).HasConversion<string>().HasMaxLength(30);
+            e.Property(r => r.TypePayloadJson).HasColumnType("jsonb");
+            e.OwnsMany(r => r.WhyItMatters, d => d.ToJson());
+            e.OwnsMany(r => r.Stakeholders, s => s.ToJson());
+            e.OwnsMany(r => r.NextSteps, n => n.ToJson());
+        });
+
+        modelBuilder.Entity<RoomRevision>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.RoomId, r.Revision }).IsUnique();
+            e.Property(r => r.SnapshotJson).HasColumnType("jsonb");
+
+            e.OwnsMany(r => r.GateApprovals, g => g.ToJson());
+
+            e.HasOne(r => r.Room)
+                .WithMany()
+                .HasForeignKey(r => r.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChangeLogEntry>(e =>
+        {
+            e.HasKey(c => c.Id);
+            // The delta is a single indexed range scan on this — the hottest read here.
+            e.HasIndex(c => new { c.RoomId, c.RevisionNumber });
+            e.HasIndex(c => new { c.RoomId, c.IsMeaningful, c.CreatedAt });
+
+            e.Property(c => c.Type).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.ObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.CorrectionKind).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(c => c.RoomRevision)
+                .WithMany()
+                .HasForeignKey(c => c.RoomRevisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRoomState>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => new { s.UserId, s.RoomId }).IsUnique();
+            // The notify fan-out reads this.
+            e.HasIndex(s => new { s.RoomId, s.Following });
+
+            e.OwnsMany(s => s.SectionProgress, p => p.ToJson());
+
+            e.HasOne(s => s.Room)
+                .WithMany()
+                .HasForeignKey(s => s.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserProfile>()
+            .Property(p => p.RoomDensity).HasConversion<string>().HasMaxLength(10);
     }
 
     /// <summary>
