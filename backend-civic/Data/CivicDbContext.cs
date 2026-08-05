@@ -103,6 +103,8 @@ public class CivicDbContext : DbContext
     public DbSet<RoomInteractionPlay> RoomInteractionPlays => Set<RoomInteractionPlay>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<UserPrediction> UserPredictions => Set<UserPrediction>();
+    public DbSet<MoneyItem> MoneyItems => Set<MoneyItem>();
+    public DbSet<MoneyStageEntry> MoneyStageEntries => Set<MoneyStageEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -775,6 +777,57 @@ public class CivicDbContext : DbContext
 
         ConfigureRoomEditorial(modelBuilder);
         ConfigureRoomInteractions(modelBuilder);
+        ConfigureMoneyTrail(modelBuilder);
+    }
+
+    /// <summary>
+    /// The Money Trail (PRD 05). Every item carries all five ladder rungs, including
+    /// the empty ones -- see MoneyMath.BuildLadder for why that is a data guarantee
+    /// rather than a UI convention.
+    /// </summary>
+    private static void ConfigureMoneyTrail(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MoneyItem>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.HasIndex(m => m.Slug).IsUnique();
+            e.HasIndex(m => new { m.RoomId, m.CurrentStage });
+
+            e.Property(m => m.Kind).HasConversion<string>().HasMaxLength(30);
+            e.Property(m => m.CurrentStage).HasConversion<string>().HasMaxLength(20);
+            e.Property(m => m.DollarBasis).HasConversion<string>().HasMaxLength(10);
+            e.Property(m => m.AmountUsd).HasPrecision(18, 2);
+            e.Property(m => m.AmountMinUsd).HasPrecision(18, 2);
+            e.Property(m => m.AmountMaxUsd).HasPrecision(18, 2);
+
+            e.OwnsMany(m => m.Breakdown, b => b.ToJson());
+            e.OwnsMany(m => m.Comparisons, c => c.ToJson());
+            e.OwnsMany(m => m.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+
+            e.HasOne(m => m.Room)
+                .WithMany()
+                .HasForeignKey(m => m.RoomId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MoneyStageEntry>(e =>
+        {
+            e.HasKey(s => s.Id);
+            // One row per stage per item -- exactly five, always.
+            e.HasIndex(s => new { s.MoneyItemId, s.Stage }).IsUnique();
+            e.Property(s => s.Stage).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.Applicability).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.AmountUsd).HasPrecision(18, 2);
+
+            e.HasOne(s => s.MoneyItem)
+                .WithMany()
+                .HasForeignKey(s => s.MoneyItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     /// <summary>
