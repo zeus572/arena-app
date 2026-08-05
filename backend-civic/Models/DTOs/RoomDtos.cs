@@ -111,6 +111,9 @@ public class ThemeRoomDetailDto : RoomSummaryDto
     public string[] ExclusionRules { get; set; } = Array.Empty<string>();
     /// <summary>The room's most important element. Describes a state, not an event.</summary>
     public string CurrentStatusSentence { get; set; } = "";
+    /// <summary>True when the status sentence is withheld because a claim it rests on
+    /// changed and the rewrite has not been reviewed within six hours.</summary>
+    public bool StatusSentenceUnderReview { get; set; }
     public string TopUnresolvedQuestion { get; set; } = "";
     public string WatchNext { get; set; } = "";
     public List<EssentialFactDto> EssentialFacts { get; set; } = new();

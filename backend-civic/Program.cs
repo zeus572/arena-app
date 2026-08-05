@@ -153,6 +153,9 @@ builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomRevisionService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomQueryService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomSeeder>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.PublishGateEvaluator>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.CorrectionPropagationService>();
+builder.Services.AddHostedService<Civic.API.Services.Rooms.ReviewFlagSweepService>();
 
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".

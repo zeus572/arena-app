@@ -105,6 +105,43 @@ public class RoomQueryService
     }
 
     /// <summary>
+    /// Objects in this room that are hidden from THIS reader by the six-hour rule.
+    ///
+    /// Every public read path calls this; no controller reimplements the rule. The
+    /// granularity is deliberate — a flag on a room suppresses that room's status sentence,
+    /// it does not blank the room. Design 1z flags "any room status sentence referencing
+    /// the claim", not the room, and hiding a whole room because one sentence needs a
+    /// rewrite would destroy more information than it protects.
+    /// </summary>
+    public async Task<HashSet<ObjectRef>> HiddenObjectsAsync(
+        Guid roomId, string userId, DateTime now, CancellationToken ct = default)
+    {
+        var lastVisited = await _db.UserRoomStates.AsNoTracking()
+            .Where(s => s.UserId == userId && s.RoomId == roomId)
+            .Select(s => (DateTime?)s.LastVisitedAt)
+            .FirstOrDefaultAsync(ct);
+
+        var sessionStart = RoomVisibility.SessionStart(lastVisited, now);
+
+        // Everything attached to this room that could be flagged: the room itself, plus its
+        // developments, timeline events and interactions.
+        var childIds = await _db.Developments.AsNoTracking()
+            .Where(d => d.RoomId == roomId).Select(d => d.Id).ToListAsync(ct);
+
+        var flags = await _db.ReviewFlags.AsNoTracking()
+            .Where(f => f.ResolvedAt == null
+                     && ((f.ObjectType == ObjectType.Room && f.ObjectId == roomId)
+                      || (f.ObjectType == ObjectType.Development && childIds.Contains(f.ObjectId))
+                      || f.ObjectType == ObjectType.Interaction))
+            .ToListAsync(ct);
+
+        return flags
+            .Where(f => RoomVisibility.IsHiddenForReader(f, now, sessionStart))
+            .Select(f => new ObjectRef(f.ObjectType, f.ObjectId))
+            .ToHashSet();
+    }
+
+    /// <summary>
     /// The Theme Room front door. Essential-fact statuses are read from the CLAIMS, never
     /// from a cached copy on the room — that is what makes a correction reach the front door
     /// without anyone editing this room.

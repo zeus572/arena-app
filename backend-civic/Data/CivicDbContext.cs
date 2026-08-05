@@ -97,6 +97,8 @@ public class CivicDbContext : DbContext
     public DbSet<ActorRoomRole> ActorRoomRoles => Set<ActorRoomRole>();
     public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
     public DbSet<Development> Developments => Set<Development>();
+    public DbSet<ReviewFlag> ReviewFlags => Set<ReviewFlag>();
+    public DbSet<PublishGateResult> PublishGateResults => Set<PublishGateResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -766,6 +768,54 @@ public class CivicDbContext : DbContext
 
         modelBuilder.Entity<Concept>()
             .Property(c => c.KnowledgeKind).HasConversion<string>().HasMaxLength(30);
+
+        ConfigureRoomEditorial(modelBuilder);
+    }
+
+    /// <summary>
+    /// Review flags and publish gates — the editorial machinery behind correction
+    /// propagation (design 1y/1z, PRD 07).
+    /// </summary>
+    private static void ConfigureRoomEditorial(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ReviewFlag>(e =>
+        {
+            e.HasKey(f => f.Id);
+
+            e.Property(f => f.ObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.TriggerObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.Reason).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.Action).HasConversion<string>().HasMaxLength(20);
+            e.Property(f => f.Resolution).HasConversion<string>().HasMaxLength(20);
+
+            // The review queue, oldest first, and the six-hour sweep both read this.
+            e.HasIndex(f => new { f.ResolvedAt, f.CreatedAt });
+            // The read path asks "is this object flagged?" on every render.
+            e.HasIndex(f => new { f.ObjectType, f.ObjectId, f.ResolvedAt });
+
+            // Re-running propagation must not spam the queue with duplicates. Filtered to
+            // UNRESOLVED so the same object can legitimately be flagged again later for the
+            // same reason by a subsequent correction.
+            e.HasIndex(f => new { f.ObjectType, f.ObjectId, f.Reason, f.TriggerObjectId })
+                .IsUnique()
+                .HasFilter("\"ResolvedAt\" IS NULL")
+                .HasDatabaseName("IX_ReviewFlags_Open_Unique");
+        });
+
+        modelBuilder.Entity<PublishGateResult>(e =>
+        {
+            e.HasKey(g => g.Id);
+            e.Property(g => g.Gate).HasConversion<string>().HasMaxLength(40);
+
+            // Cleared per revision: editing after a sign-off re-opens the gate, because the
+            // sign-off attested to text that no longer exists.
+            e.HasIndex(g => new { g.RoomId, g.Gate, g.RoomRevision }).IsUnique();
+
+            e.HasOne(g => g.Room)
+                .WithMany()
+                .HasForeignKey(g => g.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     /// <summary>

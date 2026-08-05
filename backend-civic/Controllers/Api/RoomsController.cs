@@ -71,6 +71,20 @@ public class RoomsController : ControllerBase
             {
                 var dto = await _rooms.ToThemeDetailAsync(theme, ct);
                 dto.Viewer = viewer;
+
+                // The six-hour rule, at sentence granularity. A room whose status sentence
+                // is flagged for rewrite serves everything else and withholds the sentence,
+                // rather than vanishing — the timeline, the actors and the claim ledger are
+                // still true, and blanking them would destroy more than it protects.
+                var hidden = await _rooms.HiddenObjectsAsync(
+                    theme.Id, _user.GetCurrentUserId(), DateTime.UtcNow, ct);
+
+                if (hidden.Contains(new ObjectRef(ObjectType.Room, theme.Id)))
+                {
+                    dto.CurrentStatusSentence = "";
+                    dto.StatusSentenceUnderReview = true;
+                }
+
                 return Ok(dto);
             }
             case StoryRoom story:
@@ -184,10 +198,15 @@ public class RoomsController : ControllerBase
         var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
         if (room is null) return NotFound();
 
-        var developments = await _db.Developments.AsNoTracking()
-            .Where(d => d.RoomId == room.Id)
-            .OrderByDescending(d => d.OccurredAt)
-            .ToListAsync(ct);
+        var hidden = await _rooms.HiddenObjectsAsync(
+            room.Id, _user.GetCurrentUserId(), DateTime.UtcNow, ct);
+
+        var developments = (await _db.Developments.AsNoTracking()
+                .Where(d => d.RoomId == room.Id)
+                .OrderByDescending(d => d.OccurredAt)
+                .ToListAsync(ct))
+            .Where(d => !hidden.Contains(new ObjectRef(ObjectType.Development, d.Id)))
+            .ToList();
 
         var storySlugs = await _db.Rooms.AsNoTracking()
             .Where(r => developments.Select(d => d.StoryRoomId).Contains(r.Id))
