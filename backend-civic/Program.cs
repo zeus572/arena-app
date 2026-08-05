@@ -147,6 +147,10 @@ builder.Services.AddScoped<IDailyPuzzleGenerator, WhoseValueGenerator>();
 builder.Services.AddScoped<IDailyPuzzleGenerator, WhichIsTrueGenerator>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
+// ---- Topic Rooms knowledge graph (docs/Rooms Expansion) ----
+builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectLinkService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
+
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".
 var civicSocialOptions = builder.Configuration.GetSection(Arena.Shared.Social.SocialPublisherOptions.SectionName)

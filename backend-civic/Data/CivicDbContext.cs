@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Civic.API.Models;
 using Civic.API.Models.Daily;
+using Civic.API.Models.Rooms;
 using Arena.Shared.Social;
 
 namespace Civic.API.Data;
@@ -80,6 +81,12 @@ public class CivicDbContext : DbContext
     // without one.)
     public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
     public DbSet<DailyPuzzlePlay> DailyPuzzlePlays => Set<DailyPuzzlePlay>();
+
+    // Topic Rooms knowledge graph (docs/Rooms Expansion).
+    public DbSet<ObjectLink> ObjectLinks => Set<ObjectLink>();
+    public DbSet<SourceRef> SourceRefs => Set<SourceRef>();
+    public DbSet<Claim> Claims => Set<Claim>();
+    public DbSet<ClaimStatusHistory> ClaimStatusHistories => Set<ClaimStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -564,6 +571,91 @@ public class CivicDbContext : DbContext
 
         ConfigureCoalition(modelBuilder);
         ConfigureSocial(modelBuilder);
+        ConfigureRoomGraph(modelBuilder);
+    }
+
+    /// <summary>
+    /// The Topic Rooms knowledge graph (docs/Rooms Expansion, PRD 04).
+    ///
+    /// Claims, sources and the edges between them. Rooms themselves land in a later
+    /// migration; the graph goes first because correction fan-out — the capability the
+    /// whole feature rests on — is a property of the edge table, not of the rooms.
+    /// </summary>
+    private static void ConfigureRoomGraph(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ObjectLink>(e =>
+        {
+            e.HasKey(l => l.Id);
+
+            e.Property(l => l.FromType).HasConversion<string>().HasMaxLength(30);
+            e.Property(l => l.ToType).HasConversion<string>().HasMaxLength(30);
+            e.Property(l => l.Relation).HasConversion<string>().HasMaxLength(40);
+            e.Property(l => l.ProposedBy).HasConversion<string>().HasMaxLength(10);
+
+            // "What does this object contain / cite?"
+            e.HasIndex(l => new { l.FromType, l.FromId, l.Relation });
+
+            // THE fan-out index. "Which objects depend on this claim?" is one scan here,
+            // and that single query is why the graph is one polymorphic table instead of
+            // two dozen typed join tables.
+            e.HasIndex(l => new { l.ToType, l.ToId, l.Relation });
+
+            // Idempotent attach — but only over OPEN edges. Retired edges (ValidTo set) are
+            // deliberately allowed to repeat, because the same actor can join a committee,
+            // leave, and rejoin. A plain unique index would forbid the rejoin.
+            e.HasIndex(l => new { l.FromType, l.FromId, l.Relation, l.ToType, l.ToId })
+                .IsUnique()
+                .HasFilter("\"ValidTo\" IS NULL")
+                .HasDatabaseName("IX_ObjectLinks_Open_Unique");
+        });
+
+        modelBuilder.Entity<SourceRef>(e =>
+        {
+            e.HasKey(s => s.Id);
+            // Re-citing the same document must converge on one row, or a retraction cannot
+            // find everything resting on it.
+            e.HasIndex(s => s.UrlHash).IsUnique();
+            e.HasIndex(s => new { s.SourceType, s.PublishedAt });
+            // The withdrawal sweep (PRD 04 §14.3) scans by availability.
+            e.HasIndex(s => s.Availability);
+
+            e.Property(s => s.SourceType).HasConversion<string>().HasMaxLength(30);
+            e.Property(s => s.Availability).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<Claim>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => c.Slug).IsUnique();
+            // The extraction dedup key: two rooms describing the same fact converge here.
+            e.HasIndex(c => c.NormalizedTextHash).IsUnique();
+            // The ledger sorts least-settled first (design 1n).
+            e.HasIndex(c => new { c.Status, c.LastReviewedAt });
+
+            e.Property(c => c.Status).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.Kind).HasConversion<string>().HasMaxLength(20);
+
+            e.OwnsMany(c => c.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ClaimStatusHistory>(e =>
+        {
+            e.HasKey(h => h.Id);
+            e.HasIndex(h => new { h.ClaimId, h.ChangedAt });
+
+            e.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(30);
+            e.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(30);
+            e.Property(h => h.ChangeKind).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(h => h.Claim)
+                .WithMany()
+                .HasForeignKey(h => h.ClaimId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     /// <summary>SocialPublisher's single writable table (shared engine). Mirrors the debate app's
