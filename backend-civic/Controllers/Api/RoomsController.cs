@@ -172,6 +172,151 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
+    /// The Latest section (design 1g) — bounded developments, plus the honest denominator.
+    ///
+    /// The count of what was EXCLUDED ships alongside the list rather than being computed
+    /// on the client, because "we logged 260 and judged eight" is a disclosure and a
+    /// disclosure the client could get wrong is not one.
+    /// </summary>
+    [HttpGet("{slug}/latest")]
+    public async Task<ActionResult<RoomLatestDto>> Latest(string slug, CancellationToken ct)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var developments = await _db.Developments.AsNoTracking()
+            .Where(d => d.RoomId == room.Id)
+            .OrderByDescending(d => d.OccurredAt)
+            .ToListAsync(ct);
+
+        var storySlugs = await _db.Rooms.AsNoTracking()
+            .Where(r => developments.Select(d => d.StoryRoomId).Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, r => r.Slug, ct);
+
+        var theme = room as ThemeRoom;
+
+        return Ok(new RoomLatestDto
+        {
+            ArticlesConsidered = theme?.ArticlesConsideredCount ?? 0,
+            WindowDays = theme?.DevelopmentWindowDays ?? 0,
+            InclusionRules = theme?.InclusionRules ?? Array.Empty<string>(),
+            ExclusionRules = theme?.ExclusionRules ?? Array.Empty<string>(),
+            ExcludedCount = Math.Max(0, (theme?.ArticlesConsideredCount ?? 0) - developments.Count),
+            Developments = developments.Select(d => new DevelopmentDto
+            {
+                Id = d.Id,
+                OccurredAt = d.OccurredAt,
+                Category = d.Category.ToString(),
+                Headline = d.Headline,
+                Summary = d.Summary,
+                WhyItMatters = d.WhyItMatters,
+                InclusionReason = d.InclusionReason,
+                EvidenceStatus = d.EvidenceStatus.ToString(),
+                StoryRoomId = d.StoryRoomId,
+                StorySlug = d.StoryRoomId is { } id && storySlugs.TryGetValue(id, out var s) ? s : null,
+            }).ToList(),
+        });
+    }
+
+    /// <summary>The Understand section's timeline (design 1h).</summary>
+    [HttpGet("{slug}/timeline")]
+    public async Task<ActionResult<List<TimelineEventDto>>> Timeline(string slug, CancellationToken ct)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var events = await _db.TimelineEvents.AsNoTracking()
+            .Where(t => t.RoomId == room.Id)
+            .OrderBy(t => t.OccurredOn).ThenBy(t => t.Ordinal)
+            .ToListAsync(ct);
+
+        return Ok(events.Select(t => new TimelineEventDto
+        {
+            OccurredOn = t.OccurredOn,
+            OccurredPrecision = t.OccurredPrecision.ToString(),
+            Label = t.Label,
+            Description = t.Description,
+            Marker = t.Marker.ToString(),
+            WhatWasKnownThen = t.WhatWasKnownThen,
+            TextAlternative = t.TextAlternative,
+        }).ToList());
+    }
+
+    /// <summary>
+    /// People &amp; Power (design 1i), tiered by leverage over a named decision.
+    ///
+    /// <paramref name="decision"/> selects an alternative tiering; omitting it gives the
+    /// room's default. Actors with no role for the requested decision fall back to their
+    /// default row rather than vanishing — a re-sort that silently drops actors would
+    /// misrepresent who is involved.
+    /// </summary>
+    [HttpGet("{slug}/actors")]
+    public async Task<ActionResult<RoomActorsDto>> Actors(
+        string slug, [FromQuery] string? decision, CancellationToken ct)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var roles = await _db.ActorRoomRoles.AsNoTracking()
+            .Include(r => r.Actor)
+            .Where(r => r.RoomId == room.Id)
+            .ToListAsync(ct);
+
+        var chosen = roles
+            .Where(r => r.DecisionKey == decision)
+            .ToDictionary(r => r.ActorId);
+
+        foreach (var fallback in roles.Where(r => r.DecisionKey == null))
+        {
+            chosen.TryAdd(fallback.ActorId, fallback);
+        }
+
+        var actorIds = chosen.Keys.ToList();
+        var appearances = await _db.ObjectLinks.AsNoTracking()
+            .Where(l => l.ToType == ObjectType.Actor
+                     && actorIds.Contains(l.ToId)
+                     && l.ValidTo == null)
+            .GroupBy(l => l.ToId)
+            .Select(g => new { ActorId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ActorId, x => x.Count, ct);
+
+        RoomActorDto Map(ActorRoomRole r) => new()
+        {
+            Id = r.ActorId,
+            Slug = r.Actor?.Slug ?? "",
+            Name = r.Actor?.Name ?? "",
+            ActorType = r.Actor?.ActorType.ToString() ?? "",
+            Tier = r.Tier.ToString(),
+            RoleHere = r.RoleHere,
+            ActualPower = r.Actor?.ActualPower ?? "",
+            StatedWants = r.Actor?.StatedWants,
+            StatedWantsAsOf = r.Actor?.StatedWantsAsOf,
+            StatedWantsSourceRefId = r.Actor?.StatedWantsSourceRefId,
+            ConstrainedBy = r.Actor?.ConstrainedBy ?? "",
+            LeverageStatement = r.LeverageStatement,
+            AppearanceCount = appearances.TryGetValue(r.ActorId, out var n) ? n : 0,
+        };
+
+        List<RoomActorDto> Tier(ActorTier tier) => chosen.Values
+            .Where(r => r.Tier == tier)
+            .OrderBy(r => r.Ordinal)
+            .Select(Map)
+            .ToList();
+
+        return Ok(new RoomActorsDto
+        {
+            DecisionKey = decision,
+            AvailableDecisions = roles
+                .Where(r => r.DecisionKey is not null)
+                .Select(r => r.DecisionKey!)
+                .Distinct().OrderBy(d => d).ToList(),
+            Decides = Tier(ActorTier.Decides),
+            Shapes = Tier(ActorTier.Shapes),
+            Constrained = Tier(ActorTier.Constrained),
+        });
+    }
+
+    /// <summary>
     /// Record that this reader has seen the room at a revision.
     ///
     /// Anonymous callers are accepted deliberately: PRD 01 §TR-5 wants "since your last

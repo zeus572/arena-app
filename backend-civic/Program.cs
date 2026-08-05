@@ -152,6 +152,7 @@ builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectLinkService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomRevisionService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomQueryService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomSeeder>();
 
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".
@@ -420,6 +421,12 @@ static async Task InitializeDatabaseAsync(IServiceProvider services, Cancellatio
     // Seed the coalition demo provisions (constructed agents; idempotent).
     var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
     await coalitionSeeder.SeedAsync();
+
+    // Seed the hand-authored pilot Topic Room. No-ops unless Rooms:SeedPilot is on, which
+    // it is NOT in production — the pilot is a structural fixture and test corpus, and its
+    // copy has not been through editorial review.
+    var roomSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Rooms.RoomSeeder>();
+    await roomSeeder.SeedAsync(ct);
 
     // Pre-run the hottest read paths once, while the readiness gate still holds
     // traffic, so EF compiles their query shapes and the connection pool is warm

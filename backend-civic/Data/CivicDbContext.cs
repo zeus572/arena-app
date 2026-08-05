@@ -93,6 +93,10 @@ public class CivicDbContext : DbContext
     public DbSet<RoomRevision> RoomRevisions => Set<RoomRevision>();
     public DbSet<ChangeLogEntry> ChangeLogEntries => Set<ChangeLogEntry>();
     public DbSet<UserRoomState> UserRoomStates => Set<UserRoomState>();
+    public DbSet<Actor> Actors => Set<Actor>();
+    public DbSet<ActorRoomRole> ActorRoomRoles => Set<ActorRoomRole>();
+    public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
+    public DbSet<Development> Developments => Set<Development>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -681,6 +685,87 @@ public class CivicDbContext : DbContext
 
         modelBuilder.Entity<UserProfile>()
             .Property(p => p.RoomDensity).HasConversion<string>().HasMaxLength(10);
+
+        ConfigureRoomContent(modelBuilder);
+    }
+
+    /// <summary>
+    /// Actors, timeline events and developments — the content objects a room composes from.
+    /// </summary>
+    private static void ConfigureRoomContent(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Actor>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => a.Slug).IsUnique();
+            e.HasIndex(a => a.ActorType);
+            e.Property(a => a.ActorType).HasConversion<string>().HasMaxLength(30);
+
+            e.OwnsMany(a => a.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ActorRoomRole>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.RoomId, r.Tier, r.Ordinal });
+            e.Property(r => r.Tier).HasConversion<string>().HasMaxLength(20);
+
+            // One role per actor per room per decision. DecisionKey is nullable and null is
+            // the common case (the room's default tiering), so this hits the Postgres
+            // NULL-distinct trap head-on — a single unique index would happily accept two
+            // default roles for the same actor. Split, exactly like DailyPuzzle's locality.
+            e.HasIndex(r => new { r.RoomId, r.ActorId })
+                .IsUnique()
+                .HasFilter("\"DecisionKey\" IS NULL")
+                .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Default");
+            e.HasIndex(r => new { r.RoomId, r.ActorId, r.DecisionKey })
+                .IsUnique()
+                .HasFilter("\"DecisionKey\" IS NOT NULL")
+                .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Decision");
+
+            e.HasOne(r => r.Actor)
+                .WithMany()
+                .HasForeignKey(r => r.ActorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(r => r.Room)
+                .WithMany()
+                .HasForeignKey(r => r.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TimelineEvent>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => new { t.RoomId, t.OccurredOn });
+            e.Property(t => t.Marker).HasConversion<string>().HasMaxLength(20);
+            e.Property(t => t.OccurredPrecision).HasConversion<string>().HasMaxLength(10);
+
+            e.HasOne(t => t.Room)
+                .WithMany()
+                .HasForeignKey(t => t.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Development>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.HasIndex(d => new { d.RoomId, d.OccurredAt });
+            e.Property(d => d.Category).HasConversion<string>().HasMaxLength(30);
+            e.Property(d => d.EvidenceStatus).HasConversion<string>().HasMaxLength(30);
+
+            e.HasOne(d => d.Room)
+                .WithMany()
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Concept>()
+            .Property(c => c.KnowledgeKind).HasConversion<string>().HasMaxLength(30);
     }
 
     /// <summary>

@@ -122,6 +122,87 @@ public class ThemeRoomDetailDto : RoomSummaryDto
     public RoomViewerStateDto Viewer { get; set; } = new();
 }
 
+/// <summary>One row of the "Latest" section (design 1g).</summary>
+public class DevelopmentDto
+{
+    public Guid Id { get; set; }
+    public DateTime OccurredAt { get; set; }
+    public string Category { get; set; } = "";
+    public string Headline { get; set; } = "";
+    public string Summary { get; set; } = "";
+    /// <summary>Required on every development.</summary>
+    public string WhyItMatters { get; set; } = "";
+    /// <summary>Which clause of the inclusion rule let this in.</summary>
+    public string InclusionReason { get; set; } = "";
+    public string EvidenceStatus { get; set; } = "";
+    public Guid? StoryRoomId { get; set; }
+    public string? StorySlug { get; set; }
+}
+
+/// <summary>
+/// The Latest section, with its honest denominator. Design 1g states the bound plainly:
+/// "Eight developments in 34 days. We logged 260 articles and judged eight of them to have
+/// changed something." Both numbers ship with the list so the disclosure cannot drift.
+/// </summary>
+public class RoomLatestDto
+{
+    public List<DevelopmentDto> Developments { get; set; } = new();
+    public int ArticlesConsidered { get; set; }
+    public int WindowDays { get; set; }
+    public string[] InclusionRules { get; set; } = Array.Empty<string>();
+    public string[] ExclusionRules { get; set; } = Array.Empty<string>();
+    /// <summary>Considered minus logged — "what we left out".</summary>
+    public int ExcludedCount { get; set; }
+}
+
+/// <summary>One point on the design 1h timeline.</summary>
+public class TimelineEventDto
+{
+    public DateOnly OccurredOn { get; set; }
+    public string OccurredPrecision { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string Description { get; set; } = "";
+    /// <summary>Agreed | Contested | Trigger | Now — the marker vocabulary.</summary>
+    public string Marker { get; set; } = "";
+    /// <summary>What was known ON this date, not what is known now.</summary>
+    public string? WhatWasKnownThen { get; set; }
+    /// <summary>Required accessibility alternative to the visual track.</summary>
+    public string? TextAlternative { get; set; }
+}
+
+/// <summary>An actor card (design 1i), answering the five questions in fixed order.</summary>
+public class RoomActorDto
+{
+    public Guid Id { get; set; }
+    public string Slug { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string ActorType { get; set; } = "";
+    /// <summary>Decides | Shapes | Constrained, relative to the requested decision.</summary>
+    public string Tier { get; set; } = "";
+    public string RoleHere { get; set; } = "";
+    public string ActualPower { get; set; } = "";
+    /// <summary>Always a quote or filing with a date — never inferred motive.</summary>
+    public string? StatedWants { get; set; }
+    public DateTime? StatedWantsAsOf { get; set; }
+    public Guid? StatedWantsSourceRefId { get; set; }
+    public string ConstrainedBy { get; set; } = "";
+    public string LeverageStatement { get; set; } = "";
+    /// <summary>How many rooms and stories this actor appears in.</summary>
+    public int AppearanceCount { get; set; }
+}
+
+/// <summary>The actor map, plus the decision its ordering is relative to.</summary>
+public class RoomActorsDto
+{
+    /// <summary>Null when this is the room's default tiering.</summary>
+    public string? DecisionKey { get; set; }
+    /// <summary>Other decisions this room can re-sort by.</summary>
+    public List<string> AvailableDecisions { get; set; } = new();
+    public List<RoomActorDto> Decides { get; set; } = new();
+    public List<RoomActorDto> Shapes { get; set; } = new();
+    public List<RoomActorDto> Constrained { get; set; } = new();
+}
+
 public class StoryDimensionDto
 {
     public string Dimension { get; set; } = "";

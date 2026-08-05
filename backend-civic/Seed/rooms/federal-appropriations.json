@@ -1,0 +1,469 @@
+{
+  "//": "PILOT ROOM — a structural fixture and test corpus, not published content.",
+  "//scope": "Seeds only behind Rooms:SeedPilot (default false) at Rooms:PilotStatus (default Draft).",
+  "//content": "Deliberately built from durable, checkable process facts about how federal appropriations work, rather than from a live news cycle. The design handoff's U.S.-Iran sample copy is illustrative only and its own README says it must not ship as fact; PRD 07 would also require senior review for casualty and attribution claims, and there is no editorial team. Same ten sections, a fraction of the risk.",
+
+  "sources": [
+    {
+      "key": "cba1974",
+      "url": "https://www.congress.gov/bill/93rd-congress/house-bill/7130",
+      "title": "Congressional Budget and Impoundment Control Act of 1974 (Pub. L. 93-344)",
+      "organization": "U.S. Congress",
+      "sourceType": "PrimaryDocument",
+      "isPrimary": true,
+      "publishedAt": "1974-07-12T00:00:00Z",
+      "fullTextAvailable": true
+    },
+    {
+      "key": "usc31-1102",
+      "url": "https://www.govinfo.gov/app/details/USCODE-2022-title31/USCODE-2022-title31-subtitleII-chap11-sec1102",
+      "title": "31 U.S.C. § 1102 — Fiscal year",
+      "organization": "U.S. Government Publishing Office",
+      "sourceType": "PrimaryDocument",
+      "isPrimary": true,
+      "fullTextAvailable": true
+    },
+    {
+      "key": "ada",
+      "url": "https://www.govinfo.gov/app/details/USCODE-2022-title31/USCODE-2022-title31-subtitleII-chap13-subchapIII-sec1341",
+      "title": "31 U.S.C. § 1341 — Antideficiency Act, limitations on expending and obligating amounts",
+      "organization": "U.S. Government Publishing Office",
+      "sourceType": "PrimaryDocument",
+      "isPrimary": true,
+      "fullTextAvailable": true
+    },
+    {
+      "key": "gao-redbook",
+      "url": "https://www.gao.gov/legal/appropriations-law/red-book",
+      "title": "Principles of Federal Appropriations Law (the Red Book)",
+      "organization": "U.S. Government Accountability Office",
+      "sourceType": "GovernmentData",
+      "isPrimary": true,
+      "fullTextAvailable": true
+    },
+    {
+      "key": "usaspending",
+      "url": "https://www.usaspending.gov/",
+      "title": "USAspending.gov — federal obligations and outlays",
+      "organization": "U.S. Department of the Treasury",
+      "sourceType": "GovernmentData",
+      "isPrimary": true,
+      "fullTextAvailable": false
+    }
+  ],
+
+  "concepts": [
+    {
+      "slug": "appropriation",
+      "title": "Appropriation",
+      "category": "Budget",
+      "knowledgeKind": "Process",
+      "shortGloss": "A law letting an agency spend a specific amount for a specific purpose.",
+      "plainDefinition": "An appropriation is an act of Congress that provides legal authority for a federal agency to incur obligations and to make payments from the Treasury for a stated purpose, up to a stated amount, within a stated period.",
+      "whyItMatters": "Without an appropriation an agency cannot legally spend, no matter how popular the program or how clearly another law authorizes it. This is why a programme can exist on paper and still have no money.",
+      "currentExample": "The twelve regular appropriations bills that fund the federal government each fiscal year.",
+      "commonMisunderstanding": "That authorizing a program and funding it are the same act. They are two different bills, often passed years apart, and sometimes only one of them ever happens.",
+      "tryItQuestion": "A bill creating a new agency passes. Can the agency hire anyone?",
+      "confusionPairSlug": "authorization",
+      "confusionDiscriminator": "An authorization says a program may exist; an appropriation says money may be spent on it."
+    },
+    {
+      "slug": "authorization",
+      "title": "Authorization",
+      "category": "Budget",
+      "knowledgeKind": "Process",
+      "shortGloss": "A law establishing a program and setting a spending ceiling — not the money itself.",
+      "plainDefinition": "An authorization establishes, continues or modifies a federal program or agency and typically sets a maximum amount that may later be appropriated to it. It does not by itself provide any funds.",
+      "whyItMatters": "Coverage frequently reports an authorization figure as though the money is committed. It is a ceiling on a future decision, not a transfer.",
+      "currentExample": "An annual defense authorization act, which sets policy and ceilings but appropriates nothing.",
+      "commonMisunderstanding": "That an authorized dollar figure is money that has been provided.",
+      "tryItQuestion": "A bill authorizes $10 billion over five years. How much has been spent?",
+      "confusionPairSlug": "appropriation",
+      "confusionDiscriminator": "An authorization says a program may exist; an appropriation says money may be spent on it."
+    },
+    {
+      "slug": "obligation",
+      "title": "Obligation",
+      "category": "Budget",
+      "knowledgeKind": "Process",
+      "shortGloss": "A binding commitment to pay — signing the contract, not sending the cheque.",
+      "plainDefinition": "An obligation is a definite commitment by a federal agency that creates a legal liability to pay, such as signing a contract or issuing a grant award. The payment itself follows later.",
+      "whyItMatters": "Obligation is the stage where money stops being available for anything else. It is also the first stage that appears in public spending data, which is why so much reporting starts here.",
+      "currentExample": "An agency awarding a construction contract; the funds are obligated on award, and outlaid as the work is invoiced.",
+      "commonMisunderstanding": "That obligated money has been spent. The cash may leave the Treasury months or years later, and some of it never does.",
+      "tryItQuestion": "A contract is signed in September and paid the following June. In which year was the money obligated?",
+      "confusionPairSlug": "outlay",
+      "confusionDiscriminator": "An obligation is the promise to pay; an outlay is the money actually leaving the Treasury."
+    },
+    {
+      "slug": "outlay",
+      "title": "Outlay",
+      "category": "Budget",
+      "knowledgeKind": "Process",
+      "shortGloss": "Money actually leaving the Treasury.",
+      "plainDefinition": "An outlay is a payment made to liquidate an obligation — the point at which federal cash actually leaves the Treasury.",
+      "whyItMatters": "This is the only stage at which the government has, in plain language, spent the money. Every earlier stage is a form of intention.",
+      "currentExample": "A Treasury disbursement against an invoice on an already-obligated contract.",
+      "commonMisunderstanding": "That the headline figure in a spending story is an outlay. Usually it is a request or an appropriation, four or five stages earlier.",
+      "tryItQuestion": "Which of requested, appropriated and outlaid means the money is gone?",
+      "confusionPairSlug": "obligation",
+      "confusionDiscriminator": "An obligation is the promise to pay; an outlay is the money actually leaving the Treasury."
+    },
+    {
+      "slug": "continuing-resolution",
+      "title": "Continuing resolution",
+      "category": "Budget",
+      "knowledgeKind": "Process",
+      "shortGloss": "A stopgap law funding agencies at existing levels when the regular bills are late.",
+      "plainDefinition": "A continuing resolution is an appropriation that funds agencies at or near their prior-year levels for a limited period, used when Congress has not enacted the regular appropriations bills before the fiscal year begins.",
+      "whyItMatters": "It keeps agencies open, but it also freezes funding to last year's priorities and makes multi-year planning difficult.",
+      "currentExample": "A short-term measure carrying agencies past October 1 while negotiations continue.",
+      "commonMisunderstanding": "That a continuing resolution is a failure to fund the government. It is a real appropriation — just a temporary and backward-looking one.",
+      "tryItQuestion": "Under a continuing resolution, can an agency start a new program it just received authorization for?"
+    },
+    {
+      "slug": "antideficiency-act",
+      "title": "Antideficiency Act",
+      "category": "Law",
+      "knowledgeKind": "Law",
+      "shortGloss": "The law making it illegal to spend or commit money Congress has not appropriated.",
+      "plainDefinition": "A group of statutes, principally 31 U.S.C. § 1341, prohibiting federal officers from obligating or expending funds in excess of, or in advance of, an appropriation.",
+      "whyItMatters": "It is the reason a lapse in appropriations produces a shutdown rather than an IOU: without an appropriation, continuing to obligate is not merely unfunded, it is unlawful.",
+      "currentExample": "Agencies furloughing non-excepted staff when appropriations lapse.",
+      "commonMisunderstanding": "That agencies shut down because they run out of cash. They stop because continuing to obligate would be illegal.",
+      "tryItQuestion": "Why can't an agency keep operating on credit during a funding lapse?"
+    }
+  ],
+
+  "actors": [
+    {
+      "slug": "house-appropriations-committee",
+      "name": "House Committee on Appropriations",
+      "actorType": "Committee",
+      "alternateNames": ["House Appropriations"],
+      "actualPower": "Originates the twelve regular appropriations bills and sets the subcommittee allocations that cap each one.",
+      "constrainedBy": "Must clear the full House, the Senate and the President; bound by any statutory spending caps in force.",
+      "statedWants": "The committee's published purpose is to set discretionary spending levels through the twelve annual bills.",
+      "statedWantsSourceKey": "gao-redbook",
+      "tier": "Decides",
+      "leverageStatement": "Writes the bill text that every later stage either accepts or amends.",
+      "roleHere": "Originating chamber for appropriations under the Origination Clause practice.",
+      "ordinal": 0
+    },
+    {
+      "slug": "senate-appropriations-committee",
+      "name": "Senate Committee on Appropriations",
+      "actorType": "Committee",
+      "actualPower": "Marks up its own versions of the twelve bills and negotiates the final text in conference.",
+      "constrainedBy": "Senate floor procedure, including the cloture threshold on most legislation.",
+      "tier": "Decides",
+      "leverageStatement": "Can block or rewrite any House-passed appropriation.",
+      "roleHere": "The second of the two chambers that must agree on identical text.",
+      "ordinal": 1
+    },
+    {
+      "slug": "omb",
+      "name": "Office of Management and Budget",
+      "actorType": "Agency",
+      "alternateNames": ["OMB"],
+      "actualPower": "Prepares the President's budget request and apportions enacted appropriations to agencies, controlling the rate at which funds become available.",
+      "constrainedBy": "Cannot spend money Congress has not appropriated, and impoundment is limited by the 1974 Act.",
+      "statedWants": "Its statutory role is to apportion appropriations so as to prevent deficiencies.",
+      "statedWantsSourceKey": "cba1974",
+      "tier": "Shapes",
+      "leverageStatement": "Controls apportionment, so it sets the pace at which appropriated money becomes usable.",
+      "roleHere": "The bridge between an enacted appropriation and an agency's ability to obligate.",
+      "ordinal": 2
+    },
+    {
+      "slug": "cbo",
+      "name": "Congressional Budget Office",
+      "actorType": "Agency",
+      "alternateNames": ["CBO"],
+      "actualPower": "Produces the official cost estimates Congress uses to score legislation.",
+      "constrainedBy": "Advisory only — it scores bills, it does not decide them.",
+      "statedWants": "Established by the 1974 Act to give Congress budget information independent of the executive branch.",
+      "statedWantsSourceKey": "cba1974",
+      "tier": "Shapes",
+      "leverageStatement": "Its score frames what a bill is publicly understood to cost.",
+      "roleHere": "The source of the official cost estimate, where one exists.",
+      "ordinal": 3
+    },
+    {
+      "slug": "gao",
+      "name": "Government Accountability Office",
+      "actorType": "Agency",
+      "alternateNames": ["GAO"],
+      "actualPower": "Issues legal decisions on appropriations law and audits how funds were used.",
+      "constrainedBy": "Reports and opines; enforcement rests elsewhere.",
+      "tier": "Constrained",
+      "leverageStatement": "Rules after the fact on whether a use of funds was lawful.",
+      "roleHere": "The authority on what the stages mean, via the Red Book.",
+      "ordinal": 4
+    },
+    {
+      "slug": "federal-agencies",
+      "name": "Federal agencies",
+      "actorType": "GovernmentBody",
+      "actualPower": "Obligate and outlay appropriated funds within the purpose, time and amount limits set by law.",
+      "constrainedBy": "The Antideficiency Act, apportionment, and the purpose/time/amount rules.",
+      "tier": "Constrained",
+      "leverageStatement": "Decide the operational detail, but only inside limits set several stages earlier.",
+      "roleHere": "Where an appropriation finally becomes an obligation and then a payment.",
+      "ordinal": 5
+    }
+  ],
+
+  "claims": [
+    {
+      "slug": "fiscal-year-starts-october-1",
+      "text": "The federal fiscal year begins on October 1 and ends on September 30.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "Set in statute at 31 U.S.C. § 1102; not a matter of practice or convention.",
+      "whatWouldSettleIt": "Already settled — the date is fixed by statute and would require an act of Congress to change.",
+      "supportedBy": ["usc31-1102"]
+    },
+    {
+      "slug": "twelve-regular-appropriations-bills",
+      "text": "Congress is expected to enact twelve regular appropriations bills each fiscal year, one per subcommittee.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "The twelve-bill structure follows the standing subcommittee organization of the two appropriations committees.",
+      "whatWouldSettleIt": "Already settled, though the committees can and occasionally do reorganize their subcommittees.",
+      "supportedBy": ["gao-redbook"],
+      "assertedBy": ["house-appropriations-committee"]
+    },
+    {
+      "slug": "authorization-is-not-funding",
+      "text": "An authorization does not provide money; only an appropriation does.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "A foundational distinction in federal appropriations law, set out at length in the GAO Red Book.",
+      "whatWouldSettleIt": "Already settled as a matter of law.",
+      "supportedBy": ["gao-redbook", "cba1974"]
+    },
+    {
+      "slug": "obligated-is-not-spent",
+      "text": "Money that has been obligated has not necessarily been spent.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "Obligation creates a liability to pay; the outlay follows separately and may be in a later fiscal year or never occur.",
+      "whatWouldSettleIt": "Already settled — the two stages are separately defined and separately reported.",
+      "supportedBy": ["gao-redbook", "usaspending"]
+    },
+    {
+      "slug": "spending-verbs-in-coverage",
+      "text": "News coverage frequently describes a funding request using verbs that imply money has already been spent.",
+      "status": "PlausibleButUnresolved",
+      "kind": "Interpretation",
+      "evidenceSummary": "Widely observed by budget analysts, but we have no systematic measurement of how often it happens, so this is an interpretation rather than an established fact.",
+      "whatWouldSettleIt": "A coded sample of coverage of funding requests, counting how often a request is described with spending verbs."
+    },
+    {
+      "slug": "lapse-causes-shutdown-not-borrowing",
+      "text": "When appropriations lapse, agencies stop work because further obligation would be unlawful, not because cash has run out.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Follows directly from the Antideficiency Act's prohibition on obligating in advance of an appropriation; the operational detail of what counts as an excepted activity varies by agency.",
+      "whatWouldSettleIt": "Agency-by-agency contingency plans showing the legal basis cited for each excepted activity.",
+      "supportedBy": ["ada", "gao-redbook"]
+    }
+  ],
+
+  "stories": [
+    {
+      "slug": "how-an-appropriation-becomes-spending",
+      "title": "How an appropriation becomes spending",
+      "dek": "Five stages sit between a number in a budget request and money leaving the Treasury. Most coverage names only the first.",
+      "storyType": "Legislative",
+      "eventTime": "2026-08-01T00:00:00Z",
+      "estimatedMinutes": 4,
+      "howItWorksIntro": "A federal dollar passes through distinct legal stages, each requiring a different actor to act. A request is a proposal from the executive branch. An authorization permits a program to exist. An appropriation provides legal spending authority. An obligation commits the money. An outlay pays it. Skipping any stage in a description of where money stands is not a simplification; it changes what is being claimed.",
+      "concepts": ["appropriation", "authorization", "obligation", "outlay"],
+      "essentialFactClaims": ["authorization-is-not-funding", "obligated-is-not-spent"],
+      "whyItMatters": [
+        {
+          "dimension": "Legal",
+          "text": "Each stage has its own statutory basis, and an agency acting at the wrong stage is not merely early — it is in breach of the Antideficiency Act.",
+          "claimSlug": "lapse-causes-shutdown-not-borrowing"
+        },
+        {
+          "dimension": "Institutional",
+          "text": "Different bodies control different stages, so 'the government decided to spend this' names no one in particular.",
+          "claimSlug": null
+        },
+        {
+          "dimension": "Financial",
+          "text": "A request and an outlay can differ by the entire amount. Treating them as the same number overstates committed spending.",
+          "claimSlug": "obligated-is-not-spent"
+        },
+        {
+          "dimension": "Human",
+          "text": "For anyone waiting on a federally funded service, only the outlay stage changes anything.",
+          "claimSlug": null
+        },
+        {
+          "dimension": "Immediate",
+          "text": "A newly announced figure almost always sits at the first stage, whatever the verb attached to it.",
+          "claimSlug": "spending-verbs-in-coverage"
+        },
+        {
+          "dimension": "Longer term",
+          "text": "Funds can remain obligated but unspent across fiscal years, and some are eventually deobligated and returned.",
+          "claimSlug": "obligated-is-not-spent"
+        }
+      ],
+      "stakeholders": [
+        {
+          "group": "Agencies awaiting apportionment",
+          "impactSummary": "Cannot obligate until OMB apportions the enacted appropriation, regardless of what the bill says.",
+          "confidence": 0.9
+        },
+        {
+          "group": "Contractors and grantees",
+          "impactSummary": "Feel the obligation stage, when an award is made, rather than the appropriation stage.",
+          "confidence": 0.8
+        },
+        {
+          "group": "Readers of budget coverage",
+          "impactSummary": "Members of this group differ widely in how they read a funding figure, and some already distinguish the stages carefully. Treating them as one audience would overstate the confusion.",
+          "confidence": 0.3
+        }
+      ],
+      "nextSteps": [
+        {
+          "description": "The regular appropriations bills are enacted before the fiscal year begins.",
+          "verificationCondition": "Confirmed if all twelve regular bills are signed into law on or before September 30.",
+          "actorSlug": "house-appropriations-committee",
+          "expectedTiming": "By September 30"
+        },
+        {
+          "description": "A continuing resolution carries agencies into the new fiscal year instead.",
+          "verificationCondition": "Confirmed if a continuing resolution covering any of the twelve bills is enacted.",
+          "expectedTiming": "Late September"
+        }
+      ]
+    }
+  ],
+
+  "theme": {
+    "slug": "federal-appropriations",
+    "title": "Federal appropriations",
+    "dek": "How Congress decides what the federal government may spend, and the five stages between a proposed number and money actually leaving the Treasury.",
+    "alternateTitles": ["Federal budget process", "Government funding"],
+    "matchTerms": [
+      "appropriation", "appropriations", "continuing resolution", "government shutdown",
+      "budget request", "omnibus", "discretionary spending", "fiscal year",
+      "antideficiency", "apportionment", "outlay", "obligation"
+    ],
+    "scopeStatement": "The federal appropriations process itself: how spending authority is created, limited and executed. Covers the twelve regular bills, continuing resolutions, apportionment, obligation and outlay. Does not cover mandatory spending programs, tax policy, or state and local budgets.",
+    "inclusionRules": [
+      "An official body acted — a committee markup, a floor vote, an enactment, or a veto.",
+      "A funding stage advanced for a specific appropriation.",
+      "A verified fact about the process changed.",
+      "A claim's evidence status moved.",
+      "A prediction about the process resolved.",
+      "A correction was issued to something we had published.",
+      "An authoritative body issued a new legal interpretation of the process."
+    ],
+    "exclusionRules": [
+      "New commentary about an appropriation that was already logged.",
+      "Reporting that restates an earlier development without adding a fact.",
+      "Projections and estimates published without a stated method.",
+      "Coverage of mandatory spending, tax policy, or non-federal budgets."
+    ],
+    "currentStatusSentence": "The appropriations process has five distinct legal stages, and public discussion of federal spending routinely collapses them into one. This room keeps them separate and shows, for any given funding item, which stages have actually been reached and which are still empty.",
+    "topUnresolvedQuestion": "How often does coverage of a funding request describe it using verbs that imply the money has already been spent?",
+    "watchNext": "Whether the twelve regular appropriations bills are enacted before the fiscal year begins on October 1, or whether a continuing resolution carries agencies into the new year.",
+    "monitoringCadence": "Weekly",
+    "articlesConsideredCount": 0,
+    "developmentWindowDays": 34,
+    "sensitivity": "Standard",
+    "concepts": [
+      "appropriation", "authorization", "obligation", "outlay",
+      "continuing-resolution", "antideficiency-act"
+    ],
+    "claims": ["spending-verbs-in-coverage", "lapse-causes-shutdown-not-borrowing"],
+    "actors": [
+      "house-appropriations-committee", "senate-appropriations-committee",
+      "omb", "cbo", "gao", "federal-agencies"
+    ],
+    "essentialFacts": [
+      {
+        "text": "An authorization does not provide money. Only an appropriation does.",
+        "claimSlug": "authorization-is-not-funding"
+      },
+      {
+        "text": "Money that has been obligated has not necessarily been spent.",
+        "claimSlug": "obligated-is-not-spent"
+      },
+      {
+        "text": "The fiscal year begins on October 1, which is the deadline the whole process runs against.",
+        "claimSlug": "fiscal-year-starts-october-1"
+      }
+    ],
+    "terminologyNotes": [
+      {
+        "term": "spending",
+        "note": "We use 'spending' only for outlays — money that has left the Treasury. For earlier stages we name the stage: requested, authorized, appropriated, obligated."
+      },
+      {
+        "term": "shutdown",
+        "note": "We use 'lapse in appropriations' for the legal event and 'shutdown' for its operational consequence, because the two are frequently conflated and only the first has a statutory definition."
+      },
+      {
+        "term": "cut",
+        "note": "We avoid 'cut' without a baseline, since the same figure can be a cut against a request and an increase against the prior year. Where we use it, we state the baseline."
+      }
+    ],
+    "timeline": [
+      {
+        "occurredOn": "1921-06-10",
+        "occurredPrecision": "Day",
+        "label": "Budget and Accounting Act",
+        "description": "Created a single executive budget request and established the predecessors of OMB and GAO.",
+        "marker": "Agreed",
+        "whatWasKnownThen": "Before this, agencies sent requests to Congress individually with no unified executive proposal.",
+        "textAlternative": "1921: the Budget and Accounting Act creates a unified executive budget request and the offices that became OMB and GAO."
+      },
+      {
+        "occurredOn": "1974-07-12",
+        "occurredPrecision": "Day",
+        "label": "Congressional Budget and Impoundment Control Act",
+        "description": "Created the Congressional Budget Office and the budget resolution, and limited the President's ability to withhold appropriated funds.",
+        "marker": "Contested",
+        "whatWasKnownThen": "Passed amid a dispute over impoundment; how far the new limits would bind future presidents was not yet tested.",
+        "textAlternative": "1974: Congress creates CBO and the budget resolution, and restricts presidential impoundment."
+      },
+      {
+        "occurredOn": "1976-01-01",
+        "occurredPrecision": "Year",
+        "label": "Fiscal year moved to October 1",
+        "description": "The 1974 Act shifted the start of the fiscal year from July 1 to October 1 to give Congress more time.",
+        "marker": "Agreed",
+        "whatWasKnownThen": "The extra quarter was expected to make on-time enactment routine.",
+        "textAlternative": "1976: the fiscal year start moves from July 1 to October 1."
+      },
+      {
+        "occurredOn": "1980-01-01",
+        "occurredPrecision": "Year",
+        "label": "Antideficiency Act read to require shutdowns",
+        "description": "Attorney General opinions concluded that agencies generally may not continue operating during a lapse in appropriations.",
+        "marker": "Contested",
+        "whatWasKnownThen": "Earlier practice had often been to continue operating through short lapses; this interpretation changed that expectation.",
+        "textAlternative": "1980: legal opinions establish that a lapse in appropriations generally requires agencies to stop non-excepted work."
+      },
+      {
+        "occurredOn": "2026-08-05",
+        "occurredPrecision": "Day",
+        "label": "Now",
+        "description": "The room's current state.",
+        "marker": "Now",
+        "whatWasKnownThen": "This marker moves; it is not a historical event.",
+        "textAlternative": "The present day, marking the right-hand end of the timeline."
+      }
+    ],
+    "developments": []
+  }
+}

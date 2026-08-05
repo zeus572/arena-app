@@ -27,6 +27,13 @@ public class CivicApiFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Auth:RequireVerifiedEmail"] = "true",
+
+                // Do NOT seed the pilot Topic Room. Unlike Briefings and Concepts, rooms are
+                // mutable editorial content and Respawn truncates their tables between tests
+                // — the correction-propagation tests need a clean graph per case. Each rooms
+                // test therefore builds exactly the content it needs. This is a deliberate
+                // departure from the read-only-catalog precedent in DatabaseFixture.
+                ["Rooms:SeedPilot"] = "false",
             });
         });
 
