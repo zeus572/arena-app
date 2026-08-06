@@ -788,14 +788,6 @@
       ]
     },
     {
-      "slug": "spending-verbs-in-coverage",
-      "text": "News coverage frequently describes a funding request using verbs that imply money has already been spent.",
-      "status": "PlausibleButUnresolved",
-      "kind": "Interpretation",
-      "evidenceSummary": "Widely observed by budget analysts, but we have no systematic measurement of how often it happens, so this is an interpretation rather than an established fact.",
-      "whatWouldSettleIt": "A coded sample of coverage of funding requests, counting how often a request is described with spending verbs."
-    },
-    {
       "slug": "lapse-causes-shutdown-not-borrowing",
       "text": "When appropriations lapse, agencies stop work because further obligation would be unlawful, not because cash has run out.",
       "status": "StronglySupported",
@@ -1119,7 +1111,7 @@
         {
           "dimension": "Immediate",
           "text": "A newly announced figure almost always sits at the first stage, whatever the verb attached to it.",
-          "claimSlug": "spending-verbs-in-coverage"
+          "claimSlug": "coverage-uses-outlay-verbs"
         },
         {
           "dimension": "Longer term",
@@ -1227,6 +1219,7 @@
       "budget-reconciliation"
     ],
     "claims": [
+      "authorization-is-not-funding",
       "ca-medicaid-800m-withheld",
       "ca-medicaid-block-is-political",
       "congress-holds-the-purse",
@@ -1234,19 +1227,22 @@
       "defense-bill-funds-an-iran-conflict",
       "doj-fund-1-8b-dropped",
       "doj-fund-authority-unexplained",
+      "fiscal-year-starts-october-1",
       "hegseth-classified-supplemental",
       "house-passed-defense-bill-115t",
       "house-passed-stopgap-july-22",
       "iran-operations-cost-37-5b",
       "lapse-causes-shutdown-not-borrowing",
+      "obligated-is-not-spent",
       "passing-one-chamber-is-not-law",
       "pentagon-package-over-1t",
       "science-funding-control-contested",
       "scotus-requested-security-funding",
       "senate-deal-averts-shutdown",
       "shutdown-avoided-this-cycle",
-      "spending-verbs-in-coverage",
-      "third-shutdown-since-september"
+      "shutdown-stops-debt-payments",
+      "third-shutdown-since-september",
+      "twelve-regular-appropriations-bills"
     ],
     "actors": [
       "house-appropriations-committee",

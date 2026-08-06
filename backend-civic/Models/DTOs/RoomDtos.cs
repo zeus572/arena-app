@@ -372,3 +372,32 @@ public class RoomMoneyComparisonDto
     public bool Accepted { get; set; } = true;
     public string? RejectionReason { get; set; }
 }
+
+/// <summary>
+/// A room's claims ledger (design 1n), least settled first.
+///
+/// The counts travel with the list because the shape of a room's evidence is itself
+/// information: eleven confirmed and one disputed is a different room from three of each,
+/// and a reader cannot see that from a sorted list alone.
+/// </summary>
+public class RoomClaimsDto
+{
+    public int Total { get; set; }
+    public int UnsettledCount { get; set; }
+    public Dictionary<string, int> CountsByStatus { get; set; } = new();
+    public List<RoomClaimDto> Claims { get; set; } = new();
+}
+
+public class RoomClaimDto
+{
+    public Guid Id { get; set; }
+    public string Slug { get; set; } = "";
+    public string Text { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string? EvidenceSummary { get; set; }
+    /// <summary>Required on every claim — a claim nobody can say how to settle is not one.</summary>
+    public string WhatWouldSettleIt { get; set; } = "";
+    public int SupportingCount { get; set; }
+    public int ContradictingCount { get; set; }
+}

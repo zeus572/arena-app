@@ -320,6 +320,92 @@ public class RoomsController : ControllerBase
     }
 
     /// <summary>
+    /// This room's claims ledger (design 1n), least settled first.
+    ///
+    /// The order is the point. Design 1n states the rationale plainly — the unsettled claims
+    /// go at the top "because that is where you are most likely to be misled" — which is the
+    /// opposite of how a page normally sorts, and the opposite of what looks impressive.
+    ///
+    /// <c>False</c> and <c>Unsupported</c> claims are returned like any other. Deleting them
+    /// would erase the record that the claim exists and what the evidence does about it.
+    /// </summary>
+    [HttpGet("{slug}/claims")]
+    public async Task<ActionResult<RoomClaimsDto>> Claims(
+        string slug, [FromQuery] bool unsettledOnly = false, CancellationToken ct = default)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var claimIds = (await _links.OutgoingAsync(new ObjectRef(ObjectType.Room, room.Id), ct: ct))
+            .Where(l => l.ToType == ObjectType.Claim)
+            .Select(l => l.ToId)
+            .Distinct()
+            .ToList();
+
+        var claims = await _db.Claims.AsNoTracking()
+            .Where(c => claimIds.Contains(c.Id))
+            .ToListAsync(ct);
+
+        var evidence = (await _db.Set<ObjectLink>().AsNoTracking()
+                .Where(l => l.FromType == ObjectType.Claim
+                         && claimIds.Contains(l.FromId)
+                         && l.ToType == ObjectType.SourceRef
+                         && l.ValidTo == null)
+                .Select(l => new { l.FromId, l.Relation })
+                .ToListAsync(ct))
+            .ToLookup(x => x.FromId);
+
+        // Least settled first. Written as an explicit rank rather than relying on the enum's
+        // declaration order, which is grouped by meaning and would sort nonsensically.
+        static int Rank(ClaimStatus s) => s switch
+        {
+            ClaimStatus.Disputed => 0,
+            ClaimStatus.PlausibleButUnresolved => 1,
+            ClaimStatus.Unsupported => 2,
+            ClaimStatus.Prediction => 3,
+            ClaimStatus.Outdated => 4,
+            ClaimStatus.StronglySupported => 5,
+            ClaimStatus.False => 6,
+            ClaimStatus.Confirmed => 7,
+            _ => 8,
+        };
+
+        var unsettled = new[]
+        {
+            ClaimStatus.Disputed, ClaimStatus.PlausibleButUnresolved,
+            ClaimStatus.Unsupported, ClaimStatus.Prediction,
+        };
+
+        var filtered = unsettledOnly
+            ? claims.Where(c => unsettled.Contains(c.Status)).ToList()
+            : claims;
+
+        return Ok(new RoomClaimsDto
+        {
+            Total = claims.Count,
+            UnsettledCount = claims.Count(c => unsettled.Contains(c.Status)),
+            CountsByStatus = claims
+                .GroupBy(c => c.Status.ToString())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            Claims = filtered
+                .OrderBy(c => Rank(c.Status))
+                .ThenBy(c => c.Text)
+                .Select(c => new RoomClaimDto
+                {
+                    Id = c.Id,
+                    Slug = c.Slug,
+                    Text = c.Text,
+                    Status = c.Status.ToString(),
+                    Kind = c.Kind.ToString(),
+                    EvidenceSummary = c.EvidenceSummary,
+                    WhatWouldSettleIt = c.WhatWouldSettleIt,
+                    SupportingCount = evidence[c.Id].Count(e => e.Relation == LinkRelation.SupportedBy),
+                    ContradictingCount = evidence[c.Id].Count(e => e.Relation == LinkRelation.ContradictedBy),
+                }).ToList(),
+        });
+    }
+
+    /// <summary>
     /// The Money Trail (PRD 05, designs 1s and 1t).
     ///
     /// Every item returns all five rungs, including the empty ones, because the empty rungs

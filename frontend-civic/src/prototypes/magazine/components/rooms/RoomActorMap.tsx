@@ -70,7 +70,7 @@ export function RoomActorMap({ slug, initial }: { slug: string; initial: RoomAct
           <label className="flex flex-col gap-1 text-[12px] text-[var(--muted)]">
             Sorting by leverage over
             <select
-              className="border border-[var(--border)] bg-[var(--bg-elev)] px-3 py-2 text-[13px] text-[var(--fg)]"
+              className="min-h-[44px] border border-[var(--border)] bg-[var(--bg-elev)] px-3 py-2 text-[13px] text-[var(--fg)]"
               value={decision}
               onChange={(e) => setDecision(e.target.value)}
               data-testid="actor-decision-select"

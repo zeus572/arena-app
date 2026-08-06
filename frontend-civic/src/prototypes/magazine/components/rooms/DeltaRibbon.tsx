@@ -42,7 +42,7 @@ export function DeltaRibbon({ delta, slug }: { delta: RoomDelta; slug: string })
         <span className="text-[13px] text-[var(--muted)]">{changeTypes.join(" · ")}</span>
         <button
           type="button"
-          className="ml-auto border-b border-[var(--fg)] text-[13px]"
+          className="ml-auto inline-flex min-h-[44px] items-center border-b border-[var(--fg)] text-[13px]"
           onClick={() => setOpen((v) => !v)}
           data-testid="delta-toggle"
         >

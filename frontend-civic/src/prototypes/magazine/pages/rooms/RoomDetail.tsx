@@ -20,6 +20,8 @@ import { DeltaRibbon } from "../../components/rooms/DeltaRibbon";
 import { RoomLatestSection } from "../../components/rooms/RoomLatestSection";
 import { RoomTimeline } from "../../components/rooms/RoomTimeline";
 import { RoomActorMap } from "../../components/rooms/RoomActorMap";
+import { RoomBoard } from "../../components/rooms/RoomBoard";
+import { RoomClaimLedger } from "../../components/rooms/RoomClaimLedger";
 import { RoomMoneyTrail } from "../../components/rooms/RoomMoneyTrail";
 import { RoomSources } from "../../components/rooms/RoomSources";
 import { StoryRoom } from "./StoryRoom";
@@ -153,6 +155,17 @@ export default function RoomDetail() {
     );
   }
 
+  // A separate destination, not a density dial. Same fetched payload either way — the
+  // board omits explanation, never facts.
+  if (board) {
+    return (
+      <>
+        <BoardHeader room={room} onExit={() => setSearchParams({}, { replace: true })} />
+        <RoomBoard room={room} latest={latest} timeline={timeline} actors={actors} />
+      </>
+    );
+  }
+
   return (
     <article className="rooms-square" data-testid="room-detail" data-slug={room.slug}>
       {/* --- header ------------------------------------------------------------ */}
@@ -200,6 +213,10 @@ export default function RoomDetail() {
               fullWidth
               onClick={toggleFollow}
               disabled={followBusy}
+              // The shared Button's sm size is 34px tall. Rooms are designed to 44px touch
+              // targets (1aa/1bb), and there is an e2e test at 390px that measures it, so
+              // the floor is set here rather than by resizing Button for the whole app.
+              className="min-h-[44px]"
               data-testid="room-follow"
             >
               {followBusy ? "…" : following ? "Following" : "Follow this room"}
@@ -213,7 +230,7 @@ export default function RoomDetail() {
 
           <button
             type="button"
-            className="mt-4 text-[12px] underline"
+            className="mt-4 inline-flex min-h-[44px] items-center text-[12px] underline"
             onClick={() =>
               setSearchParams(board ? {} : { view: "board" }, { replace: true })
             }
@@ -312,7 +329,36 @@ export default function RoomDetail() {
       {timeline.length > 0 && <RoomTimeline events={timeline} />}
       {actors && <RoomActorMap slug={room.slug} initial={actors} />}
       <RoomMoneyTrail slug={room.slug} />
+      <RoomClaimLedger slug={room.slug} />
       <RoomSources room={room} />
     </article>
+  );
+}
+
+/** A deliberately thin board header: title, and the way back. Nothing else earns the space. */
+function BoardHeader({
+  room,
+  onExit,
+}: {
+  room: ThemeRoomDetail;
+  onExit: () => void;
+}) {
+  return (
+    <header className="rooms-square flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 pt-6">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--accent)]">
+          Situation board
+        </p>
+        <h1 className="mt-1 text-[26px] leading-tight md:text-[34px]">{room.title}</h1>
+      </div>
+      <button
+        type="button"
+        onClick={onExit}
+        className="min-h-[44px] text-[13px] underline"
+        data-testid="room-view-toggle"
+      >
+        Back to reading view
+      </button>
+    </header>
   );
 }

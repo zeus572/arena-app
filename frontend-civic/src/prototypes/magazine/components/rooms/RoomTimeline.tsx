@@ -72,7 +72,7 @@ export function RoomTimeline({ events }: { events: TimelineEvent[] }) {
           <li key={i} className="border-t border-[var(--border)] py-4">
             <button
               type="button"
-              className="w-full text-left"
+              className="min-h-[44px] w-full text-left"
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               aria-expanded={openIndex === i}
               data-testid="timeline-event"

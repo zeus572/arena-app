@@ -143,6 +143,35 @@ public class RoomSeedJsonTests
     }
 
     [Fact]
+    public void EveryAuthoredClaim_IsLinkedToTheRoom()
+    {
+        // A claim in the file but not in theme.claims exists in the database and appears
+        // nowhere: it is absent from the ledger, from the sources walk, and from every
+        // reverse scan that starts at the room. Nothing errors — it is simply invisible.
+        //
+        // This is not hypothetical. Five claims were stranded this way, including the one
+        // False claim, which is the single row that demonstrates the ledger retains claims
+        // the evidence has knocked down rather than quietly deleting them.
+        var file = Pilot();
+        var authored = file.Claims.Select(c => c.Slug).ToHashSet();
+        var linked = file.Theme!.Claims.ToHashSet();
+
+        authored.Except(linked).Should().BeEmpty(
+            "a claim the room does not reference cannot be reached from anywhere");
+    }
+
+    [Fact]
+    public void NoTwoClaims_SayTheSameThing()
+    {
+        // Duplicated claims are the failure the graph exists to prevent: two rows about the
+        // same proposition can hold different statuses, and a correction to one leaves the
+        // other standing. Slug uniqueness is the crude version of the check.
+        var slugs = Pilot().Claims.Select(c => c.Slug).ToList();
+
+        slugs.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void TheLoggedCount_NeverExceedsTheNumberOfArticlesConsidered()
     {
         // Design 1g prints "we logged N articles and judged M of them to have changed

@@ -136,3 +136,179 @@ test.describe("a published room", () => {
     await expect(page.getByTestId("evidence-legend")).toBeVisible();
   });
 });
+
+/**
+ * The surfaces added in F2, F4 and F5. Same rule as above: skip cleanly when the pilot is
+ * not seeded, so the suite stays green on a clean database.
+ */
+
+async function findRoom(request: import("@playwright/test").APIRequestContext, kind: string) {
+  const res = await request.get("http://localhost:5050/api/rooms");
+  const rooms = (await res.json()) as Array<{ slug: string; kind: string }>;
+  return rooms.find((r) => r.kind === kind);
+}
+
+test.describe("a story room", () => {
+  test("renders the story page, not the theme page", async ({ page, request }) => {
+    // The bug this guards: one URL serves two shapes, and a story rendered through the
+    // theme component showed a status-sentence heading with no sentence and four empty
+    // sections. Kind has to drive the choice of page.
+    const story = await findRoom(request, "Story");
+    test.skip(!story, "no published story room on this database");
+
+    await page.goto(`/rooms/${story!.slug}`);
+
+    await expect(page.getByTestId("story-room")).toBeVisible();
+    await expect(page.getByTestId("room-detail")).toHaveCount(0);
+    await expect(page.getByTestId("story-next-steps")).toBeVisible();
+  });
+
+  test("its facts carry evidence marks that link to the claim", async ({ page, request }) => {
+    const story = await findRoom(request, "Story");
+    test.skip(!story, "no published story room on this database");
+
+    await page.goto(`/rooms/${story!.slug}`);
+    await expect(page.getByTestId("story-room")).toBeVisible();
+
+    const facts = page.getByTestId("story-fact");
+    test.skip((await facts.count()) === 0, "story has no essential facts seeded");
+
+    await facts.first().getByRole("link", { name: "Evidence" }).click();
+
+    await expect(page.getByTestId("claim-detail")).toBeVisible();
+    // Required on every claim, so it always renders.
+    await expect(page.getByTestId("claim-what-would-settle-it")).toBeVisible();
+  });
+});
+
+async function moneyItemCount(
+  request: import("@playwright/test").APIRequestContext,
+  slug: string,
+) {
+  const res = await request.get(`http://localhost:5050/api/rooms/${slug}/money`);
+  const money = (await res.json()) as { items: unknown[] };
+  return money.items.length;
+}
+
+test.describe("the money trail", () => {
+  test("shows all five rungs including the empty ones", async ({ page, request }) => {
+    // "Empty stages render as visible empty, never omitted." A requested figure and a spent
+    // figure look identical without the blanks above them.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    // Decide whether to skip from the API, not from the DOM. The section fetches after
+    // mount, so counting elements straight after goto() races the render and turns a real
+    // regression into a silent skip.
+    const items = await moneyItemCount(request, theme!.slug);
+    test.skip(items === 0, "no money items seeded for this room");
+
+    await page.goto(`/rooms/${theme!.slug}`);
+    await expect(page.getByTestId("room-money")).toBeVisible();
+
+    const firstItem = page.getByTestId("money-item").first();
+    await expect(firstItem.getByTestId("money-ladder").locator("li")).toHaveCount(5);
+
+    // Required field, rendered as a panel rather than hidden behind a tooltip.
+    await expect(firstItem.getByTestId("money-does-not-mean")).toBeVisible();
+  });
+
+  test("never shows a total across the funding stages", async ({ page, request }) => {
+    // The single most common error in budget coverage. The API refuses to compute it; the
+    // page must not assemble one either.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    const items = await moneyItemCount(request, theme!.slug);
+    test.skip(items === 0, "no money items seeded for this room");
+
+    await page.goto(`/rooms/${theme!.slug}`);
+    const money = page.getByTestId("room-money");
+    await expect(money).toBeVisible();
+
+    await expect(money).not.toContainText(/total across/i);
+    await expect(money).toContainText(/nothing here is summed across stages/i);
+  });
+});
+
+test.describe("the situation board", () => {
+  test("is a different view of the same room, not just a wider one", async ({ page, request }) => {
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    await page.goto(`/rooms/${theme!.slug}?view=board`);
+
+    await expect(page.getByTestId("room-board")).toBeVisible();
+    // The reading view's article shell is gone; this is a destination, not a stylesheet.
+    await expect(page.getByTestId("room-detail")).toHaveCount(0);
+    await expect(page.getByTestId("room-claims")).toBeVisible();
+  });
+
+  test("the toggle returns to the reading view", async ({ page, request }) => {
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    await page.goto(`/rooms/${theme!.slug}?view=board`);
+    await page.getByTestId("room-view-toggle").click();
+
+    await expect(page.getByTestId("room-detail")).toBeVisible();
+    await expect(page.getByTestId("room-board")).toHaveCount(0);
+  });
+});
+
+test("the claims ledger puts the least settled claims first", async ({ page, request }) => {
+  // Design 1n's deliberate sort: unsettled at the top "because that is where you are most
+  // likely to be misled". The flattering order would be the other way round.
+  const theme = await findRoom(request, "Theme");
+  test.skip(!theme, "no published theme room on this database");
+
+  const res = await request.get(
+    `http://localhost:5050/api/rooms/${theme!.slug}/claims`,
+  );
+  const ledger = (await res.json()) as { unsettledCount: number; total: number };
+  test.skip(ledger.total === 0, "no claims seeded for this room");
+  test.skip(
+    ledger.unsettledCount === 0 || ledger.unsettledCount === ledger.total,
+    "ordering is only observable when the room holds both settled and unsettled claims",
+  );
+
+  await page.goto(`/rooms/${theme!.slug}`);
+  const rows = page.getByTestId("ledger-claim");
+  await expect(rows.first()).toBeVisible();
+
+  const unsettled = ["Disputed", "PlausibleButUnresolved", "Unsupported", "Prediction"];
+  await expect(rows.first()).toHaveAttribute(
+    "data-status",
+    new RegExp(`^(${unsettled.join("|")})$`),
+  );
+  await expect(rows.last()).not.toHaveAttribute(
+    "data-status",
+    new RegExp(`^(${unsettled.join("|")})$`),
+  );
+});
+
+test("every control in a room is a 44px touch target at 390px", async ({ page, request }) => {
+  // Designs 1aa / 1bb. Checked on the real page rather than by reading classnames, because
+  // a utility class that does not survive the cascade reads fine in source and fails here.
+  const theme = await findRoom(request, "Theme");
+  test.skip(!theme, "no published theme room on this database");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/rooms/${theme!.slug}`);
+  await expect(page.getByTestId("room-detail")).toBeVisible();
+
+  const controls = page.locator(
+    '[data-testid="room-detail"] button:visible, [data-testid="room-detail"] select:visible',
+  );
+  const count = await controls.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let i = 0; i < count; i++) {
+    const box = await controls.nth(i).boundingBox();
+    if (!box) continue;
+    expect(
+      box.height,
+      `control ${i} ("${(await controls.nth(i).innerText()).slice(0, 30)}") is ${box.height}px tall`,
+    ).toBeGreaterThanOrEqual(44);
+  }
+});

@@ -383,6 +383,26 @@ export interface RoomMoney {
   otherKindCount: number;
 }
 
+export interface RoomClaim {
+  id: string;
+  slug: string;
+  text: string;
+  status: ClaimStatus;
+  kind: ClaimKind;
+  evidenceSummary: string | null;
+  whatWouldSettleIt: string;
+  supportingCount: number;
+  contradictingCount: number;
+}
+
+/** The claims ledger, least settled first — design 1n's deliberate sort. */
+export interface RoomClaims {
+  total: number;
+  unsettledCount: number;
+  countsByStatus: Partial<Record<ClaimStatus, number>>;
+  claims: RoomClaim[];
+}
+
 // ---------------------------------------------------------------------------- calls
 
 export async function listRooms(kind?: RoomKind): Promise<RoomSummary[]> {
@@ -519,5 +539,12 @@ export async function getRoomSources(slug: string): Promise<RoomSources> {
 
 export async function getRoomMoney(slug: string): Promise<RoomMoney> {
   const { data } = await civicApi.get<RoomMoney>(`/rooms/${slug}/money`);
+  return data;
+}
+
+export async function getRoomClaims(slug: string, unsettledOnly = false): Promise<RoomClaims> {
+  const { data } = await civicApi.get<RoomClaims>(`/rooms/${slug}/claims`, {
+    params: unsettledOnly ? { unsettledOnly: true } : undefined,
+  });
   return data;
 }
