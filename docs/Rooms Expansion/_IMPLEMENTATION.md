@@ -1,7 +1,7 @@
 # Topic Rooms — implementation status
 
 **Branch:** `feature/civic-topic-rooms` · **PR:** [#97](https://github.com/zeus572/arena-app/pull/97) (draft)
-**Last updated:** 2026-08-05
+**Last updated:** 2026-08-06
 
 Read this first if you are picking the work up cold. The PRDs in this directory are the
 requirements of record; `design_handoff_topic_rooms/SCREENS.md` is the per-screen spec.
@@ -37,39 +37,37 @@ risk and gives the Money Trail real content.
 | R3 | `7c6ab26` | `ReviewFlag`, `PublishGateResult`, 9 publish gates, `CorrectionPropagationService`, `RoomVisibility`, `AdminRoomsController` |
 | R4/R5 | `77646d9` | `Interaction` + plays, `Prediction` + `UserPrediction`, Brier scoring, redaction, two controllers |
 | R6 | `dc44d97` | `MoneyItem` + `MoneyStageEntry`, `MoneyMath` |
+| Seed | `d69887b` | Pilot rebuilt from 300 live briefings — 20 sources, 12 concepts, 14 actors, 25 claims, 12 timeline events, 12 developments |
+| — | `acb12a3` | Decision-scoped actor tiering (the People & Power selector re-sorts) |
+| — | `741818f` | `/claims/:slug` page, `GET /rooms/{slug}/sources`, `ObjectResolver` un-parked |
+| F2 | `f098893` | Story Room pages; `/rooms/:slug` discriminates on kind |
+| F4 | `21fa4b4` | Money Trail — seed, `GET /rooms/{slug}/money`, five-rung ladder |
+| F5 | `ad7c0e4` | Situation Board, claims ledger + `GET /rooms/{slug}/claims`, 44px targets |
+| F3 | `9204ea5` | Four seeded interactions + their UI |
 
 Six migrations: `AddRoomsGraph`, `AddRooms`, `AddRoomContentObjects`, `AddRoomEditorial`,
 `AddRoomInteractionsAndPredictions`, `AddMoneyTrail`.
 
-**Test counts at handoff:** `Civic.UnitTests` 358/358 · `Civic.ApiTests` 363 passed ·
-`npm run build` clean · 68/68 vitest · 8/8 `e2e/rooms.spec.ts`.
+**Test counts:** `Civic.UnitTests` 361/361 · `Civic.ApiTests` 370 passed (1 pre-existing
+`BriefingsControllerTests` failure) · `npm run build` clean · 68/68 vitest ·
+21/21 `e2e/rooms.spec.ts`.
+
+## The pilot content
+
+The room is built from **300 briefings pulled from the live civic API**, covering
+2026-06-04 to 2026-08-05. 177 fall inside the 23-day development window; 13 are U.S.
+federal appropriations stories; 12 are logged as developments. Publisher, URL and
+publication time come off those records, so the source list cites AP, NPR, NYT, Politico
+and the Washington Post rather than our own explainers — with `fullTextAvailable: false`
+on all of them, which is true and is why nothing is extracted verbatim.
+
+Re-pull with the same method if the corpus needs refreshing; the window and the
+`ArticlesConsideredCount` denominator must be recomputed together or the disclosure
+under the Latest section becomes false.
 
 ---
 
 ## What is NOT done
-
-### F2 — Story Room pages (designs 1o, 1p)
-`StoryRoom` entities, API and DTOs all exist and the pilot seeds one
-(`/rooms/how-an-appropriation-becomes-spending`). There is **no story-specific page**, so
-that URL currently renders through the theme-room component and looks wrong. This is the
-most visible gap.
-
-Also unbuilt here: upgrading the existing `/bills` experience into a Story Room, which
-PRD 08 §12 calls the recommended first product decision.
-
-### F3 — Interaction UI (1o Explore, 1u, 1v, 1p Vote, 1x Sprint)
-Backend is complete and tested — scoring, redaction, Brier, calibration bands, XP. No React
-components. Every drag interaction needs a select-then-place keyboard fallback; that is an
-accessibility publish gate, not a nicety.
-
-### F4 — Money Trail UI (1s, 1t, 1w)
-`MoneyMath` and the entities are done and tested. No ladder rendering, no Budget Allocator,
-no Guess-the-Stage. **No read endpoints yet either** — `/rooms/{slug}/money` is specified in
-the plan but not implemented.
-
-### F5 — Board view + mobile (1b, 1aa, 1bb)
-`?view=board` currently only widens the layout shell; the Situation Board itself is not
-built. Mobile at 390px is untested beyond the existing responsive classes.
 
 ### R7 — LLM drafting + admin review UI (1y, 1z)
 `RoomCandidateService`, `RoomDraftService`, `ClaimExtractionService` do not exist. The four
@@ -179,9 +177,29 @@ Recorded because it will bite the next person too.
 
 ---
 
+### Still unbuilt inside F2–F5
+
+- **`/bills` as a Story Room.** PRD 08 §12 calls this the recommended first product
+  decision; the Story Room page now exists to receive it, but the bill experience has not
+  been moved onto it.
+- **Calibrated Prediction (1v)** has a backend, a payload kind and a scoring rule, but no
+  seeded `Prediction` row and no component. It is the one MVP interaction kind still dark.
+- **Budget Allocator (1w) and Guess-the-Funding-Stage.** Both are `InteractionKind` members
+  that are named but not built.
+- **Civic Sprint (1x)** — no completion surface. Note PRD 06 forbids giving it a score.
+- **Diff mode (1e).** `RoomRevision.SnapshotJson` is written for meaningful revisions, so
+  this stays a pure frontend decision with no schema change whenever it is wanted.
+- **The delta ribbon has never rendered against real data.** The pilot is at r.1 and has no
+  changelog, so `/delta` correctly returns nothing. Exercising it needs a second revision
+  committed through `RoomRevisionService`.
+
 ## Suggested next step
 
-**F2 (Story Room pages).** It closes the most visible gap — a seeded story room that
-currently renders through the wrong component — and PRD 08 §12 argues the bill-as-Story-Room
-upgrade is what forces the shared model to prove itself. Everything it needs on the backend
-already exists.
+**R7 (LLM drafting + `/admin/rooms`).** It is the last phase of the plan, it needs no
+migration, and the pilot is now a worked example of the output shape a draft should aim
+at — 12 developments with inclusion reasons, 25 claims spanning all eight statuses, money
+items that name what they do not mean.
+
+Failing that, **commit a second revision to the pilot** so the delta ribbon, the changelog
+and `lastMeaningfulUpdateAt` render at all. Every one of those surfaces is built and none
+has been seen with real data.
