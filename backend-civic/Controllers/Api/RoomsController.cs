@@ -38,17 +38,20 @@ public class RoomsController : ControllerBase
     private readonly ICurrentUserService _user;
     private readonly RoomQueryService _rooms;
     private readonly RoomRevisionService _revisions;
+    private readonly ObjectLinkService _links;
 
     public RoomsController(
         CivicDbContext db,
         ICurrentUserService user,
         RoomQueryService rooms,
-        RoomRevisionService revisions)
+        RoomRevisionService revisions,
+        ObjectLinkService links)
     {
         _db = db;
         _user = user;
         _rooms = rooms;
         _revisions = revisions;
+        _links = links;
     }
 
     [HttpGet]
@@ -234,6 +237,85 @@ public class RoomsController : ControllerBase
                 StoryRoomId = d.StoryRoomId,
                 StorySlug = d.StoryRoomId is { } id && storySlugs.TryGetValue(id, out var s) ? s : null,
             }).ToList(),
+        });
+    }
+
+    /// <summary>
+    /// Everything this room rests on, grouped by source type (design 1l).
+    ///
+    /// Reached by walking the graph rather than by a stored list: a room references claims,
+    /// claims cite sources, actors cite a source for what they say they want. Deriving it
+    /// means the section cannot drift out of step with the evidence the page actually shows
+    /// — adding a source to a claim adds it here, and only here.
+    ///
+    /// FullTextHeldCount is reported because it is usually low and that is the point. Civic
+    /// stores a headline and an RSS summary for reporting, not the article body, so most
+    /// rows here corroborate a claim rather than being something a passage was quoted from.
+    /// A methodology section that hid that would be advertising a rigour we do not have.
+    /// </summary>
+    [HttpGet("{slug}/sources")]
+    public async Task<ActionResult<RoomSourcesDto>> Sources(string slug, CancellationToken ct)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var claimIds = (await _links.OutgoingAsync(new ObjectRef(ObjectType.Room, room.Id), ct: ct))
+            .Where(l => l.ToType == ObjectType.Claim)
+            .Select(l => l.ToId)
+            .Distinct()
+            .ToList();
+
+        var claimRefs = claimIds.Select(id => new ObjectRef(ObjectType.Claim, id)).ToList();
+        var byClaim = await _links.OutgoingManyAsync(claimRefs, ct);
+
+        var sourceIds = byClaim
+            .SelectMany(g => g)
+            .Where(l => l.ToType == ObjectType.SourceRef
+                     && (l.Relation == LinkRelation.SupportedBy
+                      || l.Relation == LinkRelation.ContradictedBy))
+            .Select(l => l.ToId)
+            .ToList();
+
+        // Actors cite a source for their stated wants; design 1i requires it, so those
+        // sources belong in the methodology list too.
+        var actorSourceIds = await _db.ActorRoomRoles.AsNoTracking()
+            .Where(r => r.RoomId == room.Id && r.Actor!.StatedWantsSourceRefId != null)
+            .Select(r => r.Actor!.StatedWantsSourceRefId!.Value)
+            .ToListAsync(ct);
+
+        var allIds = sourceIds.Concat(actorSourceIds).Distinct().ToList();
+
+        var sources = await _db.SourceRefs.AsNoTracking()
+            .Where(s => allIds.Contains(s.Id))
+            .OrderByDescending(s => s.IsPrimary)
+            .ThenByDescending(s => s.PublishedAt)
+            .ToListAsync(ct);
+
+        return Ok(new RoomSourcesDto
+        {
+            Total = sources.Count,
+            FullTextHeldCount = sources.Count(s => s.FullTextAvailable),
+            Groups = sources
+                .GroupBy(s => s.SourceType)
+                .OrderBy(g => g.Key)
+                .Select(g => new RoomSourceGroupDto
+                {
+                    SourceType = g.Key.ToString(),
+                    Count = g.Count(),
+                    Sources = g.Select(s => new RoomSourceDto
+                    {
+                        Id = s.Id,
+                        Url = s.Url,
+                        Title = s.Title,
+                        Organization = s.Organization,
+                        SourceType = s.SourceType.ToString(),
+                        IsPrimary = s.IsPrimary,
+                        PublishedAt = s.PublishedAt,
+                        Availability = s.Availability.ToString(),
+                        FullTextAvailable = s.FullTextAvailable,
+                    }).ToList(),
+                })
+                .ToList(),
         });
     }
 

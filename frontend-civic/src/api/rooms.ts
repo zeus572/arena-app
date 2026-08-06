@@ -1,4 +1,4 @@
-import { civicApi } from "./client";
+import { civicApi, isNotFound } from "./client";
 
 /**
  * Topic Rooms (docs/Rooms Expansion).
@@ -282,6 +282,32 @@ export interface RoomRevisionMark {
   hasSnapshot: boolean;
 }
 
+/** One source behind the room, as returned by /rooms/{slug}/sources. */
+export interface RoomSource {
+  id: string;
+  url: string;
+  title: string;
+  organization: string | null;
+  sourceType: string;
+  isPrimary: boolean;
+  publishedAt: string | null;
+  availability: string;
+  /** False for most reporting: Civic holds a headline and an RSS summary, not the body. */
+  fullTextAvailable: boolean;
+}
+
+export interface RoomSourceGroup {
+  sourceType: string;
+  count: number;
+  sources: RoomSource[];
+}
+
+export interface RoomSources {
+  total: number;
+  fullTextHeldCount: number;
+  groups: RoomSourceGroup[];
+}
+
 // ---------------------------------------------------------------------------- calls
 
 export async function listRooms(kind?: RoomKind): Promise<RoomSummary[]> {
@@ -392,11 +418,8 @@ export async function getClaim(slug: string): Promise<ClaimDetail | undefined> {
   }
 }
 
-function isNotFound(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "response" in err &&
-    (err as { response?: { status?: number } }).response?.status === 404
-  );
+
+export async function getRoomSources(slug: string): Promise<RoomSources> {
+  const { data } = await civicApi.get<RoomSources>(`/rooms/${slug}/sources`);
+  return data;
 }

@@ -239,6 +239,7 @@ public class ClaimsController : ControllerBase
         PublishedAt = s.PublishedAt,
         RetrievedAt = s.RetrievedAt,
         Availability = s.Availability.ToString(),
+        FullTextAvailable = s.FullTextAvailable,
         HasInterest = s.HasInterest,
         InterestNote = s.InterestNote,
     };

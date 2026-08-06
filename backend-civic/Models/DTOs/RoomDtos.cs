@@ -242,3 +242,42 @@ public class StoryRoomDetailDto : RoomSummaryDto
     public Guid? SourceBillId { get; set; }
     public RoomViewerStateDto Viewer { get; set; } = new();
 }
+
+/// <summary>
+/// Sources &amp; Methodology (design 1l), derived from the graph rather than stored.
+/// </summary>
+public class RoomSourcesDto
+{
+    public int Total { get; set; }
+
+    /// <summary>
+    /// How many of these we hold the full text of.
+    ///
+    /// Reported rather than hidden because it is usually a small fraction. Civic stores a
+    /// headline and an RSS summary for reporting, so most rows corroborate a claim rather
+    /// than being a document a passage was quoted from.
+    /// </summary>
+    public int FullTextHeldCount { get; set; }
+
+    public List<RoomSourceGroupDto> Groups { get; set; } = new();
+}
+
+public class RoomSourceGroupDto
+{
+    public string SourceType { get; set; } = "";
+    public int Count { get; set; }
+    public List<RoomSourceDto> Sources { get; set; } = new();
+}
+
+public class RoomSourceDto
+{
+    public Guid Id { get; set; }
+    public string Url { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string? Organization { get; set; }
+    public string SourceType { get; set; } = "";
+    public bool IsPrimary { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public string Availability { get; set; } = "";
+    public bool FullTextAvailable { get; set; }
+}

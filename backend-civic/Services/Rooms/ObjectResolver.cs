@@ -37,13 +37,6 @@ public class ObjectResolver
     /// </summary>
     public static readonly IReadOnlySet<ObjectType> NotYetResolvable = new HashSet<ObjectType>
     {
-        ObjectType.Room,                 // R1
-        ObjectType.Actor,                // R2
-        ObjectType.TimelineEvent,        // R2
-        ObjectType.Development,          // R2
-        ObjectType.Interaction,          // R4
-        ObjectType.Prediction,           // R5
-        ObjectType.MoneyItem,            // R6
         ObjectType.ConversationCluster,  // out of scope (PRD 08 Gate 3)
     };
 
@@ -58,6 +51,13 @@ public class ObjectResolver
         ObjectType.NewsItem,
         ObjectType.Briefing,
         ObjectType.Provision,
+        ObjectType.Room,
+        ObjectType.Actor,
+        ObjectType.TimelineEvent,
+        ObjectType.Development,
+        ObjectType.Interaction,
+        ObjectType.Prediction,
+        ObjectType.MoneyItem,
     };
 
     public async Task<IReadOnlyDictionary<ObjectRef, ObjectSummary>> ResolveAsync(
@@ -159,6 +159,86 @@ public class ObjectResolver
                         Slug = p.Slug,
                         Label = p.Title,
                         Status = p.State.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.Room:
+                return await _db.Rooms.Where(r => ids.Contains(r.Id))
+                    .Select(r => new ObjectSummary
+                    {
+                        Type = ObjectType.Room,
+                        Id = r.Id,
+                        Slug = r.Slug,
+                        Label = r.Title,
+                        Sublabel = EF.Property<string>(r, "Kind"),
+                        Status = r.Status.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.Actor:
+                return await _db.Actors.Where(a => ids.Contains(a.Id))
+                    .Select(a => new ObjectSummary
+                    {
+                        Type = ObjectType.Actor,
+                        Id = a.Id,
+                        Slug = a.Slug,
+                        Label = a.Name,
+                        Sublabel = a.ActorType.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.TimelineEvent:
+                return await _db.TimelineEvents.Where(t => ids.Contains(t.Id))
+                    .Select(t => new ObjectSummary
+                    {
+                        Type = ObjectType.TimelineEvent,
+                        Id = t.Id,
+                        Slug = t.Id.ToString(),
+                        Label = t.Label,
+                        Status = t.Marker.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.Development:
+                return await _db.Developments.Where(d => ids.Contains(d.Id))
+                    .Select(d => new ObjectSummary
+                    {
+                        Type = ObjectType.Development,
+                        Id = d.Id,
+                        Slug = d.Id.ToString(),
+                        Label = d.Headline,
+                        Sublabel = d.Category.ToString(),
+                        Status = d.EvidenceStatus.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.Interaction:
+                return await _db.Interactions.Where(i => ids.Contains(i.Id))
+                    .Select(i => new ObjectSummary
+                    {
+                        Type = ObjectType.Interaction,
+                        Id = i.Id,
+                        Slug = i.Id.ToString(),
+                        Label = i.Prompt,
+                        Sublabel = i.Kind.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.Prediction:
+                return await _db.Predictions.Where(p => ids.Contains(p.Id))
+                    .Select(p => new ObjectSummary
+                    {
+                        Type = ObjectType.Prediction,
+                        Id = p.Id,
+                        Slug = p.Slug,
+                        Label = p.Proposition,
+                        Status = p.Outcome.ToString(),
+                    }).ToListAsync(ct);
+
+            case ObjectType.MoneyItem:
+                return await _db.MoneyItems.Where(m => ids.Contains(m.Id))
+                    .Select(m => new ObjectSummary
+                    {
+                        Type = ObjectType.MoneyItem,
+                        Id = m.Id,
+                        Slug = m.Slug,
+                        Label = m.Title,
+                        Sublabel = m.Kind.ToString(),
+                        Status = m.CurrentStage.ToString(),
                     }).ToListAsync(ct);
 
             default:

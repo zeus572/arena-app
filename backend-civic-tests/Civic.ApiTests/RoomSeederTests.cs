@@ -328,6 +328,71 @@ public class RoomSeederTests
     }
 
     [Fact]
+    public async Task AClaim_KnowsWhichRoomsItAppearsIn()
+    {
+        // "Where this appears" is the reader-facing half of correction fan-out: it is the
+        // same reverse edge scan the propagation service runs, rendered on the claim page.
+        //
+        // It broke silently once already. ObjectResolver parks types it cannot resolve yet,
+        // and Room/Actor stayed parked after R1 and R2 built them — so the edges were all
+        // there, the scan found them, and every row was dropped for want of a label. The
+        // coverage test passes either way, because parked still counts as handled.
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var claim = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<ClaimDetailDto>("/api/claims/coverage-uses-outlay-verbs");
+
+        claim!.AppearsIn.Should().NotBeEmpty(
+            "the pilot room references this claim, so the reverse scan must resolve it");
+        claim.AppearsIn.Should().Contain(a =>
+            a.ObjectType == "Room" && a.Slug == "federal-appropriations");
+        claim.AppearsIn.Should().OnlyContain(a => !string.IsNullOrWhiteSpace(a.Label),
+            "an unresolvable object renders as a blank row, which is worse than an error");
+    }
+
+    [Fact]
+    public async Task AClaimAssertedByAnActor_NamesTheActor()
+    {
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var claim = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<ClaimDetailDto>("/api/claims/iran-operations-cost-37-5b");
+
+        // Who said it establishes that it was said. Losing the name loses the distinction.
+        claim!.AssertedBy.Should().Contain(a =>
+            a.ObjectType == "Actor" && a.Slug == "secretary-of-defense");
+    }
+
+    [Fact]
+    public async Task SourcesEndpoint_DerivesTheListFromTheGraph()
+    {
+        // Sources & Methodology is walked from the graph, not stored on the room: room →
+        // claims → sources, plus whatever each actor cites for its stated wants. Deriving it
+        // is what stops the section drifting out of step with the evidence the page shows.
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var sources = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<RoomSourcesDto>("/api/rooms/federal-appropriations/sources");
+
+        sources!.Total.Should().BeGreaterThan(0);
+        sources.Groups.Should().NotBeEmpty();
+        sources.Groups.Sum(g => g.Count).Should().Be(sources.Total);
+        sources.Groups.Should().OnlyContain(g => g.Count == g.Sources.Count);
+
+        // The room cites reporting we hold no body text for, and the section says so rather
+        // than implying every citation is something a passage was quoted from.
+        sources.FullTextHeldCount.Should().BeLessThan(sources.Total);
+
+        // Each source appears once, however many claims cite it — the URL-hash unique index
+        // exists precisely so re-citing a document converges instead of forking the graph.
+        var ids = sources.Groups.SelectMany(g => g.Sources).Select(s => s.Id).ToList();
+        ids.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public async Task ChoosingADecision_ActuallyRetiersTheMap()
     {
         // Design 1i's premise is that leverage belongs to an actor AND a decision, not to an

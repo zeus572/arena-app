@@ -16,6 +16,9 @@ public class SourceRefDto
     public DateTime? PublishedAt { get; set; }
     public DateTime RetrievedAt { get; set; }
     public string Availability { get; set; } = "";
+    /// <summary>False for most reporting — we hold a headline and a summary, not the body.
+    /// Shown on the claim page so a citation never implies we quoted from it.</summary>
+    public bool FullTextAvailable { get; set; }
     public bool HasInterest { get; set; }
     public string? InterestNote { get; set; }
 }
