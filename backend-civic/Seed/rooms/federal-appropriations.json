@@ -1527,6 +1527,136 @@
         "inclusionReason": "An official body acted -- a formal funding request was made to Congress.",
         "evidenceStatus": "StronglySupported"
       }
+    ],
+    "moneyItems": [
+      {
+        "slug": "defense-appropriations-fy2027",
+        "title": "FY2027 defense appropriations bill",
+        "kind": "GovernmentOutlay",
+        "categoryKey": "defense",
+        "sourceProgramName": "Department of Defense appropriations",
+        "amountUsd": 1150000000000,
+        "fiscalYearStart": 2027,
+        "fiscalYearEnd": 2027,
+        "whatThisDoesNotMean": "It does not mean $1.15 trillion has been provided to the Pentagon. The bill has passed one chamber. It is not law, no agency may obligate against it, and the contingency provisions tied to a possible Iran conflict have released nothing. If the Senate amends the topline, this figure changes.",
+        "decidesNext": "The Senate, which must pass its own version and reconcile the difference.",
+        "exclusions": [
+          "Contingency amounts that would only be released on a triggering event.",
+          "Any classified supplemental request, including the one submitted on 5 August 2026.",
+          "Mandatory military retirement and health spending, which is not in this bill."
+        ],
+        "stages": {
+          "Requested": 1150000000000
+        },
+        "notApplicable": {},
+        "comparisons": [
+          {
+            "text": "Roughly thirty times the $37.5 billion the Pentagon says Iran operations have cost so far.",
+            "accepted": true
+          },
+          {
+            "text": "About $3,400 per U.S. household.",
+            "accepted": false,
+            "rejectionReason": "Per-household framing on a figure that has passed one chamber implies a bill that has been sent. Nothing here has been appropriated, let alone collected."
+          }
+        ],
+        "sourceKey": "rep-defense-115t"
+      },
+      {
+        "slug": "iran-operations-cost-to-date",
+        "title": "U.S. military operations related to Iran, cost to date",
+        "kind": "GovernmentOutlay",
+        "categoryKey": "defense",
+        "amountUsd": 37500000000,
+        "fiscalYearStart": 2026,
+        "fiscalYearEnd": 2026,
+        "whatThisDoesNotMean": "It does not mean $37.5 billion has left the Treasury. The department did not say whether the figure counts obligations, outlays, or both, so it is placed at the more conservative rung. It is also not a total: operations are ongoing and the number is described as the cost so far.",
+        "decidesNext": "Congress, if it requests a GAO or CBO review of the methodology.",
+        "estimateMethod": "Self-reported by the Department of Defense with no published methodology. Placed at Obligated rather than Spent because the department did not state which it measured, and asserting the higher rung would claim more than the source does.",
+        "exclusions": [
+          "Costs borne by other departments, including State and Veterans Affairs.",
+          "Future costs of equipment replacement and personnel care."
+        ],
+        "stages": {
+          "Requested": 37500000000,
+          "Authorized": 37500000000,
+          "Appropriated": 37500000000,
+          "Obligated": 37500000000
+        },
+        "notApplicable": {},
+        "comparisons": [],
+        "sourceKey": "rep-iran-cost"
+      },
+      {
+        "slug": "california-medicaid-withheld-fy2026",
+        "title": "California Medicaid funds withheld by CMS",
+        "kind": "GovernmentOutlay",
+        "categoryKey": "health",
+        "sourceProgramName": "Medicaid federal matching funds (Medi-Cal)",
+        "amountUsd": 800000000,
+        "fiscalYearStart": 2026,
+        "fiscalYearEnd": 2026,
+        "whatThisDoesNotMean": "It does not mean the money was cut, and it does not mean it was rescinded. The appropriation stands; a federal agency is declining to release it on a compliance finding the state disputes. Nor is it a final figure — reporting describes it as more than $800 million.",
+        "decidesNext": "CMS, which holds the release; or a court, if California litigates.",
+        "exclusions": [
+          "State funds California may spend to cover the gap in the meantime.",
+          "Any future disallowance beyond the amount currently withheld."
+        ],
+        "stages": {
+          "Requested": 800000000,
+          "Authorized": 800000000,
+          "Appropriated": 800000000
+        },
+        "notApplicable": {},
+        "comparisons": [
+          {
+            "text": "Medi-Cal covers roughly one in three Californians.",
+            "accepted": true
+          }
+        ],
+        "sourceKey": "rep-ca-medicaid"
+      },
+      {
+        "slug": "doj-anti-weaponization-fund",
+        "title": "DOJ 'anti-weaponization' fund",
+        "kind": "GovernmentOutlay",
+        "categoryKey": "justice",
+        "amountUsd": 1800000000,
+        "fiscalYearStart": 2027,
+        "fiscalYearEnd": 2027,
+        "whatThisDoesNotMean": "It does not mean $1.8 billion was cut. The fund was a proposal in pending legislation and was removed before enactment, so nothing was rescinded and no programme lost money it had. Separately, the department has not publicly identified the appropriation behind the fund it already described as existing.",
+        "decidesNext": "Nobody, unless the provision is reintroduced.",
+        "exclusions": [
+          "Any existing DOJ spending described under the same name."
+        ],
+        "stages": {
+          "Requested": 1800000000
+        },
+        "notApplicable": {
+          "Authorized": "The provision was removed from the legislation on 3 August 2026; no later stage will be reached unless it is reintroduced.",
+          "Appropriated": "Removed before enactment.",
+          "Obligated": "Removed before enactment.",
+          "Spent": "Removed before enactment."
+        },
+        "comparisons": [],
+        "sourceKey": "rep-blanche-deal"
+      },
+      {
+        "slug": "judiciary-security-request-fy2027",
+        "title": "Supreme Court security funding request",
+        "kind": "GovernmentOutlay",
+        "categoryKey": "judiciary",
+        "amountUsd": null,
+        "fiscalYearStart": 2027,
+        "fiscalYearEnd": 2027,
+        "whatThisDoesNotMean": "No figure has been published. Justices asked Congress for additional security funding; we have not found an amount, and an empty ladder here means we do not know rather than that nothing was requested.",
+        "decidesNext": "The appropriations subcommittee that writes the judiciary's line.",
+        "exclusions": [],
+        "stages": {},
+        "notApplicable": {},
+        "comparisons": [],
+        "sourceKey": "rep-scotus-security"
+      }
     ]
   }
 }

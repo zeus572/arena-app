@@ -20,6 +20,7 @@ import { DeltaRibbon } from "../../components/rooms/DeltaRibbon";
 import { RoomLatestSection } from "../../components/rooms/RoomLatestSection";
 import { RoomTimeline } from "../../components/rooms/RoomTimeline";
 import { RoomActorMap } from "../../components/rooms/RoomActorMap";
+import { RoomMoneyTrail } from "../../components/rooms/RoomMoneyTrail";
 import { RoomSources } from "../../components/rooms/RoomSources";
 import { StoryRoom } from "./StoryRoom";
 
@@ -310,6 +311,7 @@ export default function RoomDetail() {
       {latest && <RoomLatestSection latest={latest} />}
       {timeline.length > 0 && <RoomTimeline events={timeline} />}
       {actors && <RoomActorMap slug={room.slug} initial={actors} />}
+      <RoomMoneyTrail slug={room.slug} />
       <RoomSources room={room} />
     </article>
   );

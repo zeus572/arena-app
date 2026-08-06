@@ -319,6 +319,118 @@ public class RoomsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// The Money Trail (PRD 05, designs 1s and 1t).
+    ///
+    /// Every item returns all five rungs, including the empty ones, because the empty rungs
+    /// are usually the story: a headline number that has only been requested looks identical
+    /// to one that has been spent unless the page can show four blanks above it.
+    ///
+    /// There is deliberately no total. Requested plus Appropriated is not a quantity — the
+    /// same dollars appear at several rungs as they move — so the endpoint reports totals
+    /// per stage and <see cref="MoneyMath.TotalAcrossStages"/> throws if anyone asks for the
+    /// other kind. Outlays and modelled economic effects are returned in separate groups for
+    /// the same reason.
+    /// </summary>
+    [HttpGet("{slug}/money")]
+    public async Task<ActionResult<RoomMoneyDto>> Money(string slug, CancellationToken ct)
+    {
+        var room = await _rooms.FindBySlugAsync(slug, await ViewerLocalityAsync(ct), ct);
+        if (room is null) return NotFound();
+
+        var items = await _db.MoneyItems.AsNoTracking()
+            .Where(m => m.RoomId == room.Id)
+            .OrderBy(m => m.CurrentStage)
+            .ThenByDescending(m => m.AmountUsd)
+            .ToListAsync(ct);
+
+        var itemIds = items.Select(m => m.Id).ToList();
+
+        var entries = await _db.MoneyStageEntries.AsNoTracking()
+            .Where(e => itemIds.Contains(e.MoneyItemId))
+            .ToListAsync(ct);
+
+        var sourceIds = entries.Where(e => e.SourceRefId != null)
+            .Select(e => e.SourceRefId!.Value).Distinct().ToList();
+        var sources = await _db.SourceRefs.AsNoTracking()
+            .Where(s => sourceIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => new { s.Title, s.Organization, s.Url }, ct);
+
+        var byItem = entries.ToLookup(e => e.MoneyItemId);
+
+        RoomMoneyItemDto Map(MoneyItem m)
+        {
+            var rows = byItem[m.Id].OrderBy(e => MoneyMath.Ladder.ToList().IndexOf(e.Stage)).ToList();
+
+            return new RoomMoneyItemDto
+            {
+                Id = m.Id,
+                Slug = m.Slug,
+                Title = m.Title,
+                Kind = m.Kind.ToString(),
+                CategoryKey = m.CategoryKey,
+                Jurisdiction = m.Jurisdiction,
+                AmountUsd = m.AmountUsd,
+                AmountMinUsd = m.AmountMinUsd,
+                AmountMaxUsd = m.AmountMaxUsd,
+                // Computed here rather than in the client so the "not per year" warning on a
+                // multi-year figure cannot be dropped by a caller that forgets it exists.
+                PeriodLabel = MoneyMath.PeriodLabel(m),
+                IsMultiYear = MoneyMath.IsMultiYear(m),
+                CurrentStage = m.CurrentStage.ToString(),
+                CurrentStageVerb = MoneyMath.VerbFor(m.CurrentStage),
+                CanSaySpent = MoneyMath.CanSaySpent(m.CurrentStage),
+                WhatThisDoesNotMean = m.WhatThisDoesNotMean,
+                DecidesNext = m.DecidesNext,
+                EstimateMethod = m.EstimateMethod,
+                Exclusions = m.Exclusions,
+                Breakdown = m.Breakdown.Select(b => new RoomMoneyBreakdownDto
+                {
+                    Label = b.Label,
+                    AmountUsd = b.AmountUsd,
+                    Note = b.Note,
+                }).ToList(),
+                Comparisons = m.Comparisons.Select(c => new RoomMoneyComparisonDto
+                {
+                    Text = c.Text,
+                    Accepted = c.Accepted,
+                    RejectionReason = c.RejectionReason,
+                }).ToList(),
+                Stages = rows.Select(e => new RoomMoneyStageDto
+                {
+                    Stage = e.Stage.ToString(),
+                    Verb = MoneyMath.VerbFor(e.Stage),
+                    AmountUsd = e.AmountUsd,
+                    Applicability = e.Applicability.ToString(),
+                    NotApplicableReason = e.NotApplicableReason,
+                    AsOf = e.AsOf,
+                    SourceTitle = e.SourceRefId is { } sid && sources.TryGetValue(sid, out var s)
+                        ? s.Title : null,
+                    SourceOrganization = e.SourceRefId is { } sid2 && sources.TryGetValue(sid2, out var s2)
+                        ? s2.Organization : null,
+                    SourceUrl = e.SourceRefId is { } sid3 && sources.TryGetValue(sid3, out var s3)
+                        ? s3.Url : null,
+                }).ToList(),
+            };
+        }
+
+        var outlays = items.Where(m => m.Kind == MoneyItemKind.GovernmentOutlay).ToList();
+
+        return Ok(new RoomMoneyDto
+        {
+            Ladder = MoneyMath.Ladder.Select(s => s.ToString()).ToList(),
+            Items = items.Select(Map).ToList(),
+            // Per stage, never across. Named explicitly so a caller cannot drift into
+            // "just add up the ladder" — the single most common error in budget coverage.
+            TotalsByStage = MoneyMath.Ladder.ToDictionary(
+                s => s.ToString(),
+                s => MoneyMath.TotalAtStage(
+                    entries.Where(e => outlays.Any(o => o.Id == e.MoneyItemId)).ToList(), s)),
+            OutlayCount = outlays.Count,
+            OtherKindCount = items.Count - outlays.Count,
+        });
+    }
+
     /// <summary>The Understand section's timeline (design 1h).</summary>
     [HttpGet("{slug}/timeline")]
     public async Task<ActionResult<List<TimelineEventDto>>> Timeline(string slug, CancellationToken ct)

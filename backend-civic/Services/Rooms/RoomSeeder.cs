@@ -91,7 +91,7 @@ public class RoomSeeder
         if (file.Theme is not null)
         {
             await UpsertThemeAsync(
-                file.Theme, status, claims, concepts, actors, file.Actors, storyIds, ct);
+                file.Theme, status, claims, concepts, actors, file.Actors, sources, storyIds, ct);
         }
 
         _log.LogInformation(
@@ -367,6 +367,7 @@ public class RoomSeeder
         Dictionary<string, Guid> concepts,
         Dictionary<string, Guid> actors,
         List<SeedActor> actorSeeds,
+        Dictionary<string, Guid> sources,
         Dictionary<string, Guid> storyIds,
         CancellationToken ct)
     {
@@ -410,6 +411,7 @@ public class RoomSeeder
         await ReplaceTimelineAsync(room.Id, seed.Timeline, ct);
         await ReplaceDevelopmentsAsync(room.Id, seed.Developments, storyIds, ct);
         await ReplaceActorRolesAsync(room.Id, seed, actorSeeds, actors, ct);
+        await ReplaceMoneyItemsAsync(room.Id, seed.MoneyItems, sources, ct);
 
         var roomRef = new ObjectRef(ObjectType.Room, room.Id);
         await LinkRoomContentAsync(roomRef, seed, claims, concepts, ct);
@@ -477,6 +479,90 @@ public class RoomSeeder
                 TextAlternative = t.TextAlternative,
                 Ordinal = i++,
             });
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Money items and their ladders, replaced wholesale like the room's other children.
+    ///
+    /// All five rungs are written for every item whether or not they carry an amount.
+    /// <see cref="MoneyMath.BuildLadder"/> is the only way rows are made, so "empty stages
+    /// render as visible empty, never omitted" holds for seeded data and for anything an
+    /// admin enters later, without either path remembering to do it.
+    /// </summary>
+    private async Task ReplaceMoneyItemsAsync(
+        Guid roomId,
+        List<SeedMoneyItem> seeds,
+        Dictionary<string, Guid> sources,
+        CancellationToken ct)
+    {
+        var existing = await _db.MoneyItems.Where(m => m.RoomId == roomId).ToListAsync(ct);
+        if (existing.Count > 0)
+        {
+            var ids = existing.Select(m => m.Id).ToList();
+            _db.MoneyStageEntries.RemoveRange(
+                await _db.MoneyStageEntries.Where(e => ids.Contains(e.MoneyItemId)).ToListAsync(ct));
+            _db.MoneyItems.RemoveRange(existing);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        foreach (var m in seeds)
+        {
+            var stages = m.Stages.ToDictionary(
+                kv => ParseEnum(kv.Key, FundingStage.Requested), kv => kv.Value);
+            var notApplicable = m.NotApplicable.ToDictionary(
+                kv => ParseEnum(kv.Key, FundingStage.Requested), kv => kv.Value);
+
+            var item = new MoneyItem
+            {
+                Id = Guid.NewGuid(),
+                Slug = m.Slug,
+                RoomId = roomId,
+                Title = m.Title,
+                Kind = ParseEnum(m.Kind, MoneyItemKind.GovernmentOutlay),
+                Jurisdiction = m.Jurisdiction,
+                SourceProgramName = m.SourceProgramName,
+                CategoryKey = m.CategoryKey,
+                AmountUsd = m.AmountUsd,
+                AmountMinUsd = m.AmountMinUsd,
+                AmountMaxUsd = m.AmountMaxUsd,
+                FiscalYearStart = m.FiscalYearStart,
+                FiscalYearEnd = m.FiscalYearEnd == 0 ? m.FiscalYearStart : m.FiscalYearEnd,
+                IsRecurring = m.IsRecurring,
+                IsMandatory = m.IsMandatory,
+                WhatThisDoesNotMean = m.WhatThisDoesNotMean,
+                DecidesNext = m.DecidesNext,
+                EstimateMethod = m.EstimateMethod,
+                Exclusions = m.Exclusions,
+                Breakdown = m.Breakdown.Select(b => new MoneyBreakdownLine
+                {
+                    Label = b.Label,
+                    AmountUsd = b.AmountUsd,
+                    Note = b.Note,
+                }).ToList(),
+                Comparisons = m.Comparisons.Select(c => new MoneyComparison
+                {
+                    Text = c.Text,
+                    Accepted = c.Accepted,
+                    RejectionReason = c.RejectionReason,
+                }).ToList(),
+            };
+
+            var rows = MoneyMath.BuildLadder(item.Id, stages, notApplicable);
+            item.CurrentStage = MoneyMath.CurrentStage(rows);
+
+            if (m.SourceKey is { } key && sources.TryGetValue(key, out var sourceId))
+            {
+                foreach (var row in rows.Where(r => r.Applicability == StageApplicability.Present))
+                {
+                    row.SourceRefId = sourceId;
+                }
+            }
+
+            _db.MoneyItems.Add(item);
+            _db.MoneyStageEntries.AddRange(rows);
         }
 
         await _db.SaveChangesAsync(ct);

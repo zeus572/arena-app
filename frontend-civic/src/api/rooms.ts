@@ -318,6 +318,71 @@ export interface RoomSources {
   groups: RoomSourceGroup[];
 }
 
+/** One rung of the five-stage funding ladder. All five are always returned. */
+export interface RoomMoneyStage {
+  stage: string;
+  /** The verb that is actually true at this stage. */
+  verb: string;
+  amountUsd: number | null;
+  applicability: "Present" | "EmptyPending" | "NotApplicable";
+  notApplicableReason: string | null;
+  asOf: string | null;
+  sourceTitle: string | null;
+  sourceOrganization: string | null;
+  sourceUrl: string | null;
+}
+
+export interface RoomMoneyBreakdown {
+  label: string;
+  amountUsd: number;
+  note: string | null;
+}
+
+export interface RoomMoneyComparison {
+  text: string;
+  /** False renders struck through with the reason — design 1s shows refused comparisons. */
+  accepted: boolean;
+  rejectionReason: string | null;
+}
+
+export interface RoomMoneyItem {
+  id: string;
+  slug: string;
+  title: string;
+  kind: string;
+  categoryKey: string | null;
+  jurisdiction: string;
+  amountUsd: number | null;
+  amountMinUsd: number | null;
+  amountMaxUsd: number | null;
+  /** Computed server-side so the "not per year" warning cannot be dropped. */
+  periodLabel: string;
+  isMultiYear: boolean;
+  currentStage: string;
+  currentStageVerb: string;
+  /** False everywhere except Spent. */
+  canSaySpent: boolean;
+  whatThisDoesNotMean: string;
+  decidesNext: string | null;
+  estimateMethod: string | null;
+  exclusions: string[];
+  breakdown: RoomMoneyBreakdown[];
+  comparisons: RoomMoneyComparison[];
+  stages: RoomMoneyStage[];
+}
+
+/**
+ * The Money Trail. There is no grand total and there must never be one — the same dollars
+ * appear at several rungs as they move, so totals are per stage only.
+ */
+export interface RoomMoney {
+  ladder: string[];
+  items: RoomMoneyItem[];
+  totalsByStage: Record<string, number>;
+  outlayCount: number;
+  otherKindCount: number;
+}
+
 // ---------------------------------------------------------------------------- calls
 
 export async function listRooms(kind?: RoomKind): Promise<RoomSummary[]> {
@@ -449,5 +514,10 @@ export async function getClaim(slug: string): Promise<ClaimDetail | undefined> {
 
 export async function getRoomSources(slug: string): Promise<RoomSources> {
   const { data } = await civicApi.get<RoomSources>(`/rooms/${slug}/sources`);
+  return data;
+}
+
+export async function getRoomMoney(slug: string): Promise<RoomMoney> {
+  const { data } = await civicApi.get<RoomMoney>(`/rooms/${slug}/money`);
   return data;
 }

@@ -395,6 +395,67 @@ public class RoomSeederTests
     }
 
     [Fact]
+    public async Task MoneyEndpoint_ReturnsAllFiveRungsForEveryItem()
+    {
+        // "Empty stages render as visible empty, never omitted" is the guarantee the whole
+        // section rests on. An item with three rows would hide that two stages are empty,
+        // which is usually the most important thing about a headline number.
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var money = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<RoomMoneyDto>("/api/rooms/federal-appropriations/money");
+
+        money!.Items.Should().NotBeEmpty();
+        money.Ladder.Should().HaveCount(5);
+        money.Items.Should().OnlyContain(i => i.Stages.Count == 5);
+        money.Items.Should().OnlyContain(i =>
+            !string.IsNullOrWhiteSpace(i.WhatThisDoesNotMean));
+
+        // A stage that does not apply says why, rather than looking merely unreached.
+        money.Items.SelectMany(i => i.Stages)
+            .Where(s => s.Applicability == "NotApplicable")
+            .Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.NotApplicableReason));
+
+        // The pilot's point: the largest figure in the room has passed one chamber.
+        var defense = money.Items.Single(i => i.Slug == "defense-appropriations-fy2027");
+        defense.CurrentStage.Should().Be("Requested");
+        defense.CanSaySpent.Should().BeFalse();
+        defense.CurrentStageVerb.Should().NotContain("spent");
+
+        // And the clearest illustration of the gap: appropriated, not released.
+        var medicaid = money.Items.Single(i => i.Slug == "california-medicaid-withheld-fy2026");
+        medicaid.CurrentStage.Should().Be("Appropriated");
+        medicaid.Stages.Single(s => s.Stage == "Obligated").Applicability
+            .Should().Be("EmptyPending");
+    }
+
+    [Fact]
+    public async Task MoneyEndpoint_ReportsTotalsPerStageAndNeverAcrossThem()
+    {
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var money = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<RoomMoneyDto>("/api/rooms/federal-appropriations/money");
+
+        money!.TotalsByStage.Should().HaveCount(5);
+
+        // Each stage total is the sum of the amounts actually present at that rung, and
+        // nothing in the payload invites adding them together. Requested is necessarily the
+        // largest here because every item that reached a later rung also passed this one.
+        var requested = money.TotalsByStage["Requested"];
+        var spent = money.TotalsByStage["Spent"];
+        requested.Should().BeGreaterThan(0);
+        spent.Should().Be(0m, "nothing in this room has reached the Spent rung");
+        requested.Should().BeGreaterThan(money.TotalsByStage["Obligated"]);
+
+        // Estimates and modelled effects would be excluded from those totals; the counts
+        // are surfaced so a reader can tell whether any exist.
+        (money.OutlayCount + money.OtherKindCount).Should().Be(money.Items.Count);
+    }
+
+    [Fact]
     public async Task SourcesEndpoint_DerivesTheListFromTheGraph()
     {
         // Sources & Methodology is walked from the graph, not stored on the room: room →

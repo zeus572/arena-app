@@ -290,3 +290,85 @@ public class RoomSourceDto
     public string Availability { get; set; } = "";
     public bool FullTextAvailable { get; set; }
 }
+
+/// <summary>
+/// The Money Trail for one room (PRD 05, designs 1s / 1t).
+///
+/// There is no grand total and there must never be one: the same dollars appear at
+/// Requested, Appropriated, Obligated and Spent as they move, so adding the rungs
+/// double-counts them. Totals are reported per stage, and only for government outlays.
+/// </summary>
+public class RoomMoneyDto
+{
+    /// <summary>The five rungs in order, so the client renders them without hardcoding.</summary>
+    public List<string> Ladder { get; set; } = new();
+    public List<RoomMoneyItemDto> Items { get; set; } = new();
+    /// <summary>Government outlays only, one total per rung. Never summed across rungs.</summary>
+    public Dictionary<string, decimal> TotalsByStage { get; set; } = new();
+    public int OutlayCount { get; set; }
+    /// <summary>Estimates and modelled effects, kept out of the totals above.</summary>
+    public int OtherKindCount { get; set; }
+}
+
+public class RoomMoneyItemDto
+{
+    public Guid Id { get; set; }
+    public string Slug { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string? CategoryKey { get; set; }
+    public string Jurisdiction { get; set; } = "";
+
+    public decimal? AmountUsd { get; set; }
+    public decimal? AmountMinUsd { get; set; }
+    public decimal? AmountMaxUsd { get; set; }
+
+    /// <summary>Computed server-side so the "not per year" warning cannot be dropped.</summary>
+    public string PeriodLabel { get; set; } = "";
+    public bool IsMultiYear { get; set; }
+
+    public string CurrentStage { get; set; } = "";
+    /// <summary>The verb that is actually true at this stage.</summary>
+    public string CurrentStageVerb { get; set; } = "";
+    /// <summary>False everywhere except Spent. The room's whole thesis in one boolean.</summary>
+    public bool CanSaySpent { get; set; }
+
+    public string WhatThisDoesNotMean { get; set; } = "";
+    public string? DecidesNext { get; set; }
+    public string? EstimateMethod { get; set; }
+    public string[] Exclusions { get; set; } = Array.Empty<string>();
+
+    public List<RoomMoneyBreakdownDto> Breakdown { get; set; } = new();
+    /// <summary>Includes REJECTED comparisons with their reason — design 1s shows them.</summary>
+    public List<RoomMoneyComparisonDto> Comparisons { get; set; } = new();
+    /// <summary>All five rungs, always, including the empty ones.</summary>
+    public List<RoomMoneyStageDto> Stages { get; set; } = new();
+}
+
+public class RoomMoneyStageDto
+{
+    public string Stage { get; set; } = "";
+    public string Verb { get; set; } = "";
+    public decimal? AmountUsd { get; set; }
+    /// <summary>Present | EmptyPending | NotApplicable.</summary>
+    public string Applicability { get; set; } = "";
+    public string? NotApplicableReason { get; set; }
+    public DateTime? AsOf { get; set; }
+    public string? SourceTitle { get; set; }
+    public string? SourceOrganization { get; set; }
+    public string? SourceUrl { get; set; }
+}
+
+public class RoomMoneyBreakdownDto
+{
+    public string Label { get; set; } = "";
+    public decimal AmountUsd { get; set; }
+    public string? Note { get; set; }
+}
+
+public class RoomMoneyComparisonDto
+{
+    public string Text { get; set; } = "";
+    public bool Accepted { get; set; } = true;
+    public string? RejectionReason { get; set; }
+}

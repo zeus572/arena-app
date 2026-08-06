@@ -151,6 +151,70 @@ public class SeedDevelopment
     public string? StorySlug { get; set; }
 }
 
+/// <summary>
+/// One funding item and where it actually sits on the five-rung ladder (PRD 05, design 1s).
+///
+/// <see cref="Stages"/> carries only the rungs that have an amount. The seeder builds all
+/// five rows regardless, because "empty stages render as visible empty" has to be a
+/// property of the data rather than something the UI remembers to do.
+/// </summary>
+public class SeedMoneyItem
+{
+    public string Slug { get; set; } = "";
+    public string Title { get; set; } = "";
+    /// <summary>GovernmentOutlay | ModeledEconomicEffect | Estimate.</summary>
+    public string Kind { get; set; } = "GovernmentOutlay";
+    public string Jurisdiction { get; set; } = "Federal";
+    public string? SourceProgramName { get; set; }
+    public string? CategoryKey { get; set; }
+
+    /// <summary>Null when the figure has not been published — a real and common case.</summary>
+    public decimal? AmountUsd { get; set; }
+    public decimal? AmountMinUsd { get; set; }
+    public decimal? AmountMaxUsd { get; set; }
+
+    public int FiscalYearStart { get; set; }
+    /// <summary>Equal to <see cref="FiscalYearStart"/> for a single-year item.</summary>
+    public int FiscalYearEnd { get; set; }
+
+    public bool IsRecurring { get; set; }
+    public bool IsMandatory { get; set; }
+
+    /// <summary>Required. Design 1s puts it in an inverse panel, not a tooltip.</summary>
+    public string WhatThisDoesNotMean { get; set; } = "";
+    public string? DecidesNext { get; set; }
+    public string? EstimateMethod { get; set; }
+    public string[] Exclusions { get; set; } = Array.Empty<string>();
+
+    /// <summary>Stage name to amount, for the rungs actually reached.</summary>
+    public Dictionary<string, decimal> Stages { get; set; } = new();
+
+    /// <summary>Stage name to the reason it does not apply here. Design 1s: a stage that
+    /// does not apply says so, rather than looking merely empty.</summary>
+    public Dictionary<string, string> NotApplicable { get; set; } = new();
+
+    public List<SeedMoneyBreakdown> Breakdown { get; set; } = new();
+    public List<SeedMoneyComparison> Comparisons { get; set; } = new();
+
+    /// <summary>Source key for the figure.</summary>
+    public string? SourceKey { get; set; }
+}
+
+public class SeedMoneyBreakdown
+{
+    public string Label { get; set; } = "";
+    public decimal AmountUsd { get; set; }
+    public string? Note { get; set; }
+}
+
+/// <summary>A comparison offered, or explicitly refused with its reason (design 1s).</summary>
+public class SeedMoneyComparison
+{
+    public string Text { get; set; } = "";
+    public bool Accepted { get; set; } = true;
+    public string? RejectionReason { get; set; }
+}
+
 public class SeedRoomBase
 {
     public string Slug { get; set; } = "";
@@ -180,6 +244,7 @@ public class SeedThemeRoom : SeedRoomBase
     /// <summary>The honest denominator behind "we logged N and judged M".</summary>
     public int ArticlesConsideredCount { get; set; }
     public int DevelopmentWindowDays { get; set; } = 34;
+    public List<SeedMoneyItem> MoneyItems { get; set; } = new();
     public List<SeedEssentialFact> EssentialFacts { get; set; } = new();
     public List<SeedTerminologyNote> TerminologyNotes { get; set; } = new();
     public List<SeedTimelineEvent> Timeline { get; set; } = new();
