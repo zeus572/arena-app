@@ -2,12 +2,11 @@
   "//": "PILOT ROOM — a structural fixture and test corpus, not published content.",
   "//scope": "Seeds only behind Rooms:SeedPilot (default false) at Rooms:PilotStatus (default Draft).",
   "//content": "Deliberately built from durable, checkable process facts about how federal appropriations work, rather than from a live news cycle. The design handoff's U.S.-Iran sample copy is illustrative only and its own README says it must not ship as fact; PRD 07 would also require senior review for casualty and attribution claims, and there is no editorial team. Same ten sections, a fraction of the risk.",
-
   "sources": [
     {
       "key": "cba1974",
       "url": "https://www.congress.gov/bill/93rd-congress/house-bill/7130",
-      "title": "Congressional Budget and Impoundment Control Act of 1974 (Pub. L. 93-344)",
+      "title": "Congressional Budget and Impoundment Control Act of 1974, Pub. L. 93-344 (Title X is the Impoundment Control Act)",
       "organization": "U.S. Congress",
       "sourceType": "PrimaryDocument",
       "isPrimary": true,
@@ -49,9 +48,158 @@
       "sourceType": "GovernmentData",
       "isPrimary": true,
       "fullTextAvailable": false
+    },
+    {
+      "key": "rep-scotus-security",
+      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOOGl6UldWWTVnUXhQVmNZdEtsS3NzV3o2UXA5R0k5bTBKMmh6VUVMSG5UQ1VoRXYzOWFmQmlsbC0xN1VVdzVLQ0xUenpwMDJVVzh0QUhJWEkteWtiX0t6RjAtaGZpYnY3am9tRUxFTkhnY2gxWkJQeXVmVjRDX2llSTl6QWh3eWoyNDJZUllOdlMwOXg5MXFHZE9mX2FnVDRZeTV5SzVvREN6c2NyQXBza0JjTWQzY3I2?oc=5",
+      "title": "Supreme Court justices make rare Congress visit to request security funding",
+      "organization": "The Washington Post",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-14T10:32:09Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-doj-hearing",
+      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQSGhXX3RCY0ZTS2MtLS1OOTdDeExXdlU0T2U0ZGc5NHdsYnZtdUUyR0dHUzdXYWNMZGhKQ1Q0Y1BWMmYwZWhLOWhrdGJnQkZYQ1hzWk9pMEVMTWlYaUx4X2YyamNyVk1ZSVdaLWJTRVpuV3N1N0tlZl9xUzR4WHVOWVBHT1pCWC1TSEJZdlBicFo3ZWpOOGc?oc=5",
+      "title": "Senate hearing puts DOJ 'anti-weaponization' fund under scrutiny",
+      "organization": "Politico",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-15T15:22:11Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-iran-cost",
+      "url": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE5yYThCTERVYkktblNKRkZDZjI2LU1tM1ppSUVtSDZaZHdaQjlwVExvSWtwMlJLYlMtQTV0aXE2cjZYSGcwamQ0cTRkaGctMWJ4TGlaQXBCSVByaldhTHRWN2VZbw?oc=5",
+      "title": "Pentagon says U.S. military action against Iran has cost roughly $37.5 billion so far",
+      "organization": "The New York Times",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-22T00:23:00Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-stopgap",
+      "url": "https://www.npr.org/2026/07/21/nx-s1-5902245/government-funding-house-vote-continuing-resolution",
+      "title": "House passes stopgap funding bill to keep government open, Senate vote uncertain",
+      "organization": "NPR",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-22T02:20:15Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-pentagon-1t",
+      "url": "https://www.npr.org/2026/07/22/nx-s1-5903130/house-vote-iran-war-funding-reconciliation",
+      "title": "House passes $1T+ Pentagon bill and budget blueprint for Iran war funding",
+      "organization": "NPR",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-22T21:51:19Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-ca-medicaid",
+      "url": "https://news.google.com/rss/articles/CBMigwFBVV95cUxQX2wzQTI4UDFkNW43VDZZV3NLQ2ZYYkNJQVpqOUdCYTRBanh3RmdEazJveEItVlZ4dXdfTVpDMHF5akYtaDlwSnJJZmd5QTc1MEpmSmJXSjZwOTRkRzRabS1HdG1kUFp2RzRRel8zSzhPc25kaWtUWjFlRlR6cVhrZ3NlRQ?oc=5",
+      "title": "Federal officials block over $800M in California Medicaid funds, sparking Oz-Newsom clash",
+      "organization": "SFGATE",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-22T21:57:01Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-defense-115t",
+      "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxQOF9SSzMzT2hjNVpjMVlzQVFhYVZ4UjVhc3lxaktPTjJobmFMZThsMlU3YVR4SC1DamVLLW52R0x4SjgyOTdURWlEemZCNHRVT2YtX0piZ01wd01SWURoYnNyZndLSXhmckVoUkpDcVVhLVRjZ2JtUHh5VzVXb3RZbVJORUZWVzVMdDM2N0Z5ZS12YU1sQ29VXzhONUZvalpjSzlaVFlneEs3bVdPbjBDWjZSZkxJdkJFdDlyUzVqSmNzQ3lrRy1Qc19B?oc=5",
+      "title": "House passes $1.15 trillion defense bill that could fund a potential Iran conflict",
+      "organization": "The Washington Post",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-23T03:40:54Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-shutdown-risk",
+      "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNd3MyOU13WGszeGFKaUZ6QWE4aWY3aHRDRF9OeE52MXI5dk9TTjJRTjNBQnlhR2tVTnJpYWdneEhMOFVlWlI0Wk1odF82N1EwR3ZSWi1JVS1TY05Db3UyOG1Yal9lZVNkY016Y3lwVVVHVl9CTmxxaFdndmZRWnlJd1UyTWpRRXkzYVA0UWVEQjdteUp4bElXTFdoTkhhV0RqM29FUGI1Y1FKOGRsTGJGbw?oc=5",
+      "title": "Shutdown risk climbs as Congress leaves for recess without a spending deal",
+      "organization": "USA Today",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-07-23T03:49:00Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-kennedy",
+      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxNdFo2YjVNVDI0ZTJEQVN1anlnb0JfRzBlX0R1UWF0Q3l0UnhHQ0MxeEFwVWJKc2g1ZVdmNGRPRTVoZ3cxQ1FIMkVHazJvQ0x3MkZaZ1hHczJfQU1XT3ZUb3hvOTNRV0dTem5lMUlGMjBreGYzMlRFRF9uc3ZIQWxEcGJSdlh3NzM5dURQV01HYV80YlNLemVkNXpzRGxhY3h2THBWSGlxaEp1S3lzRC1ZVGVMODVnN21sTnQ0?oc=5",
+      "title": "Sen. Kennedy wants Jan. 6 rioters cut off from anti-government-weaponization fund",
+      "organization": "NBC News",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-08-02T14:45:29Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-senate-deal",
+      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxOSEtNZW9oWnRaVXZNYmhxaFNrSERYaDdIaVBCdEsxalJBd1V0d3l5MWl2a2k4azI4Y1cyNHAzeHdBNEdiZmdRREc1b2x5b2ZQb0N0R1lNQ05fRWpCaHlTUWU3RGRQLTc3SXJ5SUN3Z2J6MnJYZFRUVjhfMHJnckc2VktnN2lTaGN1SGNuYk9HaENlcmJTRkF0ekp1MTA3b0tO?oc=5",
+      "title": "Senate leaders strike deal to keep government funded and avoid a shutdown",
+      "organization": "apnews.com",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-08-02T22:28:00Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-blanche-deal",
+      "url": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxNMkNNQkgzUnpxdEFDMUZ1Um5Pdnl1cXR0X2tGeTh0eVE4azFjZEpxOVU3elNab0h4elZvQTkzd3NDUTdiR1NDX2d6Nk1VSnhleVllZkNLb2NuUlpKbGlXWGhYOVFqMnIzOFNmb19rVHVkWi1iQ2JjWFhSeldQQ3NfSC1wZndHbkNzOF85eVVYc0UyNGhqamF1SlRFOEZZcmNJUGMxMEJtaFlPMktXMXota2ZLRW5QYTU4ZnlENk1oSVA?oc=5",
+      "title": "Acting AG Blanche strikes Senate deal to scrap $1.8B DOJ anti-weaponization fund",
+      "organization": "NBC News",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-08-03T03:48:00Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-science-funding",
+      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxNMVVjUFd0MjNnTUJXeXBpMVp4U1RFM21HZGxNMGlWblYwdld3RmZPR0VMNW1sTkZNS0NqYTl6SnFWWUhkVjQ2RjNOOXJsRUUwWlBBVkduTE1yNG91WHFleV9rWFk2eXdhWWJjRi1tdmJVT3NIbkcxaDdDSkRjNVBTb1lMX3hEV2VlV2dLNEpCRFVEU0d0anVJOE02SVpNWUNpU1o4eC1HZjZTLXl5LURmdUFoeWdnTU1BcXB0Xw?oc=5",
+      "title": "Senate moves to limit White House control over federal science funding",
+      "organization": "washingtonpost.com",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-08-03T03:59:00Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "rep-hegseth-classified",
+      "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBTNHU1ZExZWGpfbm9USk5fdWZpSGNGXy1kbGtVZ1hldUQ5TmxzRWpXN1BxUi15algyNjNiMGZMXzJ2aFROU3dxUTV1cUNNLUd3dVNBQ3AzdmhHTGk0dTBLby01WXFwdDRVVUVnaDk0dXZZZGExRVpndG1sbw?oc=5",
+      "title": "Defense Secretary Hegseth secretly asks Congress for more Pentagon funding",
+      "organization": "Axios",
+      "sourceType": "Reporting",
+      "isPrimary": false,
+      "publishedAt": "2026-08-05T02:28:16Z",
+      "fullTextAvailable": false
+    },
+    {
+      "key": "const-art1-s9",
+      "url": "https://constitution.congress.gov/constitution/article-1/#article-1-section-9",
+      "title": "U.S. Constitution, Article I, Section 9, Clause 7 -- Appropriations Clause",
+      "organization": "Congress.gov",
+      "sourceType": "PrimaryDocument",
+      "isPrimary": true,
+      "publishedAt": "1789-03-04T00:00:00Z",
+      "fullTextAvailable": true
+    },
+    {
+      "key": "omb-a11",
+      "url": "https://www.whitehouse.gov/omb/information-for-agencies/circulars/",
+      "title": "OMB Circular A-11 -- Preparation, Submission, and Execution of the Budget",
+      "organization": "Office of Management and Budget",
+      "sourceType": "GovernmentData",
+      "isPrimary": true,
+      "publishedAt": "2025-08-01T00:00:00Z",
+      "fullTextAvailable": true
     }
   ],
-
   "concepts": [
     {
       "slug": "appropriation",
@@ -132,15 +280,100 @@
       "currentExample": "Agencies furloughing non-excepted staff when appropriations lapse.",
       "commonMisunderstanding": "That agencies shut down because they run out of cash. They stop because continuing to obligate would be illegal.",
       "tryItQuestion": "Why can't an agency keep operating on credit during a funding lapse?"
+    },
+    {
+      "slug": "continuing-resolution-vs-full-year",
+      "title": "Stopgap funding",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "A temporary bill that keeps agencies open at last year's levels.",
+      "plainDefinition": "A continuing resolution extends the previous year's funding levels for a fixed number of days or weeks so agencies can keep operating while Congress finishes the twelve regular bills. It is a deadline extension, not a budget.",
+      "whyItMatters": "A stopgap freezes last year's priorities in place. New programs cannot start, and agencies plan in the length of the extension rather than the length of the year.",
+      "currentExample": "The House passed a stopgap on 22 July 2026 with the Senate's vote uncertain; a separate Senate deal followed on 2 August.",
+      "commonMisunderstanding": "That passing a continuing resolution means Congress passed a budget. It means the opposite -- the budget is not done.",
+      "tryItQuestion": "If a stopgap holds funding at last year's level, what happens to a program Congress voted to expand this year?",
+      "confusionPairSlug": "appropriation",
+      "confusionDiscriminator": "An appropriation sets new amounts for the year ahead. A continuing resolution copies forward the amounts already in force."
+    },
+    {
+      "slug": "rescission",
+      "title": "Rescission",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "Congress cancelling budget authority it already granted.",
+      "plainDefinition": "A rescission takes back spending authority that has already been enacted, before the money is obligated. Because it undoes a law, it takes another law.",
+      "whyItMatters": "It is the difference between money never granted and money granted then withdrawn. Coverage often calls both a cut.",
+      "currentExample": "The $1.8 billion DOJ 'anti-weaponization' fund was removed from pending legislation on 3 August 2026 -- a fund dropped before enactment, which is not a rescission.",
+      "commonMisunderstanding": "That any reduction is a rescission. Dropping a proposal is not rescinding an appropriation.",
+      "tryItQuestion": "A committee removes a program from a bill that has not passed. Has anything been rescinded?",
+      "confusionPairSlug": "impoundment",
+      "confusionDiscriminator": "Rescission is Congress taking money back by law. Impoundment is the executive declining to spend money Congress already provided."
+    },
+    {
+      "slug": "impoundment",
+      "title": "Impoundment",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "The executive branch withholding money Congress appropriated.",
+      "plainDefinition": "Impoundment is a refusal or delay by the executive branch in spending funds that Congress has appropriated. The Impoundment Control Act of 1974 requires the President to notify Congress and, for permanent cancellations, to obtain its approval.",
+      "whyItMatters": "It decides whether an appropriation is an instruction or a ceiling -- the single largest unresolved question about who actually controls federal spending.",
+      "currentExample": "Over $800 million in California Medicaid funds was withheld by CMS in July 2026, and the Senate moved on 3 August to limit White House control over federal science funding.",
+      "commonMisunderstanding": "That the executive must spend every appropriated dollar immediately. Some delay is routine and lawful; the dispute is about permanent withholding.",
+      "tryItQuestion": "Congress appropriates $800M and the agency does not release it. Which stage of the ladder has stalled?",
+      "confusionPairSlug": "apportionment",
+      "confusionDiscriminator": "Apportionment is the ordinary, scheduled release of funds. Impoundment is withholding beyond that schedule."
+    },
+    {
+      "slug": "apportionment",
+      "title": "Apportionment",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "OMB releasing appropriated money to agencies in instalments.",
+      "plainDefinition": "After an appropriation is enacted, OMB apportions the funds -- releasing them to agencies by time period or activity so the money is not spent all at once. Agencies cannot obligate funds that have not been apportioned.",
+      "whyItMatters": "It is the invisible step between Appropriated and Obligated, and the lever an administration uses to slow spending without saying it is doing so.",
+      "currentExample": "Senate action on 3 August 2026 to limit White House control over federal science funding is a dispute about this step.",
+      "commonMisunderstanding": "That enactment puts money in an agency's hands. Enactment creates authority; apportionment releases it.",
+      "tryItQuestion": "Where in the five stages would a delay be invisible in the headline number?",
+      "confusionPairSlug": "obligation",
+      "confusionDiscriminator": "Apportionment is OMB releasing funds to an agency. Obligation is the agency committing them to someone outside government."
+    },
+    {
+      "slug": "supplemental-appropriation",
+      "title": "Supplemental appropriation",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "Extra funding requested outside the twelve regular bills.",
+      "plainDefinition": "A supplemental provides additional budget authority during a year already under way, usually for something unforeseen -- a disaster, or a military operation that outran its budget.",
+      "whyItMatters": "Supplementals are where wartime costs usually appear, and they bypass the ordinary committee calendar that gives the public time to see a number coming.",
+      "currentExample": "Secretary of Defense Pete Hegseth submitted a classified supplemental request to Congress on 5 August 2026.",
+      "commonMisunderstanding": "That a supplemental is a smaller or lesser kind of funding. Supplementals have carried some of the largest single appropriations in U.S. history.",
+      "tryItQuestion": "If a request is classified, which of the five stages can the public still verify?",
+      "confusionPairSlug": "appropriation",
+      "confusionDiscriminator": "Both are appropriations. A supplemental is simply one enacted mid-year, on top of what was already provided."
+    },
+    {
+      "slug": "budget-reconciliation",
+      "title": "Budget reconciliation",
+      "category": "Budget",
+      "knowledgeKind": "Concept",
+      "shortGloss": "A filibuster-proof track for certain budget legislation.",
+      "plainDefinition": "Reconciliation lets specified budget legislation pass the Senate with a simple majority and limited debate, provided a budget resolution has instructed committees to produce it and the contents survive the Byrd rule.",
+      "whyItMatters": "It is how a single party can enact major fiscal policy without the other party's votes -- and why a budget blueprint that looks procedural is often the substantive move.",
+      "currentExample": "The House passed a budget blueprint alongside the Pentagon bill on 22 July 2026 designed to unlock reconciliation.",
+      "commonMisunderstanding": "That reconciliation is an appropriations process. It is not -- appropriations bills are not reconciliation bills.",
+      "tryItQuestion": "Why would a majority pass a budget blueprint before it has agreed on the policy it intends to pass?",
+      "confusionPairSlug": "appropriation",
+      "confusionDiscriminator": "Appropriations provide money for the year. Reconciliation is a procedural track, mostly for mandatory spending and revenue."
     }
   ],
-
   "actors": [
     {
       "slug": "house-appropriations-committee",
       "name": "House Committee on Appropriations",
       "actorType": "Committee",
-      "alternateNames": ["House Appropriations"],
+      "alternateNames": [
+        "House Appropriations"
+      ],
       "actualPower": "Originates the twelve regular appropriations bills and sets the subcommittee allocations that cap each one.",
       "constrainedBy": "Must clear the full House, the Senate and the President; bound by any statutory spending caps in force.",
       "statedWants": "The committee's published purpose is to set discretionary spending levels through the twelve annual bills.",
@@ -148,7 +381,8 @@
       "tier": "Decides",
       "leverageStatement": "Writes the bill text that every later stage either accepts or amends.",
       "roleHere": "Originating chamber for appropriations under the Origination Clause practice.",
-      "ordinal": 0
+      "ordinal": 0,
+      "decisions": []
     },
     {
       "slug": "senate-appropriations-committee",
@@ -159,13 +393,16 @@
       "tier": "Decides",
       "leverageStatement": "Can block or rewrite any House-passed appropriation.",
       "roleHere": "The second of the two chambers that must agree on identical text.",
-      "ordinal": 1
+      "ordinal": 1,
+      "decisions": []
     },
     {
       "slug": "omb",
       "name": "Office of Management and Budget",
       "actorType": "Agency",
-      "alternateNames": ["OMB"],
+      "alternateNames": [
+        "OMB"
+      ],
       "actualPower": "Prepares the President's budget request and apportions enacted appropriations to agencies, controlling the rate at which funds become available.",
       "constrainedBy": "Cannot spend money Congress has not appropriated, and impoundment is limited by the 1974 Act.",
       "statedWants": "Its statutory role is to apportion appropriations so as to prevent deficiencies.",
@@ -173,13 +410,16 @@
       "tier": "Shapes",
       "leverageStatement": "Controls apportionment, so it sets the pace at which appropriated money becomes usable.",
       "roleHere": "The bridge between an enacted appropriation and an agency's ability to obligate.",
-      "ordinal": 2
+      "ordinal": 2,
+      "decisions": []
     },
     {
       "slug": "cbo",
       "name": "Congressional Budget Office",
       "actorType": "Agency",
-      "alternateNames": ["CBO"],
+      "alternateNames": [
+        "CBO"
+      ],
       "actualPower": "Produces the official cost estimates Congress uses to score legislation.",
       "constrainedBy": "Advisory only — it scores bills, it does not decide them.",
       "statedWants": "Established by the 1974 Act to give Congress budget information independent of the executive branch.",
@@ -187,19 +427,23 @@
       "tier": "Shapes",
       "leverageStatement": "Its score frames what a bill is publicly understood to cost.",
       "roleHere": "The source of the official cost estimate, where one exists.",
-      "ordinal": 3
+      "ordinal": 3,
+      "decisions": []
     },
     {
       "slug": "gao",
       "name": "Government Accountability Office",
       "actorType": "Agency",
-      "alternateNames": ["GAO"],
+      "alternateNames": [
+        "GAO"
+      ],
       "actualPower": "Issues legal decisions on appropriations law and audits how funds were used.",
       "constrainedBy": "Reports and opines; enforcement rests elsewhere.",
       "tier": "Constrained",
       "leverageStatement": "Rules after the fact on whether a use of funds was lawful.",
       "roleHere": "The authority on what the stages mean, via the Red Book.",
-      "ordinal": 4
+      "ordinal": 4,
+      "decisions": []
     },
     {
       "slug": "federal-agencies",
@@ -210,10 +454,169 @@
       "tier": "Constrained",
       "leverageStatement": "Decide the operational detail, but only inside limits set several stages earlier.",
       "roleHere": "Where an appropriation finally becomes an obligation and then a payment.",
-      "ordinal": 5
+      "ordinal": 5,
+      "decisions": []
+    },
+    {
+      "slug": "secretary-of-defense",
+      "name": "Pete Hegseth, Secretary of Defense",
+      "actorType": "Official",
+      "alternateNames": [
+        "Defense Secretary",
+        "SecDef"
+      ],
+      "actualPower": "Submits the Department of Defense budget request and supplemental requests, and directs how appropriated defense funds are obligated once released.",
+      "constrainedBy": "Cannot obligate funds Congress has not appropriated; the Antideficiency Act makes doing so a personal legal exposure, not a policy dispute.",
+      "statedWants": "Submitted a classified supplemental funding request to Congress seeking additional Department of Defense funds.",
+      "statedWantsSourceKey": "rep-hegseth-classified",
+      "statedWantsAsOf": "2026-08-05T02:28:16Z",
+      "tier": "Shapes",
+      "leverageStatement": "Sets the opening number the whole defense debate negotiates against.",
+      "roleHere": "Requests defense funding and reports what has been spent; both roles appear in this window.",
+      "ordinal": 10,
+      "decisions": [
+        "defense-appropriation"
+      ]
+    },
+    {
+      "slug": "senate-leadership",
+      "name": "Senate Majority and Minority Leaders",
+      "actorType": "Official",
+      "alternateNames": [
+        "Senate leaders"
+      ],
+      "actualPower": "Control floor time, which decides whether a funding bill gets a vote before the deadline.",
+      "constrainedBy": "Sixty votes for most appropriations business, so neither leader can move a bill without some of the other side.",
+      "statedWants": "Announced a bipartisan agreement intended to keep the federal government funded and prevent a shutdown.",
+      "statedWantsSourceKey": "rep-senate-deal",
+      "statedWantsAsOf": "2026-08-02T22:28:00Z",
+      "tier": "Decides",
+      "leverageStatement": "A funding bill that never reaches the floor fails without a vote being taken.",
+      "roleHere": "Negotiated the early-August agreement that is currently the main thing standing between the calendar and a lapse.",
+      "ordinal": 11,
+      "decisions": [
+        "shutdown-deadline"
+      ]
+    },
+    {
+      "slug": "doj-leadership",
+      "name": "Todd Blanche, Acting Attorney General",
+      "actorType": "Official",
+      "alternateNames": [
+        "Deputy Attorney General Blanche"
+      ],
+      "actualPower": "Directs how the Justice Department obligates its appropriated funds and negotiates for the department in Congress.",
+      "constrainedBy": "May only spend against purposes Congress appropriated for; the Senate can withhold the department's funding entirely.",
+      "statedWants": "Negotiated an agreement with holdout senators that removed the proposed $1.8 billion 'anti-weaponization' fund from pending spending legislation.",
+      "statedWantsSourceKey": "rep-blanche-deal",
+      "statedWantsAsOf": "2026-08-03T03:48:00Z",
+      "tier": "Shapes",
+      "leverageStatement": "Trading the fund away unblocked the wider spending package.",
+      "roleHere": "Subject of the July hearing over the fund's legal authority, and party to the August deal that dropped it.",
+      "ordinal": 12,
+      "decisions": [
+        "doj-fund"
+      ]
+    },
+    {
+      "slug": "cms-administrator",
+      "name": "Mehmet Oz, Administrator, Centers for Medicare and Medicaid Services",
+      "actorType": "Official",
+      "alternateNames": [
+        "CMS Administrator"
+      ],
+      "actualPower": "Decides whether a state's Medicaid spending complies with federal rules, and can withhold federal matching funds on that finding.",
+      "constrainedBy": "Medicaid matching is set in statute; a withholding decision is reviewable, and the Impoundment Control Act limits open-ended refusal to spend.",
+      "statedWants": "Blocked more than $800 million in federal Medicaid funding to California on the basis that some of the state's spending does not comply with federal Medicaid rules.",
+      "statedWantsSourceKey": "rep-ca-medicaid",
+      "statedWantsAsOf": "2026-07-22T21:57:01Z",
+      "tier": "Decides",
+      "leverageStatement": "Holds the release of money already appropriated -- the clearest live example of the gap between Appropriated and Obligated.",
+      "roleHere": "The executive-branch side of the July withholding dispute with California.",
+      "ordinal": 13,
+      "decisions": [
+        "medicaid-withholding"
+      ]
+    },
+    {
+      "slug": "california-governor",
+      "name": "Gavin Newsom, Governor of California",
+      "actorType": "Official",
+      "alternateNames": [
+        "Governor Newsom"
+      ],
+      "actualPower": "Runs the state programme the withheld money funds, and can litigate the withholding.",
+      "constrainedBy": "Cannot compel release of federal funds; Medi-Cal covers roughly one in three Californians, so the state absorbs the gap in the meantime.",
+      "statedWants": "Argues California is serving its residents appropriately and that the funding decision is politically motivated.",
+      "statedWantsSourceKey": "rep-ca-medicaid",
+      "statedWantsAsOf": "2026-07-22T21:57:01Z",
+      "tier": "Constrained",
+      "leverageStatement": "Litigation and public pressure; no direct control over the disbursement.",
+      "roleHere": "The state on the receiving end of the withholding.",
+      "ordinal": 14,
+      "decisions": [
+        "medicaid-withholding"
+      ]
+    },
+    {
+      "slug": "sen-john-cornyn",
+      "name": "Sen. John Cornyn (R-TX)",
+      "actorType": "Legislator",
+      "alternateNames": [
+        "Cornyn"
+      ],
+      "actualPower": "Senior Judiciary Committee member; can compel testimony about how an agency is spending.",
+      "constrainedBy": "One vote of a hundred, and oversight questions do not by themselves stop a disbursement.",
+      "statedWants": "Pressed the Justice Department on where the 'anti-weaponization' fund's money comes from, how it is being spent, and who authorised it.",
+      "statedWantsSourceKey": "rep-doj-hearing",
+      "statedWantsAsOf": "2026-07-15T15:22:11Z",
+      "tier": "Shapes",
+      "leverageStatement": "The hearing put the fund's legal authority on the public record, which is what made it tradeable three weeks later.",
+      "roleHere": "Opened the oversight thread that ended with the fund being dropped.",
+      "ordinal": 15,
+      "decisions": [
+        "doj-fund"
+      ]
+    },
+    {
+      "slug": "sen-john-kennedy",
+      "name": "Sen. John Kennedy (R-LA)",
+      "actorType": "Legislator",
+      "alternateNames": [
+        "Kennedy"
+      ],
+      "actualPower": "A single senator's hold or withheld vote can stall a bill that needs sixty.",
+      "constrainedBy": "Cannot write the condition into law alone; it has to survive both chambers.",
+      "statedWants": "Said he would support anti-weaponization fund legislation only if it excludes people convicted in connection with the January 6 Capitol attack.",
+      "statedWantsSourceKey": "rep-kennedy",
+      "statedWantsAsOf": "2026-08-02T14:45:29Z",
+      "tier": "Shapes",
+      "leverageStatement": "Attaching an eligibility condition to a vote he controls.",
+      "roleHere": "Named a condition on the DOJ fund the day before it was dropped.",
+      "ordinal": 16,
+      "decisions": [
+        "doj-fund"
+      ]
+    },
+    {
+      "slug": "supreme-court",
+      "name": "The Supreme Court of the United States",
+      "actorType": "Court",
+      "alternateNames": [
+        "SCOTUS"
+      ],
+      "actualPower": "None over its own funding. It must ask Congress like any other agency.",
+      "constrainedBy": "The judiciary's budget is a line in an appropriations bill written by the other two branches.",
+      "statedWants": "Justices made a rare visit to Congress to request additional security funding.",
+      "statedWantsSourceKey": "rep-scotus-security",
+      "statedWantsAsOf": "2026-07-14T10:32:09Z",
+      "tier": "Constrained",
+      "leverageStatement": "Institutional standing and the visibility of an unusual appearance -- no procedural lever at all.",
+      "roleHere": "A reminder that the third branch is a supplicant in this process, not a participant.",
+      "ordinal": 17,
+      "decisions": []
     }
   ],
-
   "claims": [
     {
       "slug": "fiscal-year-starts-october-1",
@@ -222,7 +625,9 @@
       "kind": "Factual",
       "evidenceSummary": "Set in statute at 31 U.S.C. § 1102; not a matter of practice or convention.",
       "whatWouldSettleIt": "Already settled — the date is fixed by statute and would require an act of Congress to change.",
-      "supportedBy": ["usc31-1102"]
+      "supportedBy": [
+        "usc31-1102"
+      ]
     },
     {
       "slug": "twelve-regular-appropriations-bills",
@@ -231,8 +636,12 @@
       "kind": "Factual",
       "evidenceSummary": "The twelve-bill structure follows the standing subcommittee organization of the two appropriations committees.",
       "whatWouldSettleIt": "Already settled, though the committees can and occasionally do reorganize their subcommittees.",
-      "supportedBy": ["gao-redbook"],
-      "assertedBy": ["house-appropriations-committee"]
+      "supportedBy": [
+        "gao-redbook"
+      ],
+      "assertedBy": [
+        "house-appropriations-committee"
+      ]
     },
     {
       "slug": "authorization-is-not-funding",
@@ -241,7 +650,10 @@
       "kind": "Factual",
       "evidenceSummary": "A foundational distinction in federal appropriations law, set out at length in the GAO Red Book.",
       "whatWouldSettleIt": "Already settled as a matter of law.",
-      "supportedBy": ["gao-redbook", "cba1974"]
+      "supportedBy": [
+        "gao-redbook",
+        "cba1974"
+      ]
     },
     {
       "slug": "obligated-is-not-spent",
@@ -250,7 +662,10 @@
       "kind": "Factual",
       "evidenceSummary": "Obligation creates a liability to pay; the outlay follows separately and may be in a later fiscal year or never occur.",
       "whatWouldSettleIt": "Already settled — the two stages are separately defined and separately reported.",
-      "supportedBy": ["gao-redbook", "usaspending"]
+      "supportedBy": [
+        "gao-redbook",
+        "usaspending"
+      ]
     },
     {
       "slug": "spending-verbs-in-coverage",
@@ -267,10 +682,280 @@
       "kind": "Factual",
       "evidenceSummary": "Follows directly from the Antideficiency Act's prohibition on obligating in advance of an appropriation; the operational detail of what counts as an excepted activity varies by agency.",
       "whatWouldSettleIt": "Agency-by-agency contingency plans showing the legal basis cited for each excepted activity.",
-      "supportedBy": ["ada", "gao-redbook"]
+      "supportedBy": [
+        "ada",
+        "gao-redbook"
+      ]
+    },
+    {
+      "slug": "congress-holds-the-purse",
+      "text": "No money may be drawn from the Treasury except under an appropriation made by law.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "Article I, Section 9, Clause 7 of the Constitution, in force since 1789 and never amended.",
+      "whatWouldSettleIt": "Settled. It is the constitutional text.",
+      "supportedBy": [
+        "const-art1-s9"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "passing-one-chamber-is-not-law",
+      "text": "A bill that has passed only the House provides no money to anyone.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "Both chambers must pass identical text and the President must sign it (or a veto be overridden) before budget authority exists. Three of the stories logged in this window describe House-passed bills.",
+      "whatWouldSettleIt": "Settled. It is how bicameralism and presentment work.",
+      "supportedBy": [
+        "const-art1-s9"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "house-passed-defense-bill-115t",
+      "text": "On 22 July 2026 the House passed a defense appropriations bill totalling roughly $1.15 trillion.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Reported independently by The Washington Post and NPR within about six hours of each other. We do not hold the roll-call record or the bill text, so this rests on reporting rather than a primary document.",
+      "whatWouldSettleIt": "The House roll-call vote record and the engrossed bill text on Congress.gov.",
+      "supportedBy": [
+        "rep-defense-115t",
+        "rep-pentagon-1t"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "pentagon-package-over-1t",
+      "text": "The Pentagon package the House passed totals more than $1 trillion.",
+      "status": "Outdated",
+      "kind": "Factual",
+      "evidenceSummary": "True but superseded. This was the figure in the first reporting on 22 July; a more precise $1.15 trillion figure was reported the following morning. Retained because the imprecise number is what most readers saw first.",
+      "whatWouldSettleIt": "Already settled by the more precise figure. See house-passed-defense-bill-115t.",
+      "supportedBy": [
+        "rep-pentagon-1t"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "defense-bill-funds-an-iran-conflict",
+      "text": "The defense bill funds a U.S. military conflict with Iran.",
+      "status": "Disputed",
+      "kind": "Interpretation",
+      "evidenceSummary": "Reporting describes contingency provisions that could release additional funds if a conflict occurs. A contingency provision in a bill that has passed one chamber has released nothing. What is contested is not the text but whether 'funds' is the right verb for it.",
+      "whatWouldSettleIt": "Enactment of the bill and an apportionment or obligation record showing the contingency funds actually released.",
+      "supportedBy": [
+        "rep-defense-115t",
+        "rep-pentagon-1t"
+      ],
+      "contradictedBy": [
+        "const-art1-s9"
+      ],
+      "assertedBy": []
+    },
+    {
+      "slug": "iran-operations-cost-37-5b",
+      "text": "U.S. military action related to Iran has cost roughly $37.5 billion so far.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "An official figure disclosed by the Secretary of Defense and reported by The New York Times. It is a self-reported number from the department that spent it, with no published methodology and no independent audit, so it is strong but not confirmed.",
+      "whatWouldSettleIt": "A GAO or CBO review, or a DoD cost report stating what is counted -- obligations, outlays, or both -- and over what period.",
+      "supportedBy": [
+        "rep-iran-cost"
+      ],
+      "contradictedBy": [],
+      "assertedBy": [
+        "secretary-of-defense"
+      ]
+    },
+    {
+      "slug": "house-passed-stopgap-july-22",
+      "text": "The House passed a short-term continuing resolution on 22 July 2026.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Reported by NPR. The Senate's vote was described as uncertain at the time.",
+      "whatWouldSettleIt": "The House roll-call record and the resolution's text.",
+      "supportedBy": [
+        "rep-stopgap"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "senate-deal-averts-shutdown",
+      "text": "The Senate agreement announced on 2 August 2026 has prevented a government shutdown.",
+      "status": "PlausibleButUnresolved",
+      "kind": "Factual",
+      "evidenceSummary": "Senate leaders announced a bipartisan agreement. An announced deal is not enacted law: it still has to clear the Senate floor, pass the House and be signed. Nothing has been prevented until it is.",
+      "whatWouldSettleIt": "Enactment -- a signed bill, or the deadline passing without a lapse.",
+      "supportedBy": [],
+      "contradictedBy": [],
+      "assertedBy": [
+        "senate-leadership"
+      ]
+    },
+    {
+      "slug": "shutdown-avoided-this-cycle",
+      "text": "The federal government will not experience a lapse in appropriations in this funding cycle.",
+      "status": "Prediction",
+      "kind": "Prediction",
+      "evidenceSummary": "A deal exists in the Senate and both parties face election-season costs from a shutdown. Against that: Congress left for recess without a spending deal on 23 July, and objections to governing by repeated short-term patches were raised by senators of both parties.",
+      "whatWouldSettleIt": "The funding deadline passing, either with enacted appropriations or with a lapse.",
+      "supportedBy": [
+        "rep-senate-deal"
+      ],
+      "contradictedBy": [
+        "rep-shutdown-risk"
+      ],
+      "assertedBy": []
+    },
+    {
+      "slug": "third-shutdown-since-september",
+      "text": "A lapse now would be the third government shutdown since September of last year.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Stated in NPR's 22 July reporting on the stopgap. We have not independently checked the count against the appropriations record.",
+      "whatWouldSettleIt": "The dates of each lapse in appropriations since September 2025 from CRS or OMB.",
+      "supportedBy": [
+        "rep-stopgap"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "ca-medicaid-800m-withheld",
+      "text": "More than $800 million in federal Medicaid funding that California expected has been withheld by CMS.",
+      "status": "Confirmed",
+      "kind": "Factual",
+      "evidenceSummary": "Both the federal administrator and the state governor confirm the withholding; they disagree about whether it is justified, not about whether it happened.",
+      "whatWouldSettleIt": "Settled as to the fact. The justification is a separate, open question.",
+      "supportedBy": [
+        "rep-ca-medicaid"
+      ],
+      "contradictedBy": [],
+      "assertedBy": [
+        "cms-administrator",
+        "california-governor"
+      ]
+    },
+    {
+      "slug": "ca-medicaid-block-is-political",
+      "text": "The California Medicaid withholding is politically motivated.",
+      "status": "Unsupported",
+      "kind": "Opinion",
+      "evidenceSummary": "Asserted by the state. No evidence of motive has been offered publicly by either side, and the federal justification on the record is a compliance finding about how California uses matching funds. Unsupported here means no evidence has been produced, not that the claim is false.",
+      "whatWouldSettleIt": "Internal deliberative records, or a pattern of comparable compliance findings against states treated differently.",
+      "supportedBy": [],
+      "contradictedBy": [],
+      "assertedBy": [
+        "california-governor"
+      ]
+    },
+    {
+      "slug": "doj-fund-1-8b-dropped",
+      "text": "A proposed $1.8 billion DOJ 'anti-weaponization' fund was removed from pending spending legislation on 3 August 2026.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Reported by NBC News following a deal between the Acting Attorney General and holdout senators. Consistent with the July Judiciary hearing and with Sen. Kennedy's stated condition the day before.",
+      "whatWouldSettleIt": "The revised bill text showing the provision absent.",
+      "supportedBy": [
+        "rep-blanche-deal",
+        "rep-kennedy",
+        "rep-doj-hearing"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "doj-fund-authority-unexplained",
+      "text": "The Justice Department has not publicly identified the appropriation that authorised its 'anti-weaponization' fund.",
+      "status": "PlausibleButUnresolved",
+      "kind": "Factual",
+      "evidenceSummary": "A senior Judiciary Committee member asked in a public hearing where the money came from and who authorised it. We have found no published answer. Absence of a public answer is not proof there is no authority.",
+      "whatWouldSettleIt": "A DOJ citation to the appropriation and apportionment, or the hearing transcript showing an answer was given.",
+      "supportedBy": [
+        "rep-doj-hearing"
+      ],
+      "contradictedBy": [],
+      "assertedBy": [
+        "sen-john-cornyn"
+      ]
+    },
+    {
+      "slug": "hegseth-classified-supplemental",
+      "text": "The Secretary of Defense submitted a classified supplemental funding request to Congress on 5 August 2026.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Reported by Axios. The existence of the request is public; its contents are not, so the amount and purpose cannot be checked by anyone outside the cleared committees.",
+      "whatWouldSettleIt": "Confirmation from the defense committees, or an unclassified summary of the request.",
+      "supportedBy": [
+        "rep-hegseth-classified"
+      ],
+      "contradictedBy": [],
+      "assertedBy": [
+        "secretary-of-defense"
+      ]
+    },
+    {
+      "slug": "coverage-uses-outlay-verbs",
+      "text": "Coverage in this window describes money at a pre-outlay stage using verbs that belong to an outlay.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Of the thirteen appropriations stories logged in the 23 days to 5 August 2026, two describe a bill that has passed one chamber as funding an activity: 'defense bill that could fund a potential Iran conflict' and 'Pentagon bill and budget blueprint for Iran war funding'. Neither bill was law and neither had released a dollar. Two of thirteen is a real rate, not the majority pattern this room originally implied.",
+      "whatWouldSettleIt": "A larger coded sample across more outlets and a longer window, with the coding rule published.",
+      "supportedBy": [
+        "rep-defense-115t",
+        "rep-pentagon-1t"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "science-funding-control-contested",
+      "text": "The Senate is acting to limit White House control over the release of federal science funding.",
+      "status": "PlausibleButUnresolved",
+      "kind": "Factual",
+      "evidenceSummary": "Reported by The Washington Post as Senate action underway. We do not hold the vehicle, the text or its status, so what exactly is being limited is not established.",
+      "whatWouldSettleIt": "The bill or amendment text and its stage.",
+      "supportedBy": [
+        "rep-science-funding"
+      ],
+      "contradictedBy": [],
+      "assertedBy": []
+    },
+    {
+      "slug": "scotus-requested-security-funding",
+      "text": "Supreme Court justices visited Congress in July 2026 to request additional security funding.",
+      "status": "StronglySupported",
+      "kind": "Factual",
+      "evidenceSummary": "Reported by The Washington Post and described as a rare appearance. A request only -- the first rung of the ladder.",
+      "whatWouldSettleIt": "The judiciary's budget request document, or a committee record of the meeting.",
+      "supportedBy": [
+        "rep-scotus-security"
+      ],
+      "contradictedBy": [],
+      "assertedBy": [
+        "supreme-court"
+      ]
+    },
+    {
+      "slug": "shutdown-stops-debt-payments",
+      "text": "A government shutdown stops the federal government from paying interest on the national debt.",
+      "status": "False",
+      "kind": "Factual",
+      "evidenceSummary": "Interest on the public debt is paid under a permanent, indefinite appropriation. It does not depend on the annual bills and does not lapse when they do. A shutdown and a default are separate events with separate legal triggers -- a lapse in appropriations stops discretionary operations, while a default would require Treasury to be unable to pay. This claim is kept in the ledger because it recurs every funding deadline.",
+      "whatWouldSettleIt": "Settled. See GAO's Principles of Federal Appropriations Law on permanent, indefinite appropriations.",
+      "supportedBy": [],
+      "contradictedBy": [
+        "gao-redbook",
+        "usc31-1102"
+      ],
+      "assertedBy": []
     }
   ],
-
   "stories": [
     {
       "slug": "how-an-appropriation-becomes-spending",
@@ -280,8 +965,16 @@
       "eventTime": "2026-08-01T00:00:00Z",
       "estimatedMinutes": 4,
       "howItWorksIntro": "A federal dollar passes through distinct legal stages, each requiring a different actor to act. A request is a proposal from the executive branch. An authorization permits a program to exist. An appropriation provides legal spending authority. An obligation commits the money. An outlay pays it. Skipping any stage in a description of where money stands is not a simplification; it changes what is being claimed.",
-      "concepts": ["appropriation", "authorization", "obligation", "outlay"],
-      "essentialFactClaims": ["authorization-is-not-funding", "obligated-is-not-spent"],
+      "concepts": [
+        "appropriation",
+        "authorization",
+        "obligation",
+        "outlay"
+      ],
+      "essentialFactClaims": [
+        "authorization-is-not-funding",
+        "obligated-is-not-spent"
+      ],
       "whyItMatters": [
         {
           "dimension": "Legal",
@@ -346,16 +1039,35 @@
       ]
     }
   ],
-
   "theme": {
     "slug": "federal-appropriations",
     "title": "Federal appropriations",
     "dek": "How Congress decides what the federal government may spend, and the five stages between a proposed number and money actually leaving the Treasury.",
-    "alternateTitles": ["Federal budget process", "Government funding"],
+    "alternateTitles": [
+      "Federal budget process",
+      "Government funding"
+    ],
     "matchTerms": [
-      "appropriation", "appropriations", "continuing resolution", "government shutdown",
-      "budget request", "omnibus", "discretionary spending", "fiscal year",
-      "antideficiency", "apportionment", "outlay", "obligation"
+      "antideficiency",
+      "apportionment",
+      "appropriation",
+      "appropriations",
+      "budget blueprint",
+      "budget reconciliation",
+      "budget request",
+      "continuing resolution",
+      "defense appropriations",
+      "discretionary spending",
+      "fiscal year",
+      "government shutdown",
+      "impoundment",
+      "lapse in appropriations",
+      "obligation",
+      "omnibus",
+      "outlay",
+      "rescission",
+      "stopgap",
+      "supplemental"
     ],
     "scopeStatement": "The federal appropriations process itself: how spending authority is created, limited and executed. Covers the twelve regular bills, continuing resolutions, apportionment, obligation and outlay. Does not cover mandatory spending programs, tax policy, or state and local budgets.",
     "inclusionRules": [
@@ -373,21 +1085,64 @@
       "Projections and estimates published without a stated method.",
       "Coverage of mandatory spending, tax policy, or non-federal budgets."
     ],
-    "currentStatusSentence": "The appropriations process has five distinct legal stages, and public discussion of federal spending routinely collapses them into one. This room keeps them separate and shows, for any given funding item, which stages have actually been reached and which are still empty.",
-    "topUnresolvedQuestion": "How often does coverage of a funding request describe it using verbs that imply the money has already been spent?",
-    "watchNext": "Whether the twelve regular appropriations bills are enacted before the fiscal year begins on October 1, or whether a continuing resolution carries agencies into the new year.",
+    "currentStatusSentence": "Congress has not enacted full-year appropriations. A stopgap passed the House on 22 July, both chambers then left for recess without a deal, and Senate leaders announced an agreement on 2 August that has not yet cleared either chamber. Separately, more than $800 million already appropriated to California is being withheld by the executive branch. Of the thirteen funding stories logged here in the last 23 days, the largest number -- $1.15 trillion -- has passed one chamber and provided nothing to anyone.",
+    "topUnresolvedQuestion": "When Congress appropriates money and the executive branch declines to release it, who decides -- and what is an appropriation then worth?",
+    "watchNext": "Whether the Senate agreement announced on 2 August is enacted before the funding deadline, and whether the withheld California Medicaid funds are released, litigated, or formally rescinded.",
     "monitoringCadence": "Weekly",
-    "articlesConsideredCount": 0,
-    "developmentWindowDays": 34,
+    "articlesConsideredCount": 177,
+    "developmentWindowDays": 23,
     "sensitivity": "Standard",
     "concepts": [
-      "appropriation", "authorization", "obligation", "outlay",
-      "continuing-resolution", "antideficiency-act"
+      "appropriation",
+      "authorization",
+      "obligation",
+      "outlay",
+      "continuing-resolution",
+      "antideficiency-act",
+      "continuing-resolution-vs-full-year",
+      "rescission",
+      "impoundment",
+      "apportionment",
+      "supplemental-appropriation",
+      "budget-reconciliation"
     ],
-    "claims": ["spending-verbs-in-coverage", "lapse-causes-shutdown-not-borrowing"],
+    "claims": [
+      "ca-medicaid-800m-withheld",
+      "ca-medicaid-block-is-political",
+      "congress-holds-the-purse",
+      "coverage-uses-outlay-verbs",
+      "defense-bill-funds-an-iran-conflict",
+      "doj-fund-1-8b-dropped",
+      "doj-fund-authority-unexplained",
+      "hegseth-classified-supplemental",
+      "house-passed-defense-bill-115t",
+      "house-passed-stopgap-july-22",
+      "iran-operations-cost-37-5b",
+      "lapse-causes-shutdown-not-borrowing",
+      "passing-one-chamber-is-not-law",
+      "pentagon-package-over-1t",
+      "science-funding-control-contested",
+      "scotus-requested-security-funding",
+      "senate-deal-averts-shutdown",
+      "shutdown-avoided-this-cycle",
+      "spending-verbs-in-coverage",
+      "third-shutdown-since-september"
+    ],
     "actors": [
-      "house-appropriations-committee", "senate-appropriations-committee",
-      "omb", "cbo", "gao", "federal-agencies"
+      "house-appropriations-committee",
+      "senate-appropriations-committee",
+      "omb",
+      "cbo",
+      "gao",
+      "federal-agencies",
+      "secretary-of-defense",
+      "senate-leadership",
+      "doj-leadership",
+      "cms-administrator",
+      "california-governor",
+      "sen-john-cornyn",
+      "sen-john-kennedy",
+      "supreme-court"
     ],
     "essentialFacts": [
       {
@@ -395,12 +1150,12 @@
         "claimSlug": "authorization-is-not-funding"
       },
       {
-        "text": "Money that has been obligated has not necessarily been spent.",
-        "claimSlug": "obligated-is-not-spent"
+        "text": "A bill that has passed only the House provides no money to anyone.",
+        "claimSlug": "passing-one-chamber-is-not-law"
       },
       {
-        "text": "The fiscal year begins on October 1, which is the deadline the whole process runs against.",
-        "claimSlug": "fiscal-year-starts-october-1"
+        "text": "Money that has been appropriated has not necessarily been released, and money that has been obligated has not necessarily been spent.",
+        "claimSlug": "obligated-is-not-spent"
       }
     ],
     "terminologyNotes": [
@@ -415,6 +1170,22 @@
       {
         "term": "cut",
         "note": "We avoid 'cut' without a baseline, since the same figure can be a cut against a request and an increase against the prior year. Where we use it, we state the baseline."
+      },
+      {
+        "term": "weaponization",
+        "note": "We use it only in quotation marks and only as the name the fund's sponsors gave it. Both sides of this dispute use the word for opposite conduct, so on its own it identifies nothing."
+      },
+      {
+        "term": "war funding",
+        "note": "We do not call a contingency provision 'war funding'. A clause that would release money if something happens has not funded anything; we say what stage it is at."
+      },
+      {
+        "term": "blocked",
+        "note": "We say 'withheld' for appropriated money an agency has not released. 'Blocked' and 'cut' both suggest the money is gone; withheld money is still appropriated and still owed unless rescinded."
+      },
+      {
+        "term": "deal",
+        "note": "An announced agreement between leaders is not enacted law. We name the stage -- announced, passed one chamber, enacted -- rather than saying a shutdown has been averted."
       }
     ],
     "timeline": [
@@ -455,6 +1226,69 @@
         "textAlternative": "1980: legal opinions establish that a lapse in appropriations generally requires agencies to stop non-excepted work."
       },
       {
+        "occurredOn": "2026-07-14",
+        "occurredPrecision": "Day",
+        "label": "Justices ask Congress for security funding",
+        "description": "Supreme Court justices made a rare visit to Congress to request additional security funding.",
+        "marker": "Agreed",
+        "whatWasKnownThen": "That the request had been made. No amount was reported and no bill carried it.",
+        "textAlternative": "14 July 2026: Supreme Court justices visit Congress to request security funding -- a request, at the first rung of the ladder."
+      },
+      {
+        "occurredOn": "2026-07-15",
+        "occurredPrecision": "Day",
+        "label": "Senate hearing questions the DOJ fund's authority",
+        "description": "A senior Judiciary Committee member pressed the Justice Department on where a $1.8 billion 'anti-weaponization' fund's money came from and who authorised it.",
+        "marker": "Contested",
+        "whatWasKnownThen": "That the fund existed and that Congress had not been given an accounting of it. Whether it rested on an appropriation was unresolved and remains so.",
+        "textAlternative": "15 July 2026: a Senate hearing puts the DOJ 'anti-weaponization' fund's legal authority on the public record."
+      },
+      {
+        "occurredOn": "2026-07-22",
+        "occurredPrecision": "Day",
+        "label": "House passes a stopgap and a $1T+ Pentagon bill",
+        "description": "The House passed a short-term continuing resolution and, separately, a Pentagon package with a budget blueprint, before leaving for recess.",
+        "marker": "Trigger",
+        "whatWasKnownThen": "The Pentagon figure was first reported as 'more than $1 trillion'. The more precise $1.15 trillion figure came the next morning.",
+        "textAlternative": "22 July 2026: the House passes a stopgap and a Pentagon package, then leaves for recess."
+      },
+      {
+        "occurredOn": "2026-07-22",
+        "occurredPrecision": "Day",
+        "label": "Pentagon puts the Iran operation at $37.5 billion",
+        "description": "The Secretary of Defense disclosed an estimated $37.5 billion cost for U.S. military operations related to Iran.",
+        "marker": "Agreed",
+        "whatWasKnownThen": "The figure was official and self-reported. No methodology was published, so whether it counted obligations, outlays or both was not stated.",
+        "textAlternative": "22 July 2026: the Pentagon discloses a $37.5 billion cost estimate for Iran-related operations."
+      },
+      {
+        "occurredOn": "2026-07-22",
+        "occurredPrecision": "Day",
+        "label": "CMS withholds $800M from California",
+        "description": "Federal officials withheld more than $800 million in Medicaid funding California expected, citing compliance with federal matching rules.",
+        "marker": "Contested",
+        "whatWasKnownThen": "That the money was withheld. The justification was disputed on the day and still is.",
+        "textAlternative": "22 July 2026: CMS withholds over $800 million in California Medicaid funds -- money appropriated but not released."
+      },
+      {
+        "occurredOn": "2026-07-23",
+        "occurredPrecision": "Day",
+        "label": "Congress leaves without a spending deal",
+        "description": "Shutdown risk rose as Congress went into recess with no full-year agreement in place.",
+        "marker": "Contested",
+        "whatWasKnownThen": "The stopgap had passed the House only. The Senate's path was uncertain.",
+        "textAlternative": "23 July 2026: Congress leaves for recess without a spending deal and shutdown risk climbs."
+      },
+      {
+        "occurredOn": "2026-08-03",
+        "occurredPrecision": "Day",
+        "label": "Senate deal, and the DOJ fund is dropped",
+        "description": "Senate leaders announced a bipartisan funding agreement; separately, the $1.8 billion DOJ fund was removed from the pending legislation.",
+        "marker": "Now",
+        "whatWasKnownThen": "An announced agreement, not an enacted one. It still had to clear both chambers and be signed.",
+        "textAlternative": "2-3 August 2026: Senate leaders announce a funding deal and the $1.8 billion DOJ fund is dropped from the bill."
+      },
+      {
         "occurredOn": "2026-08-05",
         "occurredPrecision": "Day",
         "label": "Now",
@@ -464,6 +1298,115 @@
         "textAlternative": "The present day, marking the right-hand end of the timeline."
       }
     ],
-    "developments": []
+    "developments": [
+      {
+        "occurredAt": "2026-08-05T02:28:16Z",
+        "category": "ExecutiveAction",
+        "headline": "Defense Secretary submits a classified supplemental funding request",
+        "summary": "Pete Hegseth sent Congress a classified request for additional Department of Defense funds, outside the open budget process. The existence of the request is public; its contents are not.",
+        "whyItMatters": "A classified request means the public and most members of Congress cannot see the amount or the purpose. Every later stage of the ladder -- authorized, appropriated, obligated, spent -- will be checkable only by the cleared committees, so the ordinary way of following the money does not work here.",
+        "inclusionReason": "An official body acted: the Secretary of Defense submitted a formal funding request to Congress.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-08-03T03:59:00Z",
+        "category": "Legislative",
+        "headline": "Senate moves to limit White House control over federal science funding",
+        "summary": "Senate action is under way to constrain how far the executive branch can control the release of appropriated science funding.",
+        "whyItMatters": "This is a fight over apportionment -- the invisible step between Appropriated and Obligated. It decides whether an appropriation is an instruction to spend or a ceiling the executive may choose not to reach.",
+        "inclusionReason": "An official body acted, and the action bears on a legal interpretation of the process itself.",
+        "evidenceStatus": "PlausibleButUnresolved"
+      },
+      {
+        "occurredAt": "2026-08-03T03:48:00Z",
+        "category": "Legislative",
+        "headline": "$1.8 billion DOJ 'anti-weaponization' fund dropped from the spending bill",
+        "summary": "Acting Attorney General Todd Blanche reached agreement with senators who had been blocking the spending legislation over the fund. The provision was removed and the logjam broke.",
+        "whyItMatters": "The fund was never appropriated, so nothing was cut and nothing was rescinded -- a proposal was dropped. It is also the clearest illustration in this window of the purse being used as leverage: the department got its bill moving by giving up the provision.",
+        "inclusionReason": "An official body acted -- a negotiated change to pending appropriations legislation.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-08-02T22:28:00Z",
+        "category": "Legislative",
+        "headline": "Senate leaders announce a deal to keep the government funded",
+        "summary": "The Majority and Minority Leaders announced a bipartisan agreement intended to prevent a shutdown. It still requires a Senate floor vote, House passage and the President's signature.",
+        "whyItMatters": "An announced deal changes the odds, not the law. Agencies are funded when a bill is signed; until then the deadline is unchanged and the risk is unchanged in kind, only in likelihood.",
+        "inclusionReason": "An official body acted -- Senate leadership announced a negotiated funding agreement.",
+        "evidenceStatus": "PlausibleButUnresolved"
+      },
+      {
+        "occurredAt": "2026-07-23T03:49:00Z",
+        "category": "Legislative",
+        "headline": "Congress leaves for recess without a spending deal",
+        "summary": "Shutdown risk rose as both chambers went into recess with no full-year agreement, having passed only a stopgap in the House.",
+        "whyItMatters": "The calendar is the binding constraint in appropriations. Days spent in recess are days not spent on the twelve bills, and the deadline does not move.",
+        "inclusionReason": "An official body acted -- both chambers adjourned for recess with the funding bills unfinished.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-07-23T03:40:54Z",
+        "category": "Legislative",
+        "headline": "House passes a $1.15 trillion defense appropriations bill",
+        "summary": "The House approved roughly $1.15 trillion in defense spending, including contingency provisions that would release further funds in the event of a conflict with Iran. The bill moves to the Senate.",
+        "whyItMatters": "This is the largest single number in the window, and it sits on the first rung. A bill that has passed one chamber has provided nothing; the contingency provisions have released nothing. Coverage describing it as funding a conflict is describing Requested with the verbs of Spent.",
+        "inclusionReason": "An official action: a chamber passed an appropriations bill.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-07-22T21:57:01Z",
+        "category": "ExecutiveAction",
+        "headline": "CMS withholds more than $800 million in California Medicaid funds",
+        "summary": "The Centers for Medicare and Medicaid Services blocked over $800 million California expected, saying some of the state's Medi-Cal spending does not comply with federal matching rules. The state disputes the finding.",
+        "whyItMatters": "This is the gap between Appropriated and Obligated made visible. The money exists in law and has not been rescinded; an agency is declining to release it. Medi-Cal covers roughly one in three Californians, so the gap is carried by the state in the meantime.",
+        "inclusionReason": "A funding stage failed to advance for a specific appropriation, by executive decision.",
+        "evidenceStatus": "Confirmed"
+      },
+      {
+        "occurredAt": "2026-07-22T21:51:19Z",
+        "category": "Legislative",
+        "headline": "House passes a Pentagon package with a budget blueprint",
+        "summary": "The House approved over $1 trillion in Pentagon funding bundled with a budget framework designed to unlock reconciliation, plus a provision limiting stock trading by members of Congress.",
+        "whyItMatters": "The blueprint is the substantive move, not the dollar figure. Unlocking reconciliation would let one party pass further fiscal legislation in the Senate without the other's votes.",
+        "inclusionReason": "An official action: a chamber passed appropriations legislation and a budget resolution.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-07-22T02:20:15Z",
+        "category": "Legislative",
+        "headline": "House passes a stopgap to keep the government open",
+        "summary": "The House passed a short-term continuing resolution extending current funding levels. The Senate's vote was uncertain. A lapse would be the third shutdown since September of last year.",
+        "whyItMatters": "A continuing resolution freezes last year's priorities. Programmes Congress voted to expand this year stay at the old level, and agencies plan in weeks rather than in a year.",
+        "inclusionReason": "An official action: a chamber passed funding legislation.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-07-22T00:23:00Z",
+        "category": "ExecutiveAction",
+        "headline": "Pentagon puts Iran-related military costs at roughly $37.5 billion",
+        "summary": "The Secretary of Defense disclosed an official estimate of $37.5 billion for U.S. military operations connected to Iran.",
+        "whyItMatters": "This is the rarest kind of number in this room: money at the far end of the ladder rather than the near end. It is also self-reported by the department that spent it, with no published methodology stating whether it counts obligations, outlays, or both.",
+        "inclusionReason": "A verified fact about the process changed -- an official cost figure entered the public record for the first time.",
+        "evidenceStatus": "StronglySupported"
+      },
+      {
+        "occurredAt": "2026-07-15T15:22:11Z",
+        "category": "Investigation",
+        "headline": "Senate hearing questions the DOJ fund's legal authority",
+        "summary": "A senior Judiciary Committee member pressed the Justice Department on where the 'anti-weaponization' fund's money came from, how it was being spent, and who authorised it.",
+        "whyItMatters": "Appropriations control is exercised through questions like these as much as through votes. The hearing put the fund's authority on the record, which is what made it something the department could trade away three weeks later.",
+        "inclusionReason": "An official body acted -- a committee hearing examined an agency's spending authority.",
+        "evidenceStatus": "Confirmed"
+      },
+      {
+        "occurredAt": "2026-07-14T10:32:09Z",
+        "category": "Court",
+        "headline": "Supreme Court justices ask Congress for security funding",
+        "summary": "Justices made a rare visit to Congress to request additional security funding for the judiciary.",
+        "whyItMatters": "The judiciary has no control over its own budget; it asks the other two branches like any agency. This is a request at the first rung, and nothing about it is funded.",
+        "inclusionReason": "An official body acted -- a formal funding request was made to Congress.",
+        "evidenceStatus": "StronglySupported"
+      }
+    ]
   }
 }

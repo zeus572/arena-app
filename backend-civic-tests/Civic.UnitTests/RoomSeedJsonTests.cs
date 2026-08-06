@@ -143,21 +143,35 @@ public class RoomSeedJsonTests
     }
 
     [Fact]
-    public void AFreshlySeededRoom_HonestlyReportsZeroConsideredAndZeroLogged()
+    public void TheLoggedCount_NeverExceedsTheNumberOfArticlesConsidered()
     {
-        // The pilot ships with no developments ON PURPOSE. A Development means an editor
-        // judged that something changed, and nothing has yet — the candidate pass has not
-        // run, so ArticlesConsideredCount is 0.
+        // Design 1g prints "we logged N articles and judged M of them to have changed
+        // something", and /latest computes ExcludedCount as N − M. If M ever exceeds N the
+        // room claims to have judged more items than it looked at, and the subtraction
+        // clamps at zero rather than failing — so the lie would render silently.
         //
-        // This matters because design 1g prints "we logged N articles and judged M of them
-        // to have changed something". Pre-filling that with invented developments would
-        // make the room's own disclosure a lie on its first render. 0 of 0 is the truthful
-        // initial state, and this test stops anyone padding it.
+        // The pilot's denominator is the real count of briefings in the window at the time
+        // the file was authored, not a round number chosen to look diligent.
         var theme = Pilot().Theme!;
 
-        theme.Developments.Should().BeEmpty();
-        theme.ArticlesConsideredCount.Should().Be(0,
-            "the denominator is incremented by the candidate pass at runtime, never authored");
+        theme.ArticlesConsideredCount.Should().BeGreaterThanOrEqualTo(theme.Developments.Count,
+            "a room cannot judge more articles than it considered");
+    }
+
+    [Fact]
+    public void EveryDevelopment_FallsInsideTheWindowTheRoomAdvertises()
+    {
+        // The Latest section is captioned with DevelopmentWindowDays. A row older than the
+        // window makes that caption false, and it is the kind of drift that creeps in as
+        // the window shortens and nobody re-checks the oldest row.
+        var theme = Pilot().Theme!;
+        if (theme.Developments.Count == 0) return;
+
+        var newest = theme.Developments.Max(d => d.OccurredAt);
+        var oldest = theme.Developments.Min(d => d.OccurredAt);
+
+        (newest - oldest).TotalDays.Should().BeLessThanOrEqualTo(theme.DevelopmentWindowDays,
+            "every logged development must sit inside the window the room prints beside them");
     }
 
     [Fact]

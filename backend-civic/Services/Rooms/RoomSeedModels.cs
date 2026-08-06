@@ -65,7 +65,17 @@ public class SeedActor
     public string Tier { get; set; } = "Shapes";
     public string LeverageStatement { get; set; } = "";
     public string RoleHere { get; set; } = "";
-    public string? DecisionKey { get; set; }
+
+    /// <summary>
+    /// Named decisions this actor is ALSO tiered for, on top of the room's default map.
+    ///
+    /// Additive, never instead-of. An actor listed only under a decision key would vanish
+    /// from the unfiltered People &amp; Power view, which is where most readers will only
+    /// ever look — so the seeder always writes the default tiering and treats these as
+    /// extra rows.
+    /// </summary>
+    public string[] Decisions { get; set; } = Array.Empty<string>();
+
     public int Ordinal { get; set; }
 }
 

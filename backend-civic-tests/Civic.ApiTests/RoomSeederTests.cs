@@ -196,6 +196,10 @@ public class RoomSeederTests
         var db = scope.ServiceProvider.GetRequiredService<CivicDbContext>();
         var existing = await db.ActorRoomRoles.FirstAsync(r => r.DecisionKey == null);
 
+        // Seeded actors may already carry decision-scoped rows, so count rather than assume.
+        var before = await db.ActorRoomRoles.CountAsync(
+            r => r.ActorId == existing.ActorId && r.RoomId == existing.RoomId);
+
         db.ActorRoomRoles.Add(new ActorRoomRole
         {
             Id = Guid.NewGuid(),
@@ -209,8 +213,14 @@ public class RoomSeederTests
         await db.SaveChangesAsync();
 
         (await db.ActorRoomRoles.CountAsync(
-            r => r.ActorId == existing.ActorId && r.RoomId == existing.RoomId))
-            .Should().Be(2);
+                r => r.ActorId == existing.ActorId && r.RoomId == existing.RoomId))
+            .Should().Be(before + 1);
+
+        // The default tiering survives alongside it — that is the point of the split index.
+        (await db.ActorRoomRoles.CountAsync(
+                r => r.ActorId == existing.ActorId && r.RoomId == existing.RoomId
+                  && r.DecisionKey == null))
+            .Should().Be(1);
     }
 
     [Fact]
@@ -318,19 +328,27 @@ public class RoomSeederTests
     }
 
     [Fact]
-    public async Task LatestEndpoint_ReportsZeroOfZeroHonestly()
+    public async Task LatestEndpoint_ReportsWhatItLoggedAndWhatItLeftOut()
     {
-        // The pilot ships with no developments and no articles considered. The disclosure
-        // must say so rather than omitting the numbers.
+        // Design 1g prints "we logged N articles and judged M of them to have changed
+        // something", so the endpoint has to return both halves and they have to add up.
+        // ExcludedCount is computed as N − M and clamps at zero, which means an inflated M
+        // would render as "0 excluded" instead of failing — hence the explicit check.
         await _fx.ResetMutableAsync();
         await SeedAsync();
 
         var latest = await _fx.Factory.CreateClient()
             .GetFromJsonAsync<RoomLatestDto>("/api/rooms/federal-appropriations/latest");
 
-        latest!.Developments.Should().BeEmpty();
-        latest.ArticlesConsidered.Should().Be(0);
-        latest.ExcludedCount.Should().Be(0);
+        latest!.Developments.Should().NotBeEmpty();
+        latest.ArticlesConsidered.Should().BeGreaterThanOrEqualTo(latest.Developments.Count);
+        latest.ExcludedCount.Should().Be(latest.ArticlesConsidered - latest.Developments.Count);
         latest.InclusionRules.Should().NotBeEmpty("the rule is printed beside the list");
+
+        // Every row must be able to name the clause that let it in — that disclosure is the
+        // only thing that makes the excluded count meaningful rather than decorative.
+        latest.Developments.Should().OnlyContain(d =>
+            !string.IsNullOrWhiteSpace(d.InclusionReason) &&
+            !string.IsNullOrWhiteSpace(d.WhyItMatters));
     }
 }
