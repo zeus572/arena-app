@@ -412,6 +412,7 @@ public class RoomSeeder
         await ReplaceDevelopmentsAsync(room.Id, seed.Developments, storyIds, ct);
         await ReplaceActorRolesAsync(room.Id, seed, actorSeeds, actors, ct);
         await ReplaceMoneyItemsAsync(room.Id, seed.MoneyItems, sources, ct);
+        await ReplaceInteractionsAsync(room.Id, room.Revision, status, seed.Interactions, ct);
 
         var roomRef = new ObjectRef(ObjectType.Room, room.Id);
         await LinkRoomContentAsync(roomRef, seed, claims, concepts, ct);
@@ -563,6 +564,60 @@ public class RoomSeeder
 
             _db.MoneyItems.Add(item);
             _db.MoneyStageEntries.AddRange(rows);
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Room interactions, replaced wholesale like the room's other children.
+    ///
+    /// The payload is stored verbatim, answer key included. PRD 06 is explicit that correct
+    /// answers must not depend on a live model call at play time, so everything needed to
+    /// score and explain a response lives in the row and InteractionRedaction strips the key
+    /// on the way out.
+    /// </summary>
+    private async Task ReplaceInteractionsAsync(
+        Guid roomId,
+        int revision,
+        RoomStatus status,
+        List<SeedInteraction> seeds,
+        CancellationToken ct)
+    {
+        var existing = await _db.Interactions.Where(i => i.RoomId == roomId).ToListAsync(ct);
+        if (existing.Count > 0)
+        {
+            var ids = existing.Select(i => i.Id).ToList();
+            _db.RoomInteractionPlays.RemoveRange(
+                await _db.RoomInteractionPlays.Where(p => ids.Contains(p.InteractionId)).ToListAsync(ct));
+            _db.Interactions.RemoveRange(existing);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        foreach (var i in seeds)
+        {
+            _db.Interactions.Add(new Interaction
+            {
+                Id = Guid.NewGuid(),
+                RoomId = roomId,
+                Slug = i.Slug,
+                Kind = ParseEnum(i.Kind, InteractionKind.BeforeYouKnow),
+                Title = i.Title,
+                LearningObjective = i.LearningObjective,
+                Prompt = i.Prompt,
+                PayloadJson = i.Payload.ValueKind == JsonValueKind.Undefined
+                    ? "{}"
+                    : i.Payload.GetRawText(),
+                Explanation = i.Explanation,
+                ScoringMode = ParseEnum(i.ScoringMode, InteractionScoringMode.Unscored),
+                AnswerDependsOnClaimStatus = i.AnswerDependsOnClaimStatus,
+                // Interactions follow the room: a room that is not published must not be
+                // quietly playable through the interactions endpoint.
+                Status = status,
+                ContentRevision = revision,
+                Ordinal = i.Ordinal,
+                GenerationSource = CivicGenerationSource.Seed,
+            });
         }
 
         await _db.SaveChangesAsync(ct);

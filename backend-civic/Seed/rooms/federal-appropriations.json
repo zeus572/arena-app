@@ -1653,6 +1653,145 @@
         "comparisons": [],
         "sourceKey": "rep-scotus-security"
       }
+    ],
+    "interactions": [
+      {
+        "slug": "appropriations-before-you-know",
+        "kind": "BeforeYouKnow",
+        "title": "Before you read on",
+        "learningObjective": "Notice the gap between a headline figure and money that has moved.",
+        "prompt": "Commit to an answer first. There is no timer and no penalty — the point is to catch what you already assumed.",
+        "ordinal": 0,
+        "scoringMode": "Unscored",
+        "explanation": "None of it. The bill passed the House on 22 July 2026 and has not passed the Senate or been signed, so it provides no budget authority to anyone. Coverage described it as funding a potential conflict; a bill that has passed one chamber funds nothing.",
+        "payload": {
+          "question": "The House passed a $1.15 trillion defense bill in July. How much of that has actually been spent?",
+          "options": [
+            {
+              "id": "all",
+              "text": "All of it — that is what passing a spending bill means.",
+              "explanation": "Passage by one chamber creates no spending authority at all."
+            },
+            {
+              "id": "some",
+              "text": "Some of it, as the Pentagon draws it down through the year.",
+              "explanation": "Drawdown happens after enactment and apportionment. Neither has occurred."
+            },
+            {
+              "id": "none",
+              "text": "None of it.",
+              "explanation": "Correct. The bill is not law. It sits at Requested, the first of five rungs."
+            },
+            {
+              "id": "unknowable",
+              "text": "There is no way to tell from the reporting.",
+              "explanation": "Reasonable instinct, but the reporting does say: it passed the House and moves to the Senate."
+            }
+          ],
+          "correctOptionId": "none",
+          "revealText": "The Money Trail below shows this item on all five rungs. Four of them are empty."
+        }
+      },
+      {
+        "slug": "appropriations-classify-coverage",
+        "kind": "ClassifyStatement",
+        "title": "Fact, interpretation, opinion, or prediction?",
+        "learningObjective": "Separate what a sentence reports from what it argues or forecasts.",
+        "prompt": "Each line below is drawn from coverage logged in this room. Label what kind of statement it is.",
+        "ordinal": 1,
+        "scoringMode": "Partial",
+        "answerDependsOnClaimStatus": true,
+        "explanation": "The four labels are not a ranking. An interpretation is not a weaker fact and an opinion is not a failed one — they answer different questions, and a sentence that mixes them is where most disagreement actually lives.",
+        "payload": {
+          "items": [
+            {
+              "id": "house-passed",
+              "text": "The House approved $1.15 trillion in defense spending and included contingency funding provisions.",
+              "correctLabel": "Factual",
+              "explanation": "A dated event with a public record. Checkable against the roll call and the bill text."
+            },
+            {
+              "id": "funds-a-conflict",
+              "text": "The defense bill could fund a potential Iran conflict.",
+              "correctLabel": "Interpretation",
+              "explanation": "The provisions exist; whether 'fund' is the right verb for a contingency clause in a bill that has passed one chamber is a reading of them, not a fact about them."
+            },
+            {
+              "id": "politically-motivated",
+              "text": "The California Medicaid withholding is politically motivated.",
+              "correctLabel": "Opinion",
+              "explanation": "A claim about motive with no evidence offered either way. Unsupported here means no evidence has been produced, not that it is false."
+            },
+            {
+              "id": "no-shutdown",
+              "text": "The deal will prevent a shutdown.",
+              "correctLabel": "Prediction",
+              "explanation": "It resolves on a future date. An announced agreement is not enacted law, and the deadline is what settles this."
+            },
+            {
+              "id": "obligated-not-spent",
+              "text": "Money that has been obligated has not necessarily been spent.",
+              "correctLabel": "Factual",
+              "explanation": "A statement about how appropriations law works, settled in the GAO Red Book."
+            }
+          ]
+        }
+      },
+      {
+        "slug": "appropriations-timeline-builder",
+        "kind": "TimelineBuilder",
+        "title": "Put the funding fight in order",
+        "learningObjective": "See how much of the commentary predated the facts it claimed to explain.",
+        "prompt": "Arrange these events from earliest to latest. Then look at what was actually knowable on each date.",
+        "ordinal": 2,
+        "scoringMode": "Partial",
+        "explanation": "The order matters less than the second column. Most confident readings of this fight were published before the facts that would have settled them existed.",
+        "payload": {
+          "eventIds": [
+            "senate-deal",
+            "doj-hearing",
+            "house-stopgap",
+            "recess",
+            "hegseth-request"
+          ],
+          "trueOrder": [
+            "doj-hearing",
+            "house-stopgap",
+            "recess",
+            "senate-deal",
+            "hegseth-request"
+          ],
+          "labels": {
+            "doj-hearing": "Senate hearing questions the DOJ fund's legal authority",
+            "house-stopgap": "House passes a stopgap to keep the government open",
+            "recess": "Congress leaves for recess without a spending deal",
+            "senate-deal": "Senate leaders announce a deal to keep the government funded",
+            "hegseth-request": "Defense Secretary submits a classified supplemental request"
+          },
+          "knowabilityNotes": {
+            "doj-hearing": "15 July. The fund existed and Congress had not been given an accounting of it. Whether it rested on an appropriation was unresolved — and still is.",
+            "house-stopgap": "22 July. One chamber had acted. The Senate's path was described as uncertain, which turned out to be accurate.",
+            "recess": "23 July. No full-year agreement existed and both chambers had gone home. Anyone forecasting a smooth resolution was doing so with this on the record.",
+            "senate-deal": "2 August. An announced agreement, not an enacted one. It still had to clear both chambers and be signed.",
+            "hegseth-request": "5 August. A request exists; its size and purpose are classified, so no one outside the cleared committees can check any later stage."
+          }
+        }
+      },
+      {
+        "slug": "appropriations-vote-before-reading",
+        "kind": "VoteBeforeReading",
+        "title": "Where do you land before you read the arguments?",
+        "learningObjective": "Notice whether reading the strongest case on each side moves you.",
+        "prompt": "Answer now. We will hide your answer until you have read both sides, then show you whether you moved.",
+        "ordinal": 3,
+        "scoringMode": "Unscored",
+        "explanation": "There is no right answer here and there will not be one. Scoring this would be an ideological answer key. The only thing recorded is whether reading both sides changed where you landed.",
+        "payload": {
+          "question": "When Congress appropriates money, should the executive branch be required to spend it?",
+          "argumentsForClaimIds": [],
+          "argumentsAgainstClaimIds": []
+        }
+      }
     ]
   }
 }

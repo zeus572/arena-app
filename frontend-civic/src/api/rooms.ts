@@ -403,6 +403,47 @@ export interface RoomClaims {
   claims: RoomClaim[];
 }
 
+/** An interaction as served to a player — the answer key has been stripped server-side. */
+export interface RoomInteraction {
+  slug: string;
+  kind:
+    | "BeforeYouKnow"
+    | "ClassifyStatement"
+    | "TimelineBuilder"
+    | "VoteBeforeReading"
+    | "CalibratedPrediction"
+    | string;
+  title: string;
+  prompt: string;
+  learningObjective: string;
+  scored: boolean;
+  predictionId: string | null;
+  payload: unknown;
+  playedPre: boolean;
+  playedPost: boolean;
+}
+
+export interface InteractionItemResult {
+  itemId: string;
+  correct: boolean;
+  /** Present whether the answer was right or wrong — PRD 06 makes this mandatory. */
+  explanation: string;
+  correctLabel: string | null;
+}
+
+export interface InteractionResult {
+  kind: string;
+  phase: string;
+  scored: boolean;
+  score: number | null;
+  explanation: string;
+  items: InteractionItemResult[];
+  /** False for anonymous players: played fully, stored not at all. */
+  persisted: boolean;
+  priorResponseJson: string | null;
+  moved: boolean | null;
+}
+
 // ---------------------------------------------------------------------------- calls
 
 export async function listRooms(kind?: RoomKind): Promise<RoomSummary[]> {
@@ -546,5 +587,23 @@ export async function getRoomClaims(slug: string, unsettledOnly = false): Promis
   const { data } = await civicApi.get<RoomClaims>(`/rooms/${slug}/claims`, {
     params: unsettledOnly ? { unsettledOnly: true } : undefined,
   });
+  return data;
+}
+
+export async function getRoomInteractions(slug: string): Promise<RoomInteraction[]> {
+  const { data } = await civicApi.get<RoomInteraction[]>(`/rooms/${slug}/interactions`);
+  return data;
+}
+
+export async function submitInteraction(
+  roomSlug: string,
+  slug: string,
+  response: unknown,
+  phase: "pre" | "post" = "post",
+): Promise<InteractionResult> {
+  const { data } = await civicApi.post<InteractionResult>(
+    `/rooms/${roomSlug}/interactions/${slug}/submit`,
+    { phase, responseJson: JSON.stringify(response) },
+  );
   return data;
 }

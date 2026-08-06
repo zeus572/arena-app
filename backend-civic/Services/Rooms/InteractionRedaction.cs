@@ -90,6 +90,14 @@ public static class InteractionRedaction
         }
 
         // eventIds is the shuffled pool; trueOrder and the knowability notes are the answer.
-        return new JsonObject { ["eventIds"] = ids };
+        // Labels ride along because the answer is the ORDER, not the wording — without them
+        // the client can only render opaque ids.
+        var labels = new JsonObject();
+        foreach (var kv in payload["labels"]?.AsObject() ?? new JsonObject())
+        {
+            labels[kv.Key] = kv.Value?.GetValue<string>();
+        }
+
+        return new JsonObject { ["eventIds"] = ids, ["labels"] = labels };
     }
 }

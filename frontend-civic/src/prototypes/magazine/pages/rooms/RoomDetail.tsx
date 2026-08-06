@@ -22,6 +22,7 @@ import { RoomTimeline } from "../../components/rooms/RoomTimeline";
 import { RoomActorMap } from "../../components/rooms/RoomActorMap";
 import { RoomBoard } from "../../components/rooms/RoomBoard";
 import { RoomClaimLedger } from "../../components/rooms/RoomClaimLedger";
+import { RoomInteractions } from "../../components/rooms/RoomInteractions";
 import { RoomMoneyTrail } from "../../components/rooms/RoomMoneyTrail";
 import { RoomSources } from "../../components/rooms/RoomSources";
 import { StoryRoom } from "./StoryRoom";
@@ -329,6 +330,7 @@ export default function RoomDetail() {
       {timeline.length > 0 && <RoomTimeline events={timeline} />}
       {actors && <RoomActorMap slug={room.slug} initial={actors} />}
       <RoomMoneyTrail slug={room.slug} />
+      <RoomInteractions slug={room.slug} />
       <RoomClaimLedger slug={room.slug} />
       <RoomSources room={room} />
     </article>

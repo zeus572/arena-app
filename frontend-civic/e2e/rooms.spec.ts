@@ -312,3 +312,121 @@ test("every control in a room is a 44px touch target at 390px", async ({ page, r
     ).toBeGreaterThanOrEqual(44);
   }
 });
+
+test.describe("room interactions", () => {
+  async function interactionCount(
+    request: import("@playwright/test").APIRequestContext,
+    slug: string,
+  ) {
+    const res = await request.get(
+      `http://localhost:5050/api/rooms/${slug}/interactions`,
+    );
+    return ((await res.json()) as unknown[]).length;
+  }
+
+  test("a signed-out reader can play and gets the explanation", async ({ page, request }) => {
+    // Playing needs no account. Civic gives the browser a pseudonymous id, so this answer
+    // IS kept against that id — the "nothing was saved" path belongs to a client that sends
+    // no id at all, and is covered separately below against the API.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+    test.skip((await interactionCount(request, theme!.slug)) === 0, "no interactions seeded");
+
+    await page.goto(`/rooms/${theme!.slug}`);
+    const byk = page.locator('[data-testid="interaction"][data-kind="BeforeYouKnow"]');
+    await expect(byk).toBeVisible();
+
+    await byk.getByTestId("byk-option").first().click();
+    await byk.getByTestId("byk-submit").click();
+
+    const result = byk.getByTestId("interaction-result");
+    await expect(result).toBeVisible();
+    // Mandatory: an interaction that cannot explain itself is a publish blocker.
+    await expect(result).not.toBeEmpty();
+    // Mandatory whether the answer was right or wrong.
+    await expect(result).toContainText(/Requested/i);
+  });
+
+  test("a client with no identity plays fully and stores nothing", async ({ request }) => {
+    // CurrentUserService falls back to the literal "anonymous" only when there is no sub
+    // claim AND no X-User-Id. Writing ledger rows for that id would pool every such visitor
+    // into one XP bucket, so the play is scored and explained but not persisted.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    const res = await request.post(
+      `http://localhost:5050/api/rooms/${theme!.slug}/interactions/appropriations-before-you-know/submit`,
+      { data: { phase: "post", responseJson: JSON.stringify({ optionId: "none" }) } },
+    );
+    test.skip(res.status() === 404, "interaction not seeded on this database");
+
+    const body = (await res.json()) as { persisted: boolean; explanation: string };
+    expect(body.persisted).toBe(false);
+    expect(body.explanation).not.toBe("");
+  });
+
+  test("the timeline builder is orderable without a mouse", async ({ page, request }) => {
+    // Ordering is move-up / move-down, not drag. There is no second path to keep working,
+    // which is the point — an accessibility fallback nobody exercises is one nobody notices
+    // breaking.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+    test.skip((await interactionCount(request, theme!.slug)) === 0, "no interactions seeded");
+
+    await page.goto(`/rooms/${theme!.slug}`);
+    const builder = page.locator('[data-testid="interaction"][data-kind="TimelineBuilder"]');
+    await expect(builder).toBeVisible();
+
+    const rows = builder.getByTestId("builder-event");
+    const before = await rows.first().getAttribute("data-event-id");
+
+    // Keyboard only: focus the second row's "move earlier" control and activate it.
+    await rows.nth(1).getByTestId("builder-up").focus();
+    await page.keyboard.press("Enter");
+
+    await expect(rows.first()).not.toHaveAttribute("data-event-id", before!);
+
+    await builder.getByTestId("builder-submit").click();
+    await expect(builder.getByTestId("interaction-result")).toBeVisible();
+  });
+
+  test("an unscored interaction never marks an answer right or wrong", async ({
+    page,
+    request,
+  }) => {
+    // Vote Before Reading has no answer key and must never grow one — scoring an opinion
+    // would be an ideological answer key.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+    test.skip((await interactionCount(request, theme!.slug)) === 0, "no interactions seeded");
+
+    await page.goto(`/rooms/${theme!.slug}`);
+    const vote = page.locator('[data-testid="interaction"][data-kind="VoteBeforeReading"]');
+    await expect(vote).toBeVisible();
+    await expect(vote).toContainText(/no right answer/i);
+
+    await vote.getByTestId("vote-option").first().click();
+    await vote.getByTestId("vote-submit").click();
+
+    const result = vote.getByTestId("interaction-result");
+    await expect(result).toBeVisible();
+    await expect(result).not.toContainText(/right|not quite|%/i);
+  });
+
+  test("the first vote is withheld until the second pass", async ({ page, request }) => {
+    // Enforced server-side: the Pre response carries no answer at all, so there is nothing
+    // in the client that could render it early even by mistake.
+    const theme = await findRoom(request, "Theme");
+    test.skip(!theme, "no published theme room on this database");
+
+    const res = await request.post(
+      `http://localhost:5050/api/rooms/${theme!.slug}/interactions/appropriations-vote-before-reading/submit`,
+      { data: { phase: "pre", responseJson: JSON.stringify({ vote: "Yes" }) } },
+    );
+    test.skip(res.status() === 404, "vote interaction not seeded on this database");
+
+    const body = await res.text();
+    expect(body).not.toContain("Yes");
+    expect(body).toContain("after you have read both sides");
+  });
+});

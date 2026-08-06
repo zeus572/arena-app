@@ -215,6 +215,32 @@ public class SeedMoneyComparison
     public string? RejectionReason { get; set; }
 }
 
+/// <summary>
+/// One room interaction (PRD 06). <see cref="Payload"/> is the FULL payload including the
+/// answer key — the seeder stores it verbatim and InteractionRedaction strips it on read,
+/// so the key never has to be assembled at play time or fetched from a model.
+/// </summary>
+public class SeedInteraction
+{
+    public string Slug { get; set; } = "";
+    /// <summary>BeforeYouKnow | ClassifyStatement | TimelineBuilder | VoteBeforeReading.</summary>
+    public string Kind { get; set; } = "BeforeYouKnow";
+    public string Title { get; set; } = "";
+    public string LearningObjective { get; set; } = "";
+    public string Prompt { get; set; } = "";
+    /// <summary>Required. An interaction that cannot explain itself is a publish blocker —
+    /// being told you were wrong teaches nothing on its own.</summary>
+    public string Explanation { get; set; } = "";
+    /// <summary>Unscored | Exact | Partial | Brier.</summary>
+    public string ScoringMode { get; set; } = "Unscored";
+    /// <summary>True when the answer key depends on a claim's status, so a correction
+    /// flags this for revalidation instead of leaving it serving a stale key.</summary>
+    public bool AnswerDependsOnClaimStatus { get; set; }
+    public int Ordinal { get; set; }
+    /// <summary>The whole payload, answer key included. Redacted on the way out.</summary>
+    public System.Text.Json.JsonElement Payload { get; set; }
+}
+
 public class SeedRoomBase
 {
     public string Slug { get; set; } = "";
@@ -245,6 +271,7 @@ public class SeedThemeRoom : SeedRoomBase
     public int ArticlesConsideredCount { get; set; }
     public int DevelopmentWindowDays { get; set; } = 34;
     public List<SeedMoneyItem> MoneyItems { get; set; } = new();
+    public List<SeedInteraction> Interactions { get; set; } = new();
     public List<SeedEssentialFact> EssentialFacts { get; set; } = new();
     public List<SeedTerminologyNote> TerminologyNotes { get; set; } = new();
     public List<SeedTimelineEvent> Timeline { get; set; } = new();

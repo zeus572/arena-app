@@ -74,10 +74,16 @@ public record ClassifyStatementResponse(Dictionary<string, string> Labels);
 /// Event id to "what was knowable on this date". The second pass — the whole payoff — shows
 /// that most confident takes predate the evidence that contradicted them.
 /// </param>
+/// <param name="Labels">
+/// Event id to the text shown on the card. Sent to the player — an id is not a label, and
+/// without this the client can only render slugs. The ANSWER is the order, not the wording,
+/// so passing labels through leaks nothing.
+/// </param>
 public record TimelineBuilderPayload(
     List<string> EventIds,
     List<string> TrueOrder,
-    Dictionary<string, string> KnowabilityNotes);
+    Dictionary<string, string> KnowabilityNotes,
+    Dictionary<string, string>? Labels = null);
 
 public record TimelineBuilderResponse(List<string> Order);
 
