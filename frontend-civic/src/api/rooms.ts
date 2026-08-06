@@ -104,6 +104,8 @@ export interface RoomViewerState {
 }
 
 export interface ThemeRoomDetail extends RoomSummary {
+  /** Literal so `getRoom` returns a discriminated union callers can narrow on. */
+  kind: "Theme";
   alternateTitles: string[];
   scopeStatement: string;
   inclusionRules: string[];
@@ -126,6 +128,9 @@ export interface StoryDimension {
   dimension: string;
   text: string;
   claimId: string | null;
+  claimSlug: string | null;
+  /** Set when the dimension rests on a claim, so the line can carry its mark. */
+  claimStatus: ClaimStatus | null;
 }
 
 export interface StakeholderImpact {
@@ -144,7 +149,10 @@ export interface NextStep {
 }
 
 export interface StoryRoomDetail extends RoomSummary {
+  kind: "Story";
   howItWorksIntro: string;
+  /** The "what happened" spine, in order — resolved from EssentialFact edges to claims. */
+  essentialFacts: EssentialFact[];
   whyItMatters: StoryDimension[];
   stakeholders: StakeholderImpact[];
   nextSteps: NextStep[];
@@ -224,13 +232,15 @@ export interface SourceRef {
   publishedAt: string | null;
   retrievedAt: string;
   availability: string;
+  /** False for most reporting: Civic holds a headline and an RSS summary, not the body. */
+  fullTextAvailable: boolean;
   hasInterest: boolean;
   interestNote: string | null;
 }
 
 export interface ClaimStatusHistoryEntry {
-  fromStatus: string | null;
-  toStatus: string;
+  fromStatus: ClaimStatus | null;
+  toStatus: ClaimStatus;
   changeKind: string;
   rationale: string;
   changedAt: string;
@@ -317,7 +327,25 @@ export async function listRooms(kind?: RoomKind): Promise<RoomSummary[]> {
   return data;
 }
 
-/** 404 resolves to undefined so callers can render a not-found state; other errors throw. */
+/**
+ * One URL, two shapes. `/rooms/{slug}` returns a Theme or a Story payload depending on the
+ * room's kind, so callers discriminate on `kind` rather than knowing which to ask for —
+ * a link from a search result does not know what it is pointing at.
+ *
+ * 404 resolves to undefined so callers can render a not-found state; other errors throw.
+ */
+export async function getRoom(
+  slug: string,
+): Promise<ThemeRoomDetail | StoryRoomDetail | undefined> {
+  try {
+    const { data } = await civicApi.get<ThemeRoomDetail | StoryRoomDetail>(`/rooms/${slug}`);
+    return data;
+  } catch (err) {
+    if (isNotFound(err)) return undefined;
+    throw err;
+  }
+}
+
 export async function getThemeRoom(slug: string): Promise<ThemeRoomDetail | undefined> {
   try {
     const { data } = await civicApi.get<ThemeRoomDetail>(`/rooms/${slug}`);

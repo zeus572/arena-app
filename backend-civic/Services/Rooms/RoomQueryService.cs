@@ -193,17 +193,62 @@ public class RoomQueryService
         return dto;
     }
 
-    public StoryRoomDetailDto ToStoryDetail(StoryRoom room)
+    /// <summary>
+    /// A Story Room's payload (designs 1o / 1p).
+    ///
+    /// Unlike a Theme Room, a story's essential facts are not a column — they are
+    /// <see cref="LinkRelation.EssentialFact"/> edges to claims, because a story's "what
+    /// happened" spine IS a set of claims and copying their text into the room would break
+    /// the one rule the whole graph exists to keep: a status change must reach every place
+    /// the claim appears without anyone editing a room.
+    /// </summary>
+    public async Task<StoryRoomDetailDto> ToStoryDetailAsync(
+        StoryRoom room, CancellationToken ct = default)
     {
+        var factEdges = await _db.Set<ObjectLink>().AsNoTracking()
+            .Where(l => l.FromType == ObjectType.Room
+                     && l.FromId == room.Id
+                     && l.Relation == LinkRelation.EssentialFact
+                     && l.ToType == ObjectType.Claim
+                     && l.ValidTo == null)
+            .OrderBy(l => l.Ordinal)
+            .Select(l => new { l.ToId, l.Ordinal })
+            .ToListAsync(ct);
+
+        var wanted = factEdges.Select(e => e.ToId)
+            .Concat(room.WhyItMatters.Where(d => d.ClaimId is not null).Select(d => d.ClaimId!.Value))
+            .Distinct()
+            .ToList();
+
+        var claims = wanted.Count == 0
+            ? new Dictionary<Guid, (string Slug, string Text, ClaimStatus Status)>()
+            : await _db.Claims.AsNoTracking()
+                .Where(c => wanted.Contains(c.Id))
+                .Select(c => new { c.Id, c.Slug, c.Text, c.Status })
+                .ToDictionaryAsync(c => c.Id, c => (c.Slug, c.Text, c.Status), ct);
+
         var dto = new StoryRoomDetailDto
         {
             HowItWorksIntro = room.HowItWorksIntro,
             SourceBillId = room.SourceBillId,
+            EssentialFacts = factEdges
+                .Where(e => claims.ContainsKey(e.ToId))
+                .Select(e => new EssentialFactDto
+                {
+                    Text = claims[e.ToId].Text,
+                    ClaimId = e.ToId,
+                    ClaimSlug = claims[e.ToId].Slug,
+                    ClaimStatus = claims[e.ToId].Status.ToString(),
+                    Ordinal = e.Ordinal,
+                }).ToList(),
             WhyItMatters = room.WhyItMatters.Select(d => new StoryDimensionDto
             {
                 Dimension = d.Dimension,
                 Text = d.Text,
                 ClaimId = d.ClaimId,
+                ClaimSlug = d.ClaimId is { } id && claims.TryGetValue(id, out var c) ? c.Slug : null,
+                ClaimStatus = d.ClaimId is { } id2 && claims.TryGetValue(id2, out var c2)
+                    ? c2.Status.ToString() : null,
             }).ToList(),
             Stakeholders = room.Stakeholders.Select(s => new StakeholderImpactDto
             {

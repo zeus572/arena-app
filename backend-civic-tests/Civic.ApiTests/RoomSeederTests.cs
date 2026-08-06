@@ -328,6 +328,35 @@ public class RoomSeederTests
     }
 
     [Fact]
+    public async Task AStoryRoom_ResolvesItsEssentialFactsFromClaims()
+    {
+        // A Theme Room stores its essential facts as text with an optional claim pointer.
+        // A Story Room does not store them at all — the "what happened" spine IS a set of
+        // claims, reached through EssentialFact edges, so the text and the status both come
+        // from the claim row. That is what lets a correction reach a story without an edit.
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var story = await _fx.Factory.CreateClient()
+            .GetFromJsonAsync<StoryRoomDetailDto>(
+                "/api/rooms/how-an-appropriation-becomes-spending");
+
+        story!.Kind.Should().Be("Story");
+        story.EssentialFacts.Should().NotBeEmpty();
+        story.EssentialFacts.Should().OnlyContain(f =>
+            !string.IsNullOrWhiteSpace(f.Text)
+            && f.ClaimSlug != null
+            && f.ClaimStatus != null);
+
+        // Ordinal survives the round trip; the spine is a sequence, not a set.
+        story.EssentialFacts.Select(f => f.Ordinal).Should().BeInAscendingOrder();
+
+        // Dimensions that rest on a claim carry its status too, so the line can be marked.
+        story.WhyItMatters.Where(d => d.ClaimId != null).Should()
+            .OnlyContain(d => d.ClaimStatus != null && d.ClaimSlug != null);
+    }
+
+    [Fact]
     public async Task AClaim_KnowsWhichRoomsItAppearsIn()
     {
         // "Where this appears" is the reader-facing half of correction fan-out: it is the

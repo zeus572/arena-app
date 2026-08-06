@@ -5,11 +5,12 @@ import {
   getRoomActors,
   getRoomLatest,
   getRoomTimeline,
-  getThemeRoom,
+  getRoom,
   markRoomSeen,
   unfollowRoom,
   type RoomActors,
   type RoomLatest,
+  type StoryRoomDetail,
   type ThemeRoomDetail,
   type TimelineEvent,
 } from "@/api/rooms";
@@ -20,6 +21,7 @@ import { RoomLatestSection } from "../../components/rooms/RoomLatestSection";
 import { RoomTimeline } from "../../components/rooms/RoomTimeline";
 import { RoomActorMap } from "../../components/rooms/RoomActorMap";
 import { RoomSources } from "../../components/rooms/RoomSources";
+import { StoryRoom } from "./StoryRoom";
 
 /**
  * The Theme Room front door (design 1a, "Dispatch").
@@ -38,6 +40,7 @@ export default function RoomDetail() {
   const board = searchParams.get("view") === "board";
 
   const [room, setRoom] = useState<ThemeRoomDetail | null>(null);
+  const [story, setStory] = useState<StoryRoomDetail | null>(null);
   const [latest, setLatest] = useState<RoomLatest | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [actors, setActors] = useState<RoomActors | null>(null);
@@ -51,14 +54,27 @@ export default function RoomDetail() {
     let alive = true;
     setLoaded(false);
     setMissing(false);
+    setStory(null);
 
     (async () => {
-      const detail = await getThemeRoom(slug).catch(() => undefined);
+      const detail = await getRoom(slug).catch(() => undefined);
       if (!alive) return;
 
       if (!detail) {
         setMissing(true);
         setLoaded(true);
+        return;
+      }
+
+      // One URL, two shapes. A Story Room has none of the sections below it — no status
+      // sentence, no Latest, no actor map — so it renders its own page rather than
+      // borrowing the Theme Room's and leaving most of it blank.
+      if (detail.kind === "Story") {
+        setStory(detail);
+        setLoaded(true);
+        markRoomSeen(slug, detail.revision).catch(() => {
+          /* Best effort; a failed bookmark must not break the page. */
+        });
         return;
       }
 
@@ -119,6 +135,8 @@ export default function RoomDetail() {
       </p>
     );
   }
+
+  if (story) return <StoryRoom room={story} />;
 
   if (missing || !room) {
     return (

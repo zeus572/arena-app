@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getClaim, type ClaimDetail as Claim, type ClaimSource } from "@/api/claims";
+import { getClaim, type ClaimDetail as Claim, type SourceRef } from "@/api/rooms";
 import { EvidenceMark, STATUS_MEANING, STATUS_WORD } from "../../components/rooms/EvidenceMark";
 
 /**
@@ -217,7 +217,7 @@ function EvidenceColumn({
   testid,
 }: {
   title: string;
-  sources: ClaimSource[];
+  sources: SourceRef[];
   empty: string;
   testid: string;
 }) {

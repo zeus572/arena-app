@@ -211,6 +211,9 @@ public class StoryDimensionDto
     public string Dimension { get; set; } = "";
     public string Text { get; set; } = "";
     public Guid? ClaimId { get; set; }
+    /// <summary>Set when the dimension rests on a claim, so the line can carry its mark.</summary>
+    public string? ClaimSlug { get; set; }
+    public string? ClaimStatus { get; set; }
 }
 
 public class StakeholderImpactDto
@@ -234,6 +237,12 @@ public class NextStepDto
 public class StoryRoomDetailDto : RoomSummaryDto
 {
     public string HowItWorksIntro { get; set; } = "";
+
+    /// <summary>
+    /// The "what happened" spine, in order. Resolved from EssentialFact edges rather than
+    /// stored as text, so a claim's status change reaches the story without an edit.
+    /// </summary>
+    public List<EssentialFactDto> EssentialFacts { get; set; } = new();
     public List<StoryDimensionDto> WhyItMatters { get; set; } = new();
     public List<StakeholderImpactDto> Stakeholders { get; set; } = new();
     public List<NextStepDto> NextSteps { get; set; } = new();

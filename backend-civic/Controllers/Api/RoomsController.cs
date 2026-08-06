@@ -92,7 +92,7 @@ public class RoomsController : ControllerBase
             }
             case StoryRoom story:
             {
-                var dto = _rooms.ToStoryDetail(story);
+                var dto = await _rooms.ToStoryDetailAsync(story, ct);
                 dto.Viewer = viewer;
                 return Ok(dto);
             }
