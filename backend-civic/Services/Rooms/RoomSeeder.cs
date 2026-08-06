@@ -533,19 +533,31 @@ public class RoomSeeder
             if (!actors.TryGetValue(a.Slug, out var actorId)) continue;
 
             // The default (null-keyed) tiering always exists. Decision keys add rows on top
-            // rather than replacing it, so filtering to a decision narrows the map instead
+            // rather than replacing it, so filtering to a decision re-tiers the map instead
             // of an actor being visible only to a reader who already picked the right filter.
-            foreach (var decision in a.Decisions.Prepend<string?>(null))
+            _db.ActorRoomRoles.Add(new ActorRoomRole
+            {
+                Id = Guid.NewGuid(),
+                ActorId = actorId,
+                RoomId = roomId,
+                DecisionKey = null,
+                Tier = ParseEnum(a.Tier, ActorTier.Shapes),
+                LeverageStatement = a.LeverageStatement,
+                RoleHere = a.RoleHere,
+                Ordinal = a.Ordinal,
+            });
+
+            foreach (var d in a.Decisions)
             {
                 _db.ActorRoomRoles.Add(new ActorRoomRole
                 {
                     Id = Guid.NewGuid(),
                     ActorId = actorId,
                     RoomId = roomId,
-                    DecisionKey = decision,
-                    Tier = ParseEnum(a.Tier, ActorTier.Shapes),
-                    LeverageStatement = a.LeverageStatement,
-                    RoleHere = a.RoleHere,
+                    DecisionKey = d.Key,
+                    Tier = ParseEnum(d.Tier ?? a.Tier, ActorTier.Shapes),
+                    LeverageStatement = d.LeverageStatement ?? a.LeverageStatement,
+                    RoleHere = d.RoleHere ?? a.RoleHere,
                     Ordinal = a.Ordinal,
                 });
             }

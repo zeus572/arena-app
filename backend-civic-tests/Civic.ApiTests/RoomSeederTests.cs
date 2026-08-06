@@ -328,6 +328,49 @@ public class RoomSeederTests
     }
 
     [Fact]
+    public async Task ChoosingADecision_ActuallyRetiersTheMap()
+    {
+        // Design 1i's premise is that leverage belongs to an actor AND a decision, not to an
+        // actor. The selector is rendered whenever availableDecisions is non-empty, so if
+        // every decision-scoped role carries the same tier as its default the reader changes
+        // the dropdown and nothing moves — a visible control with no visible effect.
+        //
+        // This asserts the pilot has at least one actor whose tier genuinely differs under a
+        // named decision, and that every actor still appears (the filter re-sorts, never hides).
+        await _fx.ResetMutableAsync();
+        await SeedAsync();
+
+        var client = _fx.Factory.CreateClient();
+        var baseline = await client.GetFromJsonAsync<RoomActorsDto>(
+            "/api/rooms/federal-appropriations/actors");
+
+        baseline!.AvailableDecisions.Should().NotBeEmpty();
+
+        static Dictionary<string, string> Tiers(RoomActorsDto d) =>
+            d.Decides.Concat(d.Shapes).Concat(d.Constrained)
+                .ToDictionary(a => a.Slug, a => a.Tier);
+
+        var before = Tiers(baseline);
+        var moved = 0;
+
+        foreach (var decision in baseline.AvailableDecisions)
+        {
+            var filtered = await client.GetFromJsonAsync<RoomActorsDto>(
+                $"/api/rooms/federal-appropriations/actors?decision={decision}");
+
+            var after = Tiers(filtered!);
+            after.Keys.Should().BeEquivalentTo(before.Keys,
+                "choosing a decision re-sorts the map, it never removes anyone from it");
+
+            moved += after.Count(kv => before[kv.Key] != kv.Value);
+        }
+
+        moved.Should().BeGreaterThan(0,
+            "at least one actor must hold different leverage over a named decision than over "
+          + "the room as a whole, or the decision selector does nothing");
+    }
+
+    [Fact]
     public async Task LatestEndpoint_ReportsWhatItLoggedAndWhatItLeftOut()
     {
         // Design 1g prints "we logged N articles and judged M of them to have changed

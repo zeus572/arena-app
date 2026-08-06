@@ -382,7 +382,28 @@
       "leverageStatement": "Writes the bill text that every later stage either accepts or amends.",
       "roleHere": "Originating chamber for appropriations under the Origination Clause practice.",
       "ordinal": 0,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "defense-appropriation",
+          "tier": "Decides",
+          "leverageStatement": "Writes the defense bill's text and its topline."
+        },
+        {
+          "key": "shutdown-deadline",
+          "tier": "Decides",
+          "leverageStatement": "Passed a stopgap on 22 July; a full-year bill has not moved."
+        },
+        {
+          "key": "doj-fund",
+          "tier": "Shapes",
+          "leverageStatement": "Would have had to accept the provision in conference; never got the chance."
+        },
+        {
+          "key": "medicaid-withholding",
+          "tier": "Shapes",
+          "leverageStatement": "Wrote the appropriation. Writing it did not make it move."
+        }
+      ]
     },
     {
       "slug": "senate-appropriations-committee",
@@ -394,7 +415,28 @@
       "leverageStatement": "Can block or rewrite any House-passed appropriation.",
       "roleHere": "The second of the two chambers that must agree on identical text.",
       "ordinal": 1,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "defense-appropriation",
+          "tier": "Decides",
+          "leverageStatement": "Must pass its own version and reconcile; the House number is not final."
+        },
+        {
+          "key": "shutdown-deadline",
+          "tier": "Decides",
+          "leverageStatement": "The stopgap's fate in the Senate was still uncertain when both chambers left."
+        },
+        {
+          "key": "doj-fund",
+          "tier": "Decides",
+          "leverageStatement": "The fund lived or died in the spending legislation it was attached to."
+        },
+        {
+          "key": "medicaid-withholding",
+          "tier": "Shapes",
+          "leverageStatement": "Same -- authority to appropriate is not authority to disburse."
+        }
+      ]
     },
     {
       "slug": "omb",
@@ -411,7 +453,23 @@
       "leverageStatement": "Controls apportionment, so it sets the pace at which appropriated money becomes usable.",
       "roleHere": "The bridge between an enacted appropriation and an agency's ability to obligate.",
       "ordinal": 2,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "defense-appropriation",
+          "tier": "Shapes",
+          "leverageStatement": "Transmits the request and will apportion whatever is enacted."
+        },
+        {
+          "key": "shutdown-deadline",
+          "tier": "Shapes",
+          "leverageStatement": "Issues the lapse guidance that decides which staff are excepted and which stop."
+        },
+        {
+          "key": "medicaid-withholding",
+          "tier": "Shapes",
+          "leverageStatement": "Apportionment is where a withholding upstream of the agency would be visible."
+        }
+      ]
     },
     {
       "slug": "cbo",
@@ -428,7 +486,13 @@
       "leverageStatement": "Its score frames what a bill is publicly understood to cost.",
       "roleHere": "The source of the official cost estimate, where one exists.",
       "ordinal": 3,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "defense-appropriation",
+          "tier": "Shapes",
+          "leverageStatement": "Scores the bill, which sets the terms the argument is conducted in."
+        }
+      ]
     },
     {
       "slug": "gao",
@@ -443,7 +507,18 @@
       "leverageStatement": "Rules after the fact on whether a use of funds was lawful.",
       "roleHere": "The authority on what the stages mean, via the Red Book.",
       "ordinal": 4,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "doj-fund",
+          "tier": "Shapes",
+          "leverageStatement": "Can rule on whether an agency-created fund rests on an appropriation."
+        },
+        {
+          "key": "medicaid-withholding",
+          "tier": "Shapes",
+          "leverageStatement": "Can issue a legal decision on whether the withholding is an impoundment requiring notice to Congress."
+        }
+      ]
     },
     {
       "slug": "federal-agencies",
@@ -455,7 +530,13 @@
       "leverageStatement": "Decide the operational detail, but only inside limits set several stages earlier.",
       "roleHere": "Where an appropriation finally becomes an obligation and then a payment.",
       "ordinal": 5,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "shutdown-deadline",
+          "tier": "Constrained",
+          "leverageStatement": "Plan for a lapse they cannot prevent; the Antideficiency Act dictates what stops."
+        }
+      ]
     },
     {
       "slug": "secretary-of-defense",
@@ -475,7 +556,11 @@
       "roleHere": "Requests defense funding and reports what has been spent; both roles appear in this window.",
       "ordinal": 10,
       "decisions": [
-        "defense-appropriation"
+        {
+          "key": "defense-appropriation",
+          "tier": "Shapes",
+          "leverageStatement": "Sets the opening number, including a classified supplemental Congress cannot discuss in public."
+        }
       ]
     },
     {
@@ -495,7 +580,16 @@
       "roleHere": "Negotiated the early-August agreement that is currently the main thing standing between the calendar and a lapse.",
       "ordinal": 11,
       "decisions": [
-        "shutdown-deadline"
+        {
+          "key": "defense-appropriation",
+          "tier": "Decides",
+          "leverageStatement": "Controls whether the bill reaches the floor before the deadline."
+        },
+        {
+          "key": "shutdown-deadline",
+          "tier": "Decides",
+          "leverageStatement": "The 2 August agreement is the only thing currently standing between the calendar and a lapse."
+        }
       ]
     },
     {
@@ -515,7 +609,11 @@
       "roleHere": "Subject of the July hearing over the fund's legal authority, and party to the August deal that dropped it.",
       "ordinal": 12,
       "decisions": [
-        "doj-fund"
+        {
+          "key": "doj-fund",
+          "tier": "Shapes",
+          "leverageStatement": "Proposed the fund, defended it in hearing, then traded it away to unblock the bill."
+        }
       ]
     },
     {
@@ -535,7 +633,11 @@
       "roleHere": "The executive-branch side of the July withholding dispute with California.",
       "ordinal": 13,
       "decisions": [
-        "medicaid-withholding"
+        {
+          "key": "medicaid-withholding",
+          "tier": "Decides",
+          "leverageStatement": "Holds the release. The money is appropriated and has not been rescinded; this office is why it has not moved."
+        }
       ]
     },
     {
@@ -555,7 +657,11 @@
       "roleHere": "The state on the receiving end of the withholding.",
       "ordinal": 14,
       "decisions": [
-        "medicaid-withholding"
+        {
+          "key": "medicaid-withholding",
+          "tier": "Constrained",
+          "leverageStatement": "Can litigate and publicise. Cannot compel disbursement, and carries the gap meanwhile."
+        }
       ]
     },
     {
@@ -575,7 +681,11 @@
       "roleHere": "Opened the oversight thread that ended with the fund being dropped.",
       "ordinal": 15,
       "decisions": [
-        "doj-fund"
+        {
+          "key": "doj-fund",
+          "tier": "Shapes",
+          "leverageStatement": "Oversight put the fund's legal authority on the record, which is what made it tradeable."
+        }
       ]
     },
     {
@@ -595,7 +705,11 @@
       "roleHere": "Named a condition on the DOJ fund the day before it was dropped.",
       "ordinal": 16,
       "decisions": [
-        "doj-fund"
+        {
+          "key": "doj-fund",
+          "tier": "Decides",
+          "leverageStatement": "In a posture needing sixty votes, one senator's condition is close to a veto -- the fund was dropped the day after he set his."
+        }
       ]
     },
     {
@@ -614,7 +728,13 @@
       "leverageStatement": "Institutional standing and the visibility of an unusual appearance -- no procedural lever at all.",
       "roleHere": "A reminder that the third branch is a supplicant in this process, not a participant.",
       "ordinal": 17,
-      "decisions": []
+      "decisions": [
+        {
+          "key": "shutdown-deadline",
+          "tier": "Constrained",
+          "leverageStatement": "Funded by the same bills and with no role in passing them."
+        }
+      ]
     }
   ],
   "claims": [

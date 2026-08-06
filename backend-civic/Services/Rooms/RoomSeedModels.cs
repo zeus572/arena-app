@@ -74,9 +74,26 @@ public class SeedActor
     /// ever look — so the seeder always writes the default tiering and treats these as
     /// extra rows.
     /// </summary>
-    public string[] Decisions { get; set; } = Array.Empty<string>();
+    public List<SeedActorDecision> Decisions { get; set; } = new();
 
     public int Ordinal { get; set; }
+}
+
+/// <summary>
+/// An actor's tiering relative to ONE named decision (design 1i).
+///
+/// The whole point of the decision selector is that leverage is not a property of an actor
+/// but of an actor-and-a-decision: the appropriations committees decide an appropriation and
+/// merely shape whether a agency releases it. Every field except <see cref="Key"/> falls
+/// back to the actor's room-wide value, so a decision entry only states what differs.
+/// </summary>
+public class SeedActorDecision
+{
+    public string Key { get; set; } = "";
+    /// <summary>Decides | Shapes | Constrained. Defaults to the actor's room-wide tier.</summary>
+    public string? Tier { get; set; }
+    public string? LeverageStatement { get; set; }
+    public string? RoleHere { get; set; }
 }
 
 public class SeedClaim
