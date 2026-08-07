@@ -1,7 +1,7 @@
 # Topic Rooms — implementation status
 
 **Branch:** `feature/civic-topic-rooms` · **PR:** [#97](https://github.com/zeus572/arena-app/pull/97) (draft)
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-07
 
 Read this first if you are picking the work up cold. The PRDs in this directory are the
 requirements of record; `design_handoff_topic_rooms/SCREENS.md` is the per-screen spec.
@@ -44,13 +44,14 @@ risk and gives the Money Trail real content.
 | F4 | `21fa4b4` | Money Trail — seed, `GET /rooms/{slug}/money`, five-rung ladder |
 | F5 | `ad7c0e4` | Situation Board, claims ledger + `GET /rooms/{slug}/claims`, 44px targets |
 | F3 | `9204ea5` | Four seeded interactions + their UI |
+| R7 | `80ff66e` | Candidate pass, draft pass, claim extraction, `GET /admin/rooms/pipeline` |
 
 Six migrations: `AddRoomsGraph`, `AddRooms`, `AddRoomContentObjects`, `AddRoomEditorial`,
 `AddRoomInteractionsAndPredictions`, `AddMoneyTrail`.
 
-**Test counts:** `Civic.UnitTests` 361/361 · `Civic.ApiTests` 370 passed (1 pre-existing
-`BriefingsControllerTests` failure) · `npm run build` clean · 68/68 vitest ·
-21/21 `e2e/rooms.spec.ts`.
+**Every phase of the plan is now built.** `Civic.UnitTests` 380/380 · `Civic.ApiTests` 383
+passed (1 pre-existing `BriefingsControllerTests` failure) · `npm run build` clean ·
+68/68 vitest · 21/21 `e2e/rooms.spec.ts`.
 
 ## The pilot content
 
@@ -67,18 +68,42 @@ under the Latest section becomes false.
 
 ---
 
-## What is NOT done
+## Running the drafting pipeline
 
-### R7 — LLM drafting + admin review UI (1y, 1z)
-`RoomCandidateService`, `RoomDraftService`, `ClaimExtractionService` do not exist. The four
-drafting columns are already on `Room` (`DraftModelId`, `DraftPromptVersion`,
-`DraftAttemptCount`, `LastError`, `DraftedAt`) **so R7 needs no migration**.
-`AdminRoomsController` exists with gates, propagation, flags, metrics and integrity — but
-there is no `/admin/rooms` page.
+```bash
+# Candidate pass only — deterministic, no LLM, free. On by default.
+RoomDrafting__CandidatesEnabled=true dotnet run --project backend-civic
 
-**Critical constraint for R7:** Civic stores headline + RSS summary only, no article body.
-Claim extraction must run over **Bills and Briefings**, which carry real prose — never over
-`NewsItem`. Do not add an article fetcher without deciding the rights question first.
+# Add the draft pass. This SPENDS MONEY on every tick.
+RoomDrafting__Enabled=true RoomDrafting__DraftBatchSize=3 dotnet run --project backend-civic
+```
+
+`RoomDrafting:Enabled` defaults to **false** everywhere. Its failure mode is not a crash, it
+is a quiet retry loop that bills for nothing — which has happened on this codebase before —
+so it is opt-in per environment and `MaxDraftAttempts` bounds it.
+
+Neither pass can publish. Their terminal state is `Draft`, and review is deliberately not a
+step the machinery waits on: `GET /api/admin/rooms/pipeline` is a read-only report, not a
+queue. What keeps model-written text away from readers is that `Draft` is not a published
+status. Turning one into a published room is still a human action and still runs the gates.
+
+On a dev box the candidate pass will usually find nothing, because the local briefing corpus
+is months older than any room's `DevelopmentWindowDays`. That is correct behaviour, not a
+failure. The `RoomDraftServiceTests` suite exercises the whole chain against real Postgres.
+
+**The corpus constraint still holds and is now enforced in code.** Civic stores headline +
+RSS summary only, no article body. Extraction runs over **Bills and Briefings**, which carry
+real prose — never `NewsItem`. `RoomCandidateService` will not create a candidate from one
+and `RoomDraftService` fails a sourceless candidate rather than drafting from nothing, so
+the rule lives where the corpus is chosen rather than in the prompt. Do not add an article
+fetcher without deciding the rights question first.
+
+**Verbatim passages are verified, not trusted.** A model asked for an exact supporting span
+will sometimes return a tidied one, and a paraphrase presented as a quotation looks exactly
+like the good case. `ClaimExtractionService.PassageAppearsIn` checks every passage against
+the source; an unverified claim loses its evidence edge, is demoted and says so. Nothing the
+pipeline drafts is ever `Confirmed` — that status means a primary document settles it, and
+the pipeline holds a briefing.
 
 ---
 
@@ -177,7 +202,7 @@ Recorded because it will bite the next person too.
 
 ---
 
-### Still unbuilt inside F2–F5
+### Still unbuilt
 
 - **`/bills` as a Story Room.** PRD 08 §12 calls this the recommended first product
   decision; the Story Room page now exists to receive it, but the bill experience has not
@@ -193,13 +218,14 @@ Recorded because it will bite the next person too.
   changelog, so `/delta` correctly returns nothing. Exercising it needs a second revision
   committed through `RoomRevisionService`.
 
+- **`/admin/rooms` as a page.** The endpoints exist and are read-only by design; there is
+  no React surface, and per the scope decision above one is not required.
+
 ## Suggested next step
 
-**R7 (LLM drafting + `/admin/rooms`).** It is the last phase of the plan, it needs no
-migration, and the pilot is now a worked example of the output shape a draft should aim
-at — 12 developments with inclusion reasons, 25 claims spanning all eight statuses, money
-items that name what they do not mean.
-
-Failing that, **commit a second revision to the pilot** so the delta ribbon, the changelog
-and `lastMeaningfulUpdateAt` render at all. Every one of those surfaces is built and none
-has been seen with real data.
+**Commit a second revision to the pilot.** The delta ribbon, the changelog and
+`lastMeaningfulUpdateAt` are all built and none has ever rendered against real data, because
+the room is still at r.1 and `/delta` correctly returns nothing. A single correction pushed
+through `RoomRevisionService` — the `$1T+` → `$1.15T` pair is a real one already in the seed
+as an `Outdated` claim — would light up three surfaces at once and exercise
+`CorrectionPropagationService` end to end.
