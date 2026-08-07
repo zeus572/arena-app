@@ -73,4 +73,6 @@ public static class CivicGenerationSource
     public const string Seed = "seed";
     public const string News = "news";
     public const string Manual = "manual";
+    /// <summary>Drafted by the LLM pipeline. Never publishable without a human status change.</summary>
+    public const string Model = "model";
 }

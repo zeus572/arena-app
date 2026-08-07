@@ -153,6 +153,14 @@ builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomRevisionService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomQueryService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.RoomSeeder>();
+
+// R7 drafting. The candidate pass is deterministic and free; the draft pass spends money
+// and is off unless RoomDrafting:Enabled is set. Neither ever publishes anything.
+builder.Services.Configure<Civic.API.Services.Rooms.RoomDraftOptions>(
+    builder.Configuration.GetSection(Civic.API.Services.Rooms.RoomDraftOptions.SectionName));
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomCandidateService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.ClaimExtractionService>();
+builder.Services.AddHostedService<Civic.API.Services.Rooms.RoomDraftService>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.PublishGateEvaluator>();
 builder.Services.AddScoped<Civic.API.Services.Rooms.CorrectionPropagationService>();
 builder.Services.AddHostedService<Civic.API.Services.Rooms.ReviewFlagSweepService>();

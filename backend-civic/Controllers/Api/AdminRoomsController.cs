@@ -1,4 +1,5 @@
 using Civic.API.Data;
+using Civic.API.Models.DTOs;
 using Civic.API.Models.Rooms;
 using Civic.API.Services;
 using Civic.API.Services.Rooms;
@@ -45,6 +46,74 @@ public class AdminRoomsController : ControllerBase
         _propagation = propagation;
         _links = links;
         _resolver = resolver;
+    }
+
+    // ------------------------------------------------------------------ drafting pipeline
+
+    /// <summary>
+    /// What the R7 pipeline has produced and where it got stuck.
+    ///
+    /// Read-only, and deliberately not a queue. Nothing in the pipeline waits on this
+    /// endpoint being called: the candidate pass and the draft pass both run to completion
+    /// on their own, and their terminal state is Draft. Reviewing is something an operator
+    /// may do, not a step the machinery blocks on — the thing that actually keeps drafts
+    /// away from readers is that Draft is not a published status, not that someone is
+    /// expected to look here.
+    /// </summary>
+    [HttpGet("pipeline")]
+    public async Task<ActionResult<RoomPipelineDto>> Pipeline(
+        [FromQuery] int take = 50, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+
+        var rows = await _db.StoryRooms.AsNoTracking()
+            .Where(r => r.Status == RoomStatus.Candidate
+                     || r.Status == RoomStatus.Drafting
+                     || r.Status == RoomStatus.Draft)
+            .OrderByDescending(r => r.DraftedAt ?? r.EventTime)
+            .Take(take)
+            .ToListAsync(ct);
+
+        var ids = rows.Select(r => r.Id).ToList();
+
+        // Claim counts come from the edges rather than a column, same as everywhere else.
+        var claimCounts = (await _db.Set<ObjectLink>().AsNoTracking()
+                .Where(l => l.FromType == ObjectType.Room
+                         && ids.Contains(l.FromId)
+                         && l.Relation == LinkRelation.EssentialFact
+                         && l.ToType == ObjectType.Claim
+                         && l.ValidTo == null)
+                .Select(l => l.FromId)
+                .ToListAsync(ct))
+            .GroupBy(id => id)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return Ok(new RoomPipelineDto
+        {
+            CandidateCount = rows.Count(r => r.Status == RoomStatus.Candidate),
+            DraftingCount = rows.Count(r => r.Status == RoomStatus.Drafting),
+            DraftCount = rows.Count(r => r.Status == RoomStatus.Draft),
+            // A candidate that has burned its attempts will never be retried. It is not an
+            // error anywhere; it just silently stops, so it is surfaced as its own number.
+            ExhaustedCount = rows.Count(r =>
+                r.Status == RoomStatus.Candidate && r.DraftAttemptCount >= 3),
+            Items = rows.Select(r => new RoomPipelineItemDto
+            {
+                Slug = r.Slug,
+                Title = r.Title,
+                Status = r.Status.ToString(),
+                SourceKind = r.SourceBriefingId is not null ? "Briefing"
+                    : r.SourceBillId is not null ? "Bill"
+                    : "None",
+                EventTime = r.EventTime,
+                DraftedAt = r.DraftedAt,
+                DraftAttemptCount = r.DraftAttemptCount,
+                DraftModelId = r.DraftModelId,
+                DraftPromptVersion = r.DraftPromptVersion,
+                LastError = r.LastError,
+                ClaimCount = claimCounts.TryGetValue(r.Id, out var n) ? n : 0,
+            }).ToList(),
+        });
     }
 
     // ------------------------------------------------------------------ gates & publish

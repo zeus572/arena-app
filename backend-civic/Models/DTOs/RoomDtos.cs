@@ -401,3 +401,36 @@ public class RoomClaimDto
     public int SupportingCount { get; set; }
     public int ContradictingCount { get; set; }
 }
+
+/// <summary>
+/// What the drafting pipeline has produced (PRD 08 phase R7).
+///
+/// A report, not a work queue. The pipeline does not wait for anyone to read this.
+/// </summary>
+public class RoomPipelineDto
+{
+    public int CandidateCount { get; set; }
+    public int DraftingCount { get; set; }
+    public int DraftCount { get; set; }
+    /// <summary>Candidates that have used up their attempts and will not be retried.</summary>
+    public int ExhaustedCount { get; set; }
+    public List<RoomPipelineItemDto> Items { get; set; } = new();
+}
+
+public class RoomPipelineItemDto
+{
+    public string Slug { get; set; } = "";
+    public string Title { get; set; } = "";
+    /// <summary>Candidate | Drafting | Draft. Never Published — the pipeline cannot get there.</summary>
+    public string Status { get; set; } = "";
+    /// <summary>Briefing | Bill. Never a news item; there is no body to draft from.</summary>
+    public string SourceKind { get; set; } = "";
+    public DateTime EventTime { get; set; }
+    public DateTime? DraftedAt { get; set; }
+    public int DraftAttemptCount { get; set; }
+    public string? DraftModelId { get; set; }
+    public int DraftPromptVersion { get; set; }
+    /// <summary>Also carries the contested-terms note when the draft copy tripped one.</summary>
+    public string? LastError { get; set; }
+    public int ClaimCount { get; set; }
+}
