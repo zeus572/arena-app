@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Civic.API.Models;
 using Civic.API.Models.Daily;
+using Civic.API.Models.Rooms;
 using Arena.Shared.Social;
 
 namespace Civic.API.Data;
@@ -80,6 +81,30 @@ public class CivicDbContext : DbContext
     // without one.)
     public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
     public DbSet<DailyPuzzlePlay> DailyPuzzlePlays => Set<DailyPuzzlePlay>();
+
+    // Topic Rooms knowledge graph (docs/Rooms Expansion).
+    public DbSet<ObjectLink> ObjectLinks => Set<ObjectLink>();
+    public DbSet<SourceRef> SourceRefs => Set<SourceRef>();
+    public DbSet<Claim> Claims => Set<Claim>();
+    public DbSet<ClaimStatusHistory> ClaimStatusHistories => Set<ClaimStatusHistory>();
+    public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<ThemeRoom> ThemeRooms => Set<ThemeRoom>();
+    public DbSet<StoryRoom> StoryRooms => Set<StoryRoom>();
+    public DbSet<RoomRevision> RoomRevisions => Set<RoomRevision>();
+    public DbSet<ChangeLogEntry> ChangeLogEntries => Set<ChangeLogEntry>();
+    public DbSet<UserRoomState> UserRoomStates => Set<UserRoomState>();
+    public DbSet<Actor> Actors => Set<Actor>();
+    public DbSet<ActorRoomRole> ActorRoomRoles => Set<ActorRoomRole>();
+    public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
+    public DbSet<Development> Developments => Set<Development>();
+    public DbSet<ReviewFlag> ReviewFlags => Set<ReviewFlag>();
+    public DbSet<PublishGateResult> PublishGateResults => Set<PublishGateResult>();
+    public DbSet<Interaction> Interactions => Set<Interaction>();
+    public DbSet<RoomInteractionPlay> RoomInteractionPlays => Set<RoomInteractionPlay>();
+    public DbSet<Prediction> Predictions => Set<Prediction>();
+    public DbSet<UserPrediction> UserPredictions => Set<UserPrediction>();
+    public DbSet<MoneyItem> MoneyItems => Set<MoneyItem>();
+    public DbSet<MoneyStageEntry> MoneyStageEntries => Set<MoneyStageEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -564,6 +589,447 @@ public class CivicDbContext : DbContext
 
         ConfigureCoalition(modelBuilder);
         ConfigureSocial(modelBuilder);
+        ConfigureRoomGraph(modelBuilder);
+        ConfigureRooms(modelBuilder);
+    }
+
+    /// <summary>
+    /// Theme and Story Rooms, their revision history, and per-reader state (PRD 01, PRD 02).
+    ///
+    /// Rooms are table-per-hierarchy — one physical table with a "Kind" discriminator. It is
+    /// the only inheritance in this context and it earns the exception: revisions, changelog,
+    /// following and section progress are identical for both kinds, so one table lets
+    /// RoomRevision.RoomId and UserRoomState.RoomId be real foreign keys to one target
+    /// instead of a polymorphic pair on the hottest write path in the feature.
+    /// </summary>
+    private static void ConfigureRooms(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Room>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasDiscriminator<string>("Kind")
+                .HasValue<ThemeRoom>("Theme")
+                .HasValue<StoryRoom>("Story");
+
+            e.HasIndex(r => r.Slug).IsUnique();
+            e.HasIndex(r => new { r.Status, r.LastMeaningfulUpdateAt });
+            e.HasIndex(r => new { r.Status, r.Locality });
+
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(30);
+            e.Property(r => r.Sensitivity).HasConversion<string>().HasMaxLength(20);
+
+            // Both the admin controller and the correction propagator write rooms.
+            // RoomRevisionService retries once on conflict rather than taking a lock.
+            e.UseXminAsConcurrencyToken();
+
+            e.OwnsMany(r => r.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ThemeRoom>(e =>
+        {
+            e.Property(r => r.MonitoringCadence).HasConversion<string>().HasMaxLength(20);
+            e.OwnsMany(r => r.EssentialFacts, f => f.ToJson());
+            e.OwnsMany(r => r.TerminologyNotes, n => n.ToJson());
+        });
+
+        modelBuilder.Entity<StoryRoom>(e =>
+        {
+            e.Property(r => r.StoryType).HasConversion<string>().HasMaxLength(30);
+            e.Property(r => r.TypePayloadJson).HasColumnType("jsonb");
+            e.OwnsMany(r => r.WhyItMatters, d => d.ToJson());
+            e.OwnsMany(r => r.Stakeholders, s => s.ToJson());
+            e.OwnsMany(r => r.NextSteps, n => n.ToJson());
+        });
+
+        modelBuilder.Entity<RoomRevision>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.RoomId, r.Revision }).IsUnique();
+            e.Property(r => r.SnapshotJson).HasColumnType("jsonb");
+
+            e.OwnsMany(r => r.GateApprovals, g => g.ToJson());
+
+            e.HasOne(r => r.Room)
+                .WithMany()
+                .HasForeignKey(r => r.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChangeLogEntry>(e =>
+        {
+            e.HasKey(c => c.Id);
+            // The delta is a single indexed range scan on this — the hottest read here.
+            e.HasIndex(c => new { c.RoomId, c.RevisionNumber });
+            e.HasIndex(c => new { c.RoomId, c.IsMeaningful, c.CreatedAt });
+
+            e.Property(c => c.Type).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.ObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.CorrectionKind).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(c => c.RoomRevision)
+                .WithMany()
+                .HasForeignKey(c => c.RoomRevisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRoomState>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => new { s.UserId, s.RoomId }).IsUnique();
+            // The notify fan-out reads this.
+            e.HasIndex(s => new { s.RoomId, s.Following });
+
+            e.OwnsMany(s => s.SectionProgress, p => p.ToJson());
+
+            e.HasOne(s => s.Room)
+                .WithMany()
+                .HasForeignKey(s => s.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserProfile>()
+            .Property(p => p.RoomDensity).HasConversion<string>().HasMaxLength(10);
+
+        ConfigureRoomContent(modelBuilder);
+    }
+
+    /// <summary>
+    /// Actors, timeline events and developments — the content objects a room composes from.
+    /// </summary>
+    private static void ConfigureRoomContent(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Actor>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => a.Slug).IsUnique();
+            e.HasIndex(a => a.ActorType);
+            e.Property(a => a.ActorType).HasConversion<string>().HasMaxLength(30);
+
+            e.OwnsMany(a => a.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ActorRoomRole>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => new { r.RoomId, r.Tier, r.Ordinal });
+            e.Property(r => r.Tier).HasConversion<string>().HasMaxLength(20);
+
+            // One role per actor per room per decision. DecisionKey is nullable and null is
+            // the common case (the room's default tiering), so this hits the Postgres
+            // NULL-distinct trap head-on — a single unique index would happily accept two
+            // default roles for the same actor. Split, exactly like DailyPuzzle's locality.
+            e.HasIndex(r => new { r.RoomId, r.ActorId })
+                .IsUnique()
+                .HasFilter("\"DecisionKey\" IS NULL")
+                .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Default");
+            e.HasIndex(r => new { r.RoomId, r.ActorId, r.DecisionKey })
+                .IsUnique()
+                .HasFilter("\"DecisionKey\" IS NOT NULL")
+                .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Decision");
+
+            e.HasOne(r => r.Actor)
+                .WithMany()
+                .HasForeignKey(r => r.ActorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(r => r.Room)
+                .WithMany()
+                .HasForeignKey(r => r.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TimelineEvent>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => new { t.RoomId, t.OccurredOn });
+            e.Property(t => t.Marker).HasConversion<string>().HasMaxLength(20);
+            e.Property(t => t.OccurredPrecision).HasConversion<string>().HasMaxLength(10);
+
+            e.HasOne(t => t.Room)
+                .WithMany()
+                .HasForeignKey(t => t.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Development>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.HasIndex(d => new { d.RoomId, d.OccurredAt });
+            e.Property(d => d.Category).HasConversion<string>().HasMaxLength(30);
+            e.Property(d => d.EvidenceStatus).HasConversion<string>().HasMaxLength(30);
+
+            e.HasOne(d => d.Room)
+                .WithMany()
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Concept>()
+            .Property(c => c.KnowledgeKind).HasConversion<string>().HasMaxLength(30);
+
+        ConfigureRoomEditorial(modelBuilder);
+        ConfigureRoomInteractions(modelBuilder);
+        ConfigureMoneyTrail(modelBuilder);
+    }
+
+    /// <summary>
+    /// The Money Trail (PRD 05). Every item carries all five ladder rungs, including
+    /// the empty ones -- see MoneyMath.BuildLadder for why that is a data guarantee
+    /// rather than a UI convention.
+    /// </summary>
+    private static void ConfigureMoneyTrail(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MoneyItem>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.HasIndex(m => m.Slug).IsUnique();
+            e.HasIndex(m => new { m.RoomId, m.CurrentStage });
+
+            e.Property(m => m.Kind).HasConversion<string>().HasMaxLength(30);
+            e.Property(m => m.CurrentStage).HasConversion<string>().HasMaxLength(20);
+            e.Property(m => m.DollarBasis).HasConversion<string>().HasMaxLength(10);
+            e.Property(m => m.AmountUsd).HasPrecision(18, 2);
+            e.Property(m => m.AmountMinUsd).HasPrecision(18, 2);
+            e.Property(m => m.AmountMaxUsd).HasPrecision(18, 2);
+
+            e.OwnsMany(m => m.Breakdown, b => b.ToJson());
+            e.OwnsMany(m => m.Comparisons, c => c.ToJson());
+            e.OwnsMany(m => m.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+
+            e.HasOne(m => m.Room)
+                .WithMany()
+                .HasForeignKey(m => m.RoomId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MoneyStageEntry>(e =>
+        {
+            e.HasKey(s => s.Id);
+            // One row per stage per item -- exactly five, always.
+            e.HasIndex(s => new { s.MoneyItemId, s.Stage }).IsUnique();
+            e.Property(s => s.Stage).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.Applicability).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.AmountUsd).HasPrecision(18, 2);
+
+            e.HasOne(s => s.MoneyItem)
+                .WithMany()
+                .HasForeignKey(s => s.MoneyItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    /// <summary>
+    /// Room interactions and calibrated predictions (PRD 06).
+    /// </summary>
+    private static void ConfigureRoomInteractions(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Interaction>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.HasIndex(i => i.Slug).IsUnique();
+            e.HasIndex(i => new { i.RoomId, i.Ordinal });
+            e.Property(i => i.PayloadJson).HasColumnType("jsonb");
+            e.Property(i => i.Kind).HasConversion<string>().HasMaxLength(30);
+            e.Property(i => i.ScoringMode).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.Sensitivity).HasConversion<string>().HasMaxLength(20);
+            e.Property(i => i.Status).HasConversion<string>().HasMaxLength(30);
+
+            e.OwnsMany(i => i.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+
+            e.HasOne(i => i.Room)
+                .WithMany()
+                .HasForeignKey(i => i.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoomInteractionPlay>(e =>
+        {
+            e.HasKey(p => p.Id);
+            // Phase is part of the key because the two-phase interactions legitimately
+            // store two rows per person -- that is the mechanic, not a duplicate. The
+            // Post row doubles as the XP idempotency guard.
+            e.HasIndex(p => new { p.InteractionId, p.UserId, p.Phase }).IsUnique();
+            e.Property(p => p.Phase).HasConversion<string>().HasMaxLength(10);
+            e.Property(p => p.ResponseJson).HasColumnType("jsonb");
+
+            e.HasOne(p => p.Interaction)
+                .WithMany()
+                .HasForeignKey(p => p.InteractionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Prediction>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.Slug).IsUnique();
+            e.HasIndex(p => new { p.Outcome, p.ResolvesByAt });
+            e.Property(p => p.Outcome).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.Status).HasConversion<string>().HasMaxLength(30);
+
+            e.HasOne(p => p.Room)
+                .WithMany()
+                .HasForeignKey(p => p.RoomId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<UserPrediction>(e =>
+        {
+            e.HasKey(u => u.Id);
+            // One forecast per person per question, updatable until close.
+            e.HasIndex(u => new { u.PredictionId, u.UserId }).IsUnique();
+            e.HasIndex(u => new { u.UserId, u.CreatedAt });
+
+            e.HasOne(u => u.Prediction)
+                .WithMany()
+                .HasForeignKey(u => u.PredictionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    /// <summary>
+    /// Review flags and publish gates — the editorial machinery behind correction
+    /// propagation (design 1y/1z, PRD 07).
+    /// </summary>
+    private static void ConfigureRoomEditorial(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ReviewFlag>(e =>
+        {
+            e.HasKey(f => f.Id);
+
+            e.Property(f => f.ObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.TriggerObjectType).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.Reason).HasConversion<string>().HasMaxLength(30);
+            e.Property(f => f.Action).HasConversion<string>().HasMaxLength(20);
+            e.Property(f => f.Resolution).HasConversion<string>().HasMaxLength(20);
+
+            // The review queue, oldest first, and the six-hour sweep both read this.
+            e.HasIndex(f => new { f.ResolvedAt, f.CreatedAt });
+            // The read path asks "is this object flagged?" on every render.
+            e.HasIndex(f => new { f.ObjectType, f.ObjectId, f.ResolvedAt });
+
+            // Re-running propagation must not spam the queue with duplicates. Filtered to
+            // UNRESOLVED so the same object can legitimately be flagged again later for the
+            // same reason by a subsequent correction.
+            e.HasIndex(f => new { f.ObjectType, f.ObjectId, f.Reason, f.TriggerObjectId })
+                .IsUnique()
+                .HasFilter("\"ResolvedAt\" IS NULL")
+                .HasDatabaseName("IX_ReviewFlags_Open_Unique");
+        });
+
+        modelBuilder.Entity<PublishGateResult>(e =>
+        {
+            e.HasKey(g => g.Id);
+            e.Property(g => g.Gate).HasConversion<string>().HasMaxLength(40);
+
+            // Cleared per revision: editing after a sign-off re-opens the gate, because the
+            // sign-off attested to text that no longer exists.
+            e.HasIndex(g => new { g.RoomId, g.Gate, g.RoomRevision }).IsUnique();
+
+            e.HasOne(g => g.Room)
+                .WithMany()
+                .HasForeignKey(g => g.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    /// <summary>
+    /// The Topic Rooms knowledge graph (docs/Rooms Expansion, PRD 04).
+    ///
+    /// Claims, sources and the edges between them. Rooms themselves land in a later
+    /// migration; the graph goes first because correction fan-out — the capability the
+    /// whole feature rests on — is a property of the edge table, not of the rooms.
+    /// </summary>
+    private static void ConfigureRoomGraph(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ObjectLink>(e =>
+        {
+            e.HasKey(l => l.Id);
+
+            e.Property(l => l.FromType).HasConversion<string>().HasMaxLength(30);
+            e.Property(l => l.ToType).HasConversion<string>().HasMaxLength(30);
+            e.Property(l => l.Relation).HasConversion<string>().HasMaxLength(40);
+            e.Property(l => l.ProposedBy).HasConversion<string>().HasMaxLength(10);
+
+            // "What does this object contain / cite?"
+            e.HasIndex(l => new { l.FromType, l.FromId, l.Relation });
+
+            // THE fan-out index. "Which objects depend on this claim?" is one scan here,
+            // and that single query is why the graph is one polymorphic table instead of
+            // two dozen typed join tables.
+            e.HasIndex(l => new { l.ToType, l.ToId, l.Relation });
+
+            // Idempotent attach — but only over OPEN edges. Retired edges (ValidTo set) are
+            // deliberately allowed to repeat, because the same actor can join a committee,
+            // leave, and rejoin. A plain unique index would forbid the rejoin.
+            e.HasIndex(l => new { l.FromType, l.FromId, l.Relation, l.ToType, l.ToId })
+                .IsUnique()
+                .HasFilter("\"ValidTo\" IS NULL")
+                .HasDatabaseName("IX_ObjectLinks_Open_Unique");
+        });
+
+        modelBuilder.Entity<SourceRef>(e =>
+        {
+            e.HasKey(s => s.Id);
+            // Re-citing the same document must converge on one row, or a retraction cannot
+            // find everything resting on it.
+            e.HasIndex(s => s.UrlHash).IsUnique();
+            e.HasIndex(s => new { s.SourceType, s.PublishedAt });
+            // The withdrawal sweep (PRD 04 §14.3) scans by availability.
+            e.HasIndex(s => s.Availability);
+
+            e.Property(s => s.SourceType).HasConversion<string>().HasMaxLength(30);
+            e.Property(s => s.Availability).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<Claim>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.HasIndex(c => c.Slug).IsUnique();
+            // The extraction dedup key: two rooms describing the same fact converge here.
+            e.HasIndex(c => c.NormalizedTextHash).IsUnique();
+            // The ledger sorts least-settled first (design 1n).
+            e.HasIndex(c => new { c.Status, c.LastReviewedAt });
+
+            e.Property(c => c.Status).HasConversion<string>().HasMaxLength(30);
+            e.Property(c => c.Kind).HasConversion<string>().HasMaxLength(20);
+
+            e.OwnsMany(c => c.Provenance, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.ProposedBy).HasConversion<string>();
+            });
+        });
+
+        modelBuilder.Entity<ClaimStatusHistory>(e =>
+        {
+            e.HasKey(h => h.Id);
+            e.HasIndex(h => new { h.ClaimId, h.ChangedAt });
+
+            e.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(30);
+            e.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(30);
+            e.Property(h => h.ChangeKind).HasConversion<string>().HasMaxLength(20);
+
+            e.HasOne(h => h.Claim)
+                .WithMany()
+                .HasForeignKey(h => h.ClaimId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     /// <summary>SocialPublisher's single writable table (shared engine). Mirrors the debate app's

@@ -139,7 +139,13 @@ export default function MagazineLayout() {
   // The Bills Explore page is a wide broadsheet (designed at 1440px). Widen the
   // whole shell — nav, content, and footer — for that one route so the chrome
   // stays aligned with the body instead of the body breaking out past a 1024 nav.
-  const wide = useLocation().pathname === "/bills";
+  // The wide shell is for dense, tabular surfaces. Rooms opt in on their board view
+  // only; the reading view keeps the narrower measure that prose needs.
+  const { pathname, search } = useLocation();
+  const wide =
+    pathname === "/bills" ||
+    (pathname.startsWith("/rooms/") &&
+      new URLSearchParams(search).get("view") === "board");
   const shell = wide ? "max-w-[1440px]" : "max-w-5xl";
 
   return (

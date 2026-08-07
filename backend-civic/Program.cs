@@ -149,6 +149,24 @@ builder.Services.AddScoped<IDailyPuzzleGenerator, WhoseValueGenerator>();
 builder.Services.AddScoped<IDailyPuzzleGenerator, WhichIsTrueGenerator>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
+// ---- Topic Rooms knowledge graph (docs/Rooms Expansion) ----
+builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectLinkService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.ObjectResolver>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomRevisionService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomQueryService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomSeeder>();
+
+// R7 drafting. The candidate pass is deterministic and free; the draft pass spends money
+// and is off unless RoomDrafting:Enabled is set. Neither ever publishes anything.
+builder.Services.Configure<Civic.API.Services.Rooms.RoomDraftOptions>(
+    builder.Configuration.GetSection(Civic.API.Services.Rooms.RoomDraftOptions.SectionName));
+builder.Services.AddScoped<Civic.API.Services.Rooms.RoomCandidateService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.ClaimExtractionService>();
+builder.Services.AddHostedService<Civic.API.Services.Rooms.RoomDraftService>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.PublishGateEvaluator>();
+builder.Services.AddScoped<Civic.API.Services.Rooms.CorrectionPropagationService>();
+builder.Services.AddHostedService<Civic.API.Services.Rooms.ReviewFlagSweepService>();
+
 // ---- SocialPublisher (shared Arena.Shared.Social engine; civic content sources) ----
 // Engine/platform/resilience knobs from "SocialPublisher"; civic selection knobs from "CivicSocial".
 var civicSocialOptions = builder.Configuration.GetSection(Arena.Shared.Social.SocialPublisherOptions.SectionName)
@@ -416,6 +434,12 @@ static async Task InitializeDatabaseAsync(IServiceProvider services, Cancellatio
     // Seed the coalition demo provisions (constructed agents; idempotent).
     var coalitionSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Coalition.Product.CoalitionSeeder>();
     await coalitionSeeder.SeedAsync();
+
+    // Seed the hand-authored pilot Topic Room. No-ops unless Rooms:SeedPilot is on, which
+    // it is NOT in production — the pilot is a structural fixture and test corpus, and its
+    // copy has not been through editorial review.
+    var roomSeeder = scope.ServiceProvider.GetRequiredService<Civic.API.Services.Rooms.RoomSeeder>();
+    await roomSeeder.SeedAsync(ct);
 
     // Pre-run the hottest read paths once, while the readiness gate still holds
     // traffic, so EF compiles their query shapes and the connection pool is warm

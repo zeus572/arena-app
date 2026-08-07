@@ -17,7 +17,7 @@ namespace Civic.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.29")
+                .HasAnnotation("ProductVersion", "8.0.28")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1368,6 +1368,14 @@ namespace Civic.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ConfusionDiscriminator")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ConfusionPairSlug")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<string>("CurrentExample")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1377,6 +1385,11 @@ namespace Civic.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("KnowledgeKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("PlainDefinition")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1384,6 +1397,10 @@ namespace Civic.API.Migrations
                     b.Property<string[]>("RelatedConcepts")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<string>("ShortGloss")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -2412,6 +2429,1351 @@ namespace Civic.API.Migrations
                     b.ToTable("QuizResponses");
                 });
 
+            modelBuilder.Entity("Civic.API.Models.Rooms.Actor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("ActualPower")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string[]>("AlternateNames")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("ConstrainedBy")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("StatedWants")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("StatedWantsAsOf")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("StatedWantsSourceRefId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorType");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("Actors");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ActorRoomRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("LeverageStatement")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RoleHere")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("RoomId", "ActorId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Default")
+                        .HasFilter("\"DecisionKey\" IS NULL");
+
+                    b.HasIndex("RoomId", "ActorId", "DecisionKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ActorRoomRoles_Room_Actor_Decision")
+                        .HasFilter("\"DecisionKey\" IS NOT NULL");
+
+                    b.HasIndex("RoomId", "Tier", "Ordinal");
+
+                    b.ToTable("ActorRoomRoles");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ChangeLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectionKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FromValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("IsMeaningful")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ObjectType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoomRevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ToValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("WhyItMatters")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomRevisionId");
+
+                    b.HasIndex("RoomId", "RevisionNumber");
+
+                    b.HasIndex("RoomId", "IsMeaningful", "CreatedAt");
+
+                    b.ToTable("ChangeLogEntries");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Claim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EvidenceSummary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("GeographyScope")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedTextHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ObjectValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Predicate")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("ShareImpressionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTime?>("StaleAsOf")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("TimeScopeEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TimeScopeStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WhatWouldSettleIt")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedTextHash")
+                        .IsUnique();
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "LastReviewedAt");
+
+                    b.ToTable("Claims");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ClaimStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChangeKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChangedBy")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("ClaimId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Rationale")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("SourceCorrectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("TriggerSourceRefId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClaimId", "ChangedAt");
+
+                    b.ToTable("ClaimStatusHistories");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Development", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EvidenceStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("InclusionReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StoryRoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("WhyItMatters")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "OccurredAt");
+
+                    b.ToTable("Developments");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Interaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgeGuidance")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<bool>("AnswerDependsOnClaimStatus")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ContentRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("LearningObjective")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("PayloadVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PredictionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScoringMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Sensitivity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("RoomId", "Ordinal");
+
+                    b.ToTable("Interactions");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.MoneyItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AmountMaxUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("AmountMinUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("AmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("CategoryKey")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentStage")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("DecidesNext")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("DollarBasis")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("EstimateMethod")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string[]>("Exclusions")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<int>("FiscalYearEnd")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FiscalYearStart")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsNet")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Jurisdiction")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RealBaseYear")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("SourceProgramName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("WhatThisDoesNotMean")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("RoomId", "CurrentStage");
+
+                    b.ToTable("MoneyItems");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.MoneyStageEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Applicability")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("AsOf")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnactedByPolicyRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("MoneyItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NotApplicableReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("SourceRefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MoneyItemId", "Stage")
+                        .IsUnique();
+
+                    b.ToTable("MoneyStageEntries");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ObjectLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FromId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProposedBy")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Relation")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("SourceRefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ToId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ToType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VerifiedBy")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromType", "FromId", "Relation");
+
+                    b.HasIndex("ToType", "ToId", "Relation");
+
+                    b.HasIndex("FromType", "FromId", "Relation", "ToType", "ToId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ObjectLinks_Open_Unique")
+                        .HasFilter("\"ValidTo\" IS NULL");
+
+                    b.ToTable("ObjectLinks");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Prediction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CancellationPolicy")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EditorialOwner")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("ForecastCount")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("MeanProbability")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Proposition")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ResolutionCriteria")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ResolutionEvidence")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ResolutionSourceDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ResolutionSourceRefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime?>("ResolvesByAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("Outcome", "ResolvesByAt");
+
+                    b.ToTable("Predictions");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.PublishGateResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Blocking")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ClearedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClearedBy")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Gate")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("Passed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RoomRevision")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "Gate", "RoomRevision")
+                        .IsUnique();
+
+                    b.ToTable("PublishGateResults");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ReviewFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ObjectType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Resolution")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("TriggerObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TriggerObjectType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResolvedAt", "CreatedAt");
+
+                    b.HasIndex("ObjectType", "ObjectId", "ResolvedAt");
+
+                    b.HasIndex("ObjectType", "ObjectId", "Reason", "TriggerObjectId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ReviewFlags_Open_Unique")
+                        .HasFilter("\"ResolvedAt\" IS NULL");
+
+                    b.ToTable("ReviewFlags");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Dek")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("DraftAttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DraftModelId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("DraftPromptVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DraftedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GenerationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("LastMeaningfulUpdateAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Locality")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Sensitivity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "LastMeaningfulUpdateAt");
+
+                    b.HasIndex("Status", "Locality");
+
+                    b.ToTable("Rooms");
+
+                    b.HasDiscriminator<string>("Kind").HasValue("Room");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.RoomInteractionPlay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InteractionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("ResponseJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InteractionId", "UserId", "Phase")
+                        .IsUnique();
+
+                    b.ToTable("RoomInteractionPlays");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.RoomRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("IsMeaningful")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("RoomRevisions");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.SourceRef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Availability")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("FullTextAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HasInterest")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InterestNote")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Jurisdiction")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Organization")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RetrievedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RightsNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("SourceNewsItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("UrlHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Availability");
+
+                    b.HasIndex("UrlHash")
+                        .IsUnique();
+
+                    b.HasIndex("SourceType", "PublishedAt");
+
+                    b.ToTable("SourceRefs");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.TimelineEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Marker")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OccurredPrecision")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TextAlternative")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("WhatWasKnownThen")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "OccurredOn");
+
+                    b.ToTable("TimelineEvents");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.UserPrediction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("BrierScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PredictionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Probability")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UpdateCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PredictionId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("UserPredictions");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.UserRoomState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FollowedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Following")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LastSeenRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastVisitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId", "Following");
+
+                    b.HasIndex("UserId", "RoomId")
+                        .IsUnique();
+
+                    b.ToTable("UserRoomStates");
+                });
+
             modelBuilder.Entity("Civic.API.Models.SubQuestion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2549,6 +3911,14 @@ namespace Civic.API.Migrations
                     b.Property<int>("ProfileVersion")
                         .HasColumnType("integer");
 
+                    b.Property<string>("RoomDensity")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("RoomDensityConsecutiveBoard")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2684,6 +4054,109 @@ namespace Civic.API.Migrations
                     b.HasIndex("Office", "State", "District");
 
                     b.ToTable("VirtualCandidates");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.StoryRoom", b =>
+                {
+                    b.HasBaseType("Civic.API.Models.Rooms.Room");
+
+                    b.Property<int>("EstimatedMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EventTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HowItWorksIntro")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid?>("SourceBillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceBriefingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceNewsItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StoryType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TypePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("TypePayloadVersion")
+                        .HasColumnType("integer");
+
+                    b.HasDiscriminator().HasValue("Story");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ThemeRoom", b =>
+                {
+                    b.HasBaseType("Civic.API.Models.Rooms.Room");
+
+                    b.Property<DateTime?>("ActiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ActiveTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string[]>("AlternateTitles")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<int>("ArticlesConsideredCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CurrentStatusSentence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("DevelopmentWindowDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string[]>("ExclusionRules")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("FreshnessOwner")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string[]>("InclusionRules")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string[]>("MatchTerms")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("MonitoringCadence")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ScopeStatement")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("TopUnresolvedQuestion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("WatchNext")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasDiscriminator().HasValue("Theme");
                 });
 
             modelBuilder.Entity("Civic.API.Models.AcceptanceRecord", b =>
@@ -3169,6 +4642,547 @@ namespace Civic.API.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("Civic.API.Models.Rooms.Actor", b =>
+                {
+                    b.OwnsMany("Civic.API.Models.Rooms.FieldProvenance", "Provenance", b1 =>
+                        {
+                            b1.Property<Guid>("ActorId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Field")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<string>("ModelId")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int?>("PromptVersion")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("ProposedBy")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<Guid?>("SourceRefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("VerifiedBy")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.HasKey("ActorId", "Id");
+
+                            b1.ToTable("Actors");
+
+                            b1.ToJson("Provenance");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ActorId");
+                        });
+
+                    b.Navigation("Provenance");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ActorRoomRole", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ChangeLogEntry", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.RoomRevision", "RoomRevision")
+                        .WithMany()
+                        .HasForeignKey("RoomRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoomRevision");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Claim", b =>
+                {
+                    b.OwnsMany("Civic.API.Models.Rooms.FieldProvenance", "Provenance", b1 =>
+                        {
+                            b1.Property<Guid>("ClaimId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Field")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<string>("ModelId")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int?>("PromptVersion")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("ProposedBy")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<Guid?>("SourceRefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("VerifiedBy")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.HasKey("ClaimId", "Id");
+
+                            b1.ToTable("Claims");
+
+                            b1.ToJson("Provenance");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ClaimId");
+                        });
+
+                    b.Navigation("Provenance");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ClaimStatusHistory", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Claim", "Claim")
+                        .WithMany()
+                        .HasForeignKey("ClaimId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Claim");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Development", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Interaction", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.OwnsMany("Civic.API.Models.Rooms.FieldProvenance", "Provenance", b1 =>
+                        {
+                            b1.Property<Guid>("InteractionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Field")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<string>("ModelId")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int?>("PromptVersion")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("ProposedBy")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<Guid?>("SourceRefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("VerifiedBy")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.HasKey("InteractionId", "Id");
+
+                            b1.ToTable("Interactions");
+
+                            b1.ToJson("Provenance");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InteractionId");
+                        });
+
+                    b.Navigation("Provenance");
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.MoneyItem", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsMany("Civic.API.Models.Rooms.MoneyBreakdownLine", "Breakdown", b1 =>
+                        {
+                            b1.Property<Guid>("MoneyItemId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("AmountUsd")
+                                .HasColumnType("numeric");
+
+                            b1.Property<string>("Label")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.Property<string>("Note")
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("MoneyItemId", "Id");
+
+                            b1.ToTable("MoneyItems");
+
+                            b1.ToJson("Breakdown");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MoneyItemId");
+                        });
+
+                    b.OwnsMany("Civic.API.Models.Rooms.MoneyComparison", "Comparisons", b1 =>
+                        {
+                            b1.Property<Guid>("MoneyItemId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<bool>("Accepted")
+                                .HasColumnType("boolean");
+
+                            b1.Property<string>("RejectionReason")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("Text")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("MoneyItemId", "Id");
+
+                            b1.ToTable("MoneyItems");
+
+                            b1.ToJson("Comparisons");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MoneyItemId");
+                        });
+
+                    b.OwnsMany("Civic.API.Models.Rooms.FieldProvenance", "Provenance", b1 =>
+                        {
+                            b1.Property<Guid>("MoneyItemId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Field")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<string>("ModelId")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int?>("PromptVersion")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("ProposedBy")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<Guid?>("SourceRefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("VerifiedBy")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.HasKey("MoneyItemId", "Id");
+
+                            b1.ToTable("MoneyItems");
+
+                            b1.ToJson("Provenance");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MoneyItemId");
+                        });
+
+                    b.Navigation("Breakdown");
+
+                    b.Navigation("Comparisons");
+
+                    b.Navigation("Provenance");
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.MoneyStageEntry", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.MoneyItem", "MoneyItem")
+                        .WithMany()
+                        .HasForeignKey("MoneyItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MoneyItem");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Prediction", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.PublishGateResult", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.Room", b =>
+                {
+                    b.OwnsMany("Civic.API.Models.Rooms.FieldProvenance", "Provenance", b1 =>
+                        {
+                            b1.Property<Guid>("RoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Field")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<string>("ModelId")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int?>("PromptVersion")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("ProposedBy")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<Guid?>("SourceRefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("VerifiedBy")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.HasKey("RoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("Provenance");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RoomId");
+                        });
+
+                    b.Navigation("Provenance");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.RoomInteractionPlay", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Interaction", "Interaction")
+                        .WithMany()
+                        .HasForeignKey("InteractionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Interaction");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.RoomRevision", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Civic.API.Models.Rooms.GateApproval", "GateApprovals", b1 =>
+                        {
+                            b1.Property<Guid>("RoomRevisionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<DateTime>("ClearedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<string>("ClearedBy")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.Property<string>("Gate")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)");
+
+                            b1.HasKey("RoomRevisionId", "Id");
+
+                            b1.ToTable("RoomRevisions");
+
+                            b1.ToJson("GateApprovals");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RoomRevisionId");
+                        });
+
+                    b.Navigation("GateApprovals");
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.TimelineEvent", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.UserPrediction", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Prediction", "Prediction")
+                        .WithMany()
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prediction");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.UserRoomState", b =>
+                {
+                    b.HasOne("Civic.API.Models.Rooms.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Civic.API.Models.Rooms.SectionProgress", "SectionProgress", b1 =>
+                        {
+                            b1.Property<Guid>("UserRoomStateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<int>("ItemsSeen")
+                                .HasColumnType("integer");
+
+                            b1.Property<int>("ItemsTotal")
+                                .HasColumnType("integer");
+
+                            b1.Property<DateTime?>("LastOpenedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<bool>("Opened")
+                                .HasColumnType("boolean");
+
+                            b1.Property<string>("SectionKey")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)");
+
+                            b1.HasKey("UserRoomStateId", "Id");
+
+                            b1.ToTable("UserRoomStates");
+
+                            b1.ToJson("SectionProgress");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserRoomStateId");
+                        });
+
+                    b.Navigation("Room");
+
+                    b.Navigation("SectionProgress");
+                });
+
             modelBuilder.Entity("Civic.API.Models.SubQuestion", b =>
                 {
                     b.HasOne("Civic.API.Models.Provision", "Provision")
@@ -3256,6 +5270,214 @@ namespace Civic.API.Migrations
                         });
 
                     b.Navigation("Tensions");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.StoryRoom", b =>
+                {
+                    b.OwnsMany("Civic.API.Models.Rooms.NextStep", "NextSteps", b1 =>
+                        {
+                            b1.Property<Guid>("StoryRoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<Guid?>("ActorId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Description")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("ExpectedTiming")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)");
+
+                            b1.Property<Guid?>("PredictionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("VerificationCondition")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<uint>("_TableSharingConcurrencyTokenConvention_xmin")
+                                .IsConcurrencyToken()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("xid")
+                                .HasColumnName("xmin");
+
+                            b1.HasKey("StoryRoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("NextSteps");
+
+                            b1.WithOwner()
+                                .HasForeignKey("StoryRoomId");
+                        });
+
+                    b.OwnsMany("Civic.API.Models.Rooms.StakeholderImpact", "Stakeholders", b1 =>
+                        {
+                            b1.Property<Guid>("StoryRoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<double>("Confidence")
+                                .HasColumnType("double precision");
+
+                            b1.Property<string>("Group")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.Property<string>("ImpactSummary")
+                                .IsRequired()
+                                .HasMaxLength(1000)
+                                .HasColumnType("character varying(1000)");
+
+                            b1.Property<uint>("_TableSharingConcurrencyTokenConvention_xmin")
+                                .IsConcurrencyToken()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("xid")
+                                .HasColumnName("xmin");
+
+                            b1.HasKey("StoryRoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("Stakeholders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("StoryRoomId");
+                        });
+
+                    b.OwnsMany("Civic.API.Models.Rooms.StoryDimension", "WhyItMatters", b1 =>
+                        {
+                            b1.Property<Guid>("StoryRoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<Guid?>("ClaimId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Dimension")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)");
+
+                            b1.Property<string>("Text")
+                                .IsRequired()
+                                .HasMaxLength(1000)
+                                .HasColumnType("character varying(1000)");
+
+                            b1.Property<uint>("_TableSharingConcurrencyTokenConvention_xmin")
+                                .IsConcurrencyToken()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("xid")
+                                .HasColumnName("xmin");
+
+                            b1.HasKey("StoryRoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("WhyItMatters");
+
+                            b1.WithOwner()
+                                .HasForeignKey("StoryRoomId");
+                        });
+
+                    b.Navigation("NextSteps");
+
+                    b.Navigation("Stakeholders");
+
+                    b.Navigation("WhyItMatters");
+                });
+
+            modelBuilder.Entity("Civic.API.Models.Rooms.ThemeRoom", b =>
+                {
+                    b.OwnsMany("Civic.API.Models.Rooms.EssentialFact", "EssentialFacts", b1 =>
+                        {
+                            b1.Property<Guid>("ThemeRoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<Guid?>("ClaimId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Ordinal")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Text")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<uint>("_TableSharingConcurrencyTokenConvention_xmin")
+                                .IsConcurrencyToken()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("xid")
+                                .HasColumnName("xmin");
+
+                            b1.HasKey("ThemeRoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("EssentialFacts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ThemeRoomId");
+                        });
+
+                    b.OwnsMany("Civic.API.Models.Rooms.TerminologyNote", "TerminologyNotes", b1 =>
+                        {
+                            b1.Property<Guid>("ThemeRoomId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Note")
+                                .IsRequired()
+                                .HasMaxLength(1000)
+                                .HasColumnType("character varying(1000)");
+
+                            b1.Property<string>("Term")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<uint>("_TableSharingConcurrencyTokenConvention_xmin")
+                                .IsConcurrencyToken()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("xid")
+                                .HasColumnName("xmin");
+
+                            b1.HasKey("ThemeRoomId", "Id");
+
+                            b1.ToTable("Rooms");
+
+                            b1.ToJson("TerminologyNotes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ThemeRoomId");
+                        });
+
+                    b.Navigation("EssentialFacts");
+
+                    b.Navigation("TerminologyNotes");
                 });
 
             modelBuilder.Entity("Civic.API.Models.Bill", b =>

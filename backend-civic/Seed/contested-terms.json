@@ -1,0 +1,72 @@
+[
+  {
+    "term": "war",
+    "aliases": ["at war", "act of war"],
+    "guidance": "A legal classification with consequences. Attribute it (\"X described it as\") rather than asserting it, unless a body with authority to make the determination has done so.",
+    "requiresNote": true
+  },
+  {
+    "term": "invasion",
+    "aliases": ["invaded"],
+    "guidance": "Contested between 'incursion', 'operation' and 'invasion' in most live conflicts. Attribute, and state who is using the word.",
+    "requiresNote": true
+  },
+  {
+    "term": "genocide",
+    "aliases": ["genocidal"],
+    "guidance": "A determination made by courts and specific bodies under the Genocide Convention. Never assert; attribute to the body or party making the claim, with the date.",
+    "requiresNote": true
+  },
+  {
+    "term": "terrorist",
+    "aliases": ["terrorism", "terror attack"],
+    "guidance": "A designation, not a description. Name the designating government or body and the date of designation.",
+    "requiresNote": true
+  },
+  {
+    "term": "riot",
+    "aliases": ["rioting", "insurrection", "uprising"],
+    "guidance": "The choice between 'riot', 'protest', 'uprising' and 'insurrection' carries a judgement. Prefer the most specific factual description of what occurred, and attribute contested labels.",
+    "requiresNote": true
+  },
+  {
+    "term": "recession",
+    "aliases": ["in recession"],
+    "guidance": "In the U.S. this is a determination made after the fact by the NBER business cycle dating committee. Do not assert it in advance of that determination.",
+    "requiresNote": true
+  },
+  {
+    "term": "constitutional crisis",
+    "guidance": "No authoritative body makes this determination. Attribute it to whoever is using it, or describe the underlying dispute instead.",
+    "requiresNote": true
+  },
+  {
+    "term": "illegal",
+    "aliases": ["unlawful", "illegally"],
+    "guidance": "A legal conclusion. Unless a court has ruled, say what statute is alleged to be violated and who alleges it.",
+    "requiresNote": true
+  },
+  {
+    "term": "cut",
+    "aliases": ["slashed", "gutted"],
+    "guidance": "Meaningless without a baseline — the same figure is a cut against a request and an increase against the prior year. State the baseline every time.",
+    "requiresNote": true
+  },
+  {
+    "term": "spending",
+    "aliases": ["spent", "is spending", "will spend"],
+    "guidance": "Reserve for outlays. For earlier funding stages name the stage: requested, authorized, appropriated, obligated. This is the single most common conflation in budget coverage.",
+    "requiresNote": true
+  },
+  {
+    "term": "bailout",
+    "guidance": "Loaded and rarely precise. Describe the instrument — loan, guarantee, equity purchase, grant — and its terms.",
+    "requiresNote": false
+  },
+  {
+    "term": "surge",
+    "aliases": ["spike", "soared", "plummeted"],
+    "guidance": "Implies a magnitude the number may not support. Give the figure and the comparison period instead.",
+    "requiresNote": false
+  }
+]

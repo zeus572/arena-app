@@ -41,6 +41,11 @@ public static class CoalitionPoints
         CampaignReaction => 1,       // cheap; the daily cap is what really bounds it
         QuestReward => 0,            // per-quest reward; the caller passes the explicit amount
         DailyPuzzle => 3,            // a 60-second casual game; the daily cap + decay bound the grind
+        RoomInteraction => 3,        // same weight as a daily game: a short, bounded act
+        // Worth more than an interaction because it is a commitment with a delayed payoff.
+        // Paid for FORECASTING, never for being right — see PredictionsController on why
+        // rewarding accuracy would recreate the leaderboard dynamic PRD 06 §7.5 forbids.
+        CalibratedForecast => 4,
         _ => 1,
     };
 

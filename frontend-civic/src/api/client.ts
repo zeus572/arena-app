@@ -55,3 +55,13 @@ civicApi.interceptors.response.use(
 
 // Backstop for civic's [Authorize] endpoints (Leagues, Campaign Manager, …).
 attach401Refresh(civicApi);
+
+/** True for an axios error carrying a 404, so callers can render a not-found state. */
+export function isNotFound(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "response" in err &&
+    (err as { response?: { status?: number } }).response?.status === 404
+  );
+}

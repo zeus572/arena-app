@@ -30,6 +30,9 @@ import MagazineConceptDetail from "@/prototypes/magazine/pages/ConceptDetail";
 import MagazineTeachers from "@/prototypes/magazine/pages/Teachers";
 import MagazineBillTimeline from "@/prototypes/magazine/pages/BillTimeline";
 import MagazineBills from "@/prototypes/magazine/pages/Bills";
+import RoomsIndex from "@/prototypes/magazine/pages/rooms/RoomsIndex";
+import RoomDetail from "@/prototypes/magazine/pages/rooms/RoomDetail";
+import ClaimDetail from "@/prototypes/magazine/pages/rooms/ClaimDetail";
 import MagazineBillDetail from "@/prototypes/magazine/pages/BillDetail";
 import MagazineCampaignFeed from "@/prototypes/magazine/pages/CampaignFeed";
 import MagazineCandidateProfile from "@/prototypes/magazine/pages/CandidateProfile";
@@ -109,6 +112,12 @@ function App() {
             <Route path="teachers" element={<MagazineTeachers />} />
             <Route path="timelines/bill" element={<MagazineBillTimeline />} />
             <Route path="bills" element={<MagazineBills />} />
+            {/* Topic Rooms. Nested under MagazineLayout so theme-magazine applies:
+                a full-bleed route outside it resolves every token to nothing. */}
+            <Route path="rooms" element={<RoomsIndex />} />
+            <Route path="rooms/:slug" element={<RoomDetail />} />
+            {/* Every evidence mark links here, from any room. */}
+            <Route path="claims/:slug" element={<ClaimDetail />} />
             <Route path="bills/:id" element={<MagazineBillDetail />} />
             <Route path="candidates" element={<MagazineCampaignFeed />} />
             <Route path="candidates/:slug" element={<MagazineCandidateProfile />} />

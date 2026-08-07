@@ -15,6 +15,17 @@
   --state: #b5552d;
   --state-soft: rgba(181, 85, 45, 0.12);
 
+  /* Hairline used by Flyout, the coalition detail page and About. It was referenced in
+     eight files and declared nowhere, so those borders rendered as nothing. Declaring it
+     here rather than replacing the usages keeps the fix to one line. */
+  --line: oklch(0.85 0.01 50);
+
+  /* Topic Rooms surfaces (docs/Rooms Expansion). The handoff specifies these three and
+     notes they should be tokens rather than literals. */
+  --bg-sunken: oklch(93.5% 0.012 60); /* canvas behind cards */
+  --bg-inset: oklch(97% 0.01 60); /* inset panel inside a card */
+  --highlight-changed: oklch(88% 0.04 60); /* a sentence that changed, in diff mode */
+
   --radius: 0px;
   --font-display:
     "Iowan Old Style", "Charter", "Source Serif Pro", "Georgia", serif;
@@ -36,6 +47,17 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.05;
+}
+
+/* Topic Rooms are square.
+   The design handoff calls zero border-radius "the single most identity-defining rule",
+   but the shipped components are rounded-full (Button, ValueChip, DisclaimerBadge) and
+   44 rounded-* utilities span 18 files. Rather than restyle every existing page, the rule
+   is scoped: inside a room, everything squares off — including the shared components,
+   which is the point, since rooms reuse them. The rest of Civersify is untouched. */
+.theme-magazine .rooms-square,
+.theme-magazine .rooms-square * {
+  border-radius: 0 !important;
 }
 
 .theme-magazine .dropcap::first-letter {
